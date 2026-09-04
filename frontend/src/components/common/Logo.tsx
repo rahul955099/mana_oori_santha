@@ -1,44 +1,48 @@
 import { Link } from "react-router-dom";
 
+const LOGO_SRC = "/assets/mana-oori-santha-logo.png";
+// Intrinsic size of the source artwork, used to preserve aspect ratio at any render size.
+const LOGO_WIDTH = 1045;
+const LOGO_HEIGHT = 626;
+const LOGO_ASPECT_RATIO = LOGO_WIDTH / LOGO_HEIGHT;
+
+interface LogoProps {
+  /** Rendered height in pixels; width is derived from the logo's aspect ratio. */
+  size?: number;
+  /** Wraps the logo in a white chip so it stays legible on dark backgrounds (e.g. the footer). */
+  dark?: boolean;
+  className?: string;
+}
+
 export function LogoMark({ size = 40 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" className="shrink-0">
-      <circle cx="32" cy="32" r="32" fill="#2F6F2A" />
-      <path
-        d="M32 47c-8.5 0-15-6.5-15-15 0-9.5 7.5-19 15-23 7.5 4 15 13.5 15 23 0 8.5-6.5 15-15 15z"
-        fill="#E59F3F"
-      />
-      <path d="M32 12c-2.2 8.5-2.2 25.5 0 35" stroke="#2F6F2A" strokeWidth="2" fill="none" opacity="0.55" />
-    </svg>
+    <img
+      src={LOGO_SRC}
+      alt="Mana Oori Santha"
+      width={Math.round(size * LOGO_ASPECT_RATIO)}
+      height={size}
+      className="shrink-0 object-contain"
+      style={{ height: size, width: "auto" }}
+    />
   );
 }
 
-export function Logo({
-  size = 40,
-  showText = true,
-  dark = false,
-}: {
-  size?: number;
-  showText?: boolean;
-  dark?: boolean;
-}) {
+export function Logo({ size = 40, dark = false, className = "" }: LogoProps) {
+  const height = size * 1.7;
+  const img = (
+    <img
+      src={LOGO_SRC}
+      alt="Mana Oori Santha - Modern Mart with Village Heart"
+      width={Math.round(height * LOGO_ASPECT_RATIO)}
+      height={Math.round(height)}
+      className="block object-contain"
+      style={{ height, width: "auto" }}
+    />
+  );
+
   return (
-    <Link to="/" className="flex items-center gap-2.5">
-      <LogoMark size={size} />
-      {showText && (
-        <span className="flex flex-col leading-none">
-          <span
-            className={`text-lg font-extrabold tracking-tight sm:text-xl ${dark ? "text-white" : "text-primary-700"}`}
-          >
-            MANA OORI SANTHA
-          </span>
-          <span
-            className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${dark ? "text-accent-300" : "text-accent-600"}`}
-          >
-            Local &amp; Natural Marketplace
-          </span>
-        </span>
-      )}
+    <Link to="/" className={`flex items-center ${className}`}>
+      {dark ? <span className="rounded-xl bg-white p-2 shadow-sm">{img}</span> : img}
     </Link>
   );
 }

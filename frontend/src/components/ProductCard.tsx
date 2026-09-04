@@ -122,18 +122,19 @@ export function ProductCard({ product }: { product: Product }) {
           <span className="text-xs text-stone-400">/ {product.unit}</span>
         </div>
 
-        <div className="mt-3 flex gap-2">
+        <div className="mt-auto flex items-stretch gap-2 pt-3">
           <button
             onClick={handleAddToCart}
             disabled={!purchasable}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-full border-2 border-primary-600 px-3 py-2 text-xs font-bold text-primary-700 transition hover:bg-primary-50 disabled:cursor-not-allowed disabled:border-stone-300 disabled:text-stone-400 disabled:hover:bg-transparent"
+            className="flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1 rounded-full border border-primary-600 px-1 text-[11px] font-semibold leading-tight tracking-tighter text-primary-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary-700 hover:bg-primary-50 hover:shadow-md active:translate-y-0 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:border-stone-300 disabled:text-stone-400 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-stone-300 disabled:hover:bg-transparent disabled:hover:shadow-none sm:min-h-12"
           >
-            <ShoppingCart size={14} /> Add to Cart
+            <ShoppingCart size={12} className="shrink-0" />
+            Add to Cart
           </button>
           <button
             onClick={handleBuyNow}
             disabled={!purchasable}
-            className="flex-1 rounded-full bg-primary-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-stone-300"
+            className="flex min-h-11 min-w-0 flex-1 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-bold leading-tight tracking-tighter text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary-700 hover:shadow-lg active:translate-y-0 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:bg-stone-300 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:bg-stone-300 disabled:hover:shadow-none sm:min-h-12"
           >
             Buy Now
           </button>
