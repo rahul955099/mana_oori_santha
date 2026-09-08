@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Minus, Plus, ShoppingCart, Heart, ShieldCheck, Truck, RotateCcw, MapPin } from "lucide-react";
 import { useProducts } from "@/context/ProductsContext";
-import { sellers } from "@/data/sellers";
+import { useSellers } from "@/context/SellersContext";
 import { RatingStars } from "@/components/common/RatingStars";
 import { Badge } from "@/components/common/Badge";
 import { ProductCard } from "@/components/ProductCard";
@@ -11,10 +11,13 @@ import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useToast } from "@/context/ToastContext";
 import { formatCurrency, discountPercent, categoryLabel } from "@/utils/format";
+import { DeliveryInfo } from "@/components/location/DeliveryInfo";
+import { ProductReviews } from "@/components/reviews/ProductReviews";
 
 export default function ProductDetails() {
   const { slug } = useParams<{ slug: string }>();
   const { products, getProductBySlug } = useProducts();
+  const { sellers } = useSellers();
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
@@ -198,8 +201,14 @@ export default function ProductDetails() {
               </div>
             ))}
           </div>
+
+          <div className="mt-6">
+            <DeliveryInfo />
+          </div>
         </div>
       </div>
+
+      <ProductReviews productId={product.id} />
 
       {related.length > 0 && (
         <div className="mt-16">

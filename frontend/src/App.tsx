@@ -11,10 +11,13 @@ import Category from "@/pages/Category";
 import Sellers from "@/pages/Sellers";
 import SellerDetails from "@/pages/SellerDetails";
 import Cart from "@/pages/Cart";
+import Wishlist from "@/pages/Wishlist";
 import Checkout from "@/pages/Checkout";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import MyOrders from "@/pages/MyOrders";
+import Profile from "@/pages/Profile";
+import HelpCenter from "@/pages/HelpCenter";
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
 import NotFound from "@/pages/NotFound";
@@ -34,6 +37,10 @@ import AdminCustomers from "@/pages/admin/Customers";
 import AdminOrders from "@/pages/admin/Orders";
 import AdminCategories from "@/pages/admin/Categories";
 import AdminReports from "@/pages/admin/Reports";
+import AdminSupport from "@/pages/admin/Support";
+import AdminReviews from "@/pages/admin/Reviews";
+import AdminCoupons from "@/pages/admin/Coupons";
+import AdminNotifications from "@/pages/admin/Notifications";
 
 function App() {
   return (
@@ -54,15 +61,46 @@ function App() {
           <Route path="sellers" element={<Sellers />} />
           <Route path="sellers/:id" element={<SellerDetails />} />
           <Route path="cart" element={<Cart />} />
+          <Route
+            path="wishlist"
+            element={
+              <RequireAuth>
+                <Wishlist />
+              </RequireAuth>
+            }
+          />
           <Route path="checkout" element={<Checkout />} />
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
-          <Route path="my-orders" element={<MyOrders />} />
+          <Route
+            path="my-orders"
+            element={
+              <RequireAuth>
+                <MyOrders />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="profile"
+            element={
+              <RequireAuth>
+                <Profile />
+              </RequireAuth>
+            }
+          />
+          <Route path="help" element={<HelpCenter />} />
           <Route path="about" element={<About />} />
           <Route path="contact" element={<Contact />} />
         </Route>
 
-        <Route path="seller" element={<SellerLayout />}>
+        <Route
+          path="seller"
+          element={
+            <RequireAuth roles={["seller"]}>
+              <SellerLayout />
+            </RequireAuth>
+          }
+        >
           <Route path="dashboard" element={<SellerDashboard />} />
           <Route path="products" element={<SellerMyProducts />} />
           <Route path="products/add" element={<SellerAddProduct />} />
@@ -72,13 +110,24 @@ function App() {
           <Route path="profile" element={<SellerProfile />} />
         </Route>
 
-        <Route path="admin" element={<AdminLayout />}>
+        <Route
+          path="admin"
+          element={
+            <RequireAuth roles={["admin"]}>
+              <AdminLayout />
+            </RequireAuth>
+          }
+        >
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="products" element={<AdminProducts />} />
           <Route path="sellers" element={<AdminSellers />} />
           <Route path="customers" element={<AdminCustomers />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="categories" element={<AdminCategories />} />
+          <Route path="support" element={<AdminSupport />} />
+          <Route path="reviews" element={<AdminReviews />} />
+          <Route path="coupons" element={<AdminCoupons />} />
+          <Route path="notifications" element={<AdminNotifications />} />
           <Route path="reports" element={<AdminReports />} />
         </Route>
 

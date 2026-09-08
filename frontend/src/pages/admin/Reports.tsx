@@ -2,9 +2,9 @@ import { useProducts } from "@/context/ProductsContext";
 import { useOrders } from "@/context/OrdersContext";
 import { categories } from "@/data/categories";
 import { formatCurrency } from "@/utils/format";
-import type { OrderStatus } from "@/types";
+import { ALL_ORDER_STATUSES, ORDER_STATUS_LABELS } from "@/utils/orderStatus";
 
-const statusOptions: OrderStatus[] = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
+const statusOptions = ALL_ORDER_STATUSES;
 
 export default function AdminReports() {
   const { products } = useProducts();
@@ -64,7 +64,7 @@ export default function AdminReports() {
             {ordersByStatus.map((item) => (
               <div key={item.status}>
                 <div className="mb-1 flex justify-between text-sm">
-                  <span className="font-medium capitalize text-stone-600">{item.status}</span>
+                  <span className="font-medium text-stone-600">{ORDER_STATUS_LABELS[item.status]}</span>
                   <span className="font-bold text-stone-900">{item.count}</span>
                 </div>
                 <div className="h-2.5 w-full overflow-hidden rounded-full bg-stone-100">

@@ -1,21 +1,17 @@
 import { useState } from "react";
 import { useOrders } from "@/context/OrdersContext";
+import { useNotifications } from "@/context/NotificationContext";
 import { SearchBar } from "@/components/common/SearchBar";
 import { formatCurrency, formatDate } from "@/utils/format";
+import { ALL_ORDER_STATUSES, ORDER_STATUS_LABELS, ORDER_STATUS_TONE } from "@/utils/orderStatus";
 import type { OrderStatus } from "@/types";
 
-const statusOptions: OrderStatus[] = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
-
-const statusTone: Record<OrderStatus, "green" | "gold" | "red" | "gray" | "blue"> = {
-  pending: "gray",
-  confirmed: "blue",
-  shipped: "gold",
-  delivered: "green",
-  cancelled: "red",
-};
+const statusOptions = ALL_ORDER_STATUSES;
+const statusTone = ORDER_STATUS_TONE;
 
 export default function AdminOrders() {
   const { orders, updateOrderStatus } = useOrders();
+  const { notifyUser } = useNotifications();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | OrderStatus>("all");
 
@@ -27,13 +23,25 @@ export default function AdminOrders() {
     return matchesSearch && matchesStatus;
   });
 
+  function handleStatusChange(orderId: string, userId: string | undefined, status: OrderStatus) {
+    updateOrderStatus(orderId, status);
+    if (userId) {
+      notifyUser(userId, {
+        type: "order-status",
+        title: `Order ${orderId}: ${ORDER_STATUS_LABELS[status]}`,
+        message: `Your order ${orderId} is now "${ORDER_STATUS_LABELS[status]}".`,
+        orderId,
+      });
+    }
+  }
+
   return (
     <div>
       <h1 className="text-2xl font-extrabold text-stone-900">Orders</h1>
       <p className="mt-1 text-sm text-stone-500">All orders placed across the marketplace.</p>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-        <SearchBar value={search} onChange={setSearch} className="flex-1" placeholder="Search by order ID or customer..." />
+        <SearchBar value={search} onChange={setSearch} className="flex-1" placeholder="Search by order ID or customer..." suggestions={false} />
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
@@ -41,7 +49,7 @@ export default function AdminOrders() {
         >
           <option value="all">All Status</option>
           {statusOptions.map((s) => (
-            <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+            <option key={s} value={s}>{ORDER_STATUS_LABELS[s]}</option>
           ))}
         </select>
       </div>
@@ -70,7 +78,7 @@ export default function AdminOrders() {
                   <td className="px-5 py-3">
                     <select
                       value={order.status}
-                      onChange={(e) => updateOrderStatus(order.id, e.target.value as OrderStatus)}
+                      onChange={(e) => handleStatusChange(order.id, order.userId, e.target.value as OrderStatus)}
                       className={`rounded-full border-0 px-2.5 py-1 text-xs font-bold outline-none ${
                         statusTone[order.status] === "green"
                           ? "bg-primary-100 text-primary-700"
@@ -84,7 +92,7 @@ export default function AdminOrders() {
                       }`}
                     >
                       {statusOptions.map((s) => (
-                        <option key={s} value={s}>{s.toUpperCase()}</option>
+                        <option key={s} value={s}>{ORDER_STATUS_LABELS[s]}</option>
                       ))}
                     </select>
                   </td>

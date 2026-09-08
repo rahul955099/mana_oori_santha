@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Pencil, Trash2, Eye } from "lucide-react";
 import { useProducts } from "@/context/ProductsContext";
-import { sellers } from "@/data/sellers";
+import { useSellers } from "@/context/SellersContext";
 import { categories } from "@/data/categories";
 import { SearchBar } from "@/components/common/SearchBar";
 import { Badge } from "@/components/common/Badge";
@@ -13,6 +13,7 @@ import type { Product } from "@/types";
 
 export default function AdminProducts() {
   const { products, updateProduct, deleteProduct } = useProducts();
+  const { sellers } = useSellers();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [editTarget, setEditTarget] = useState<Product | null>(null);
@@ -47,7 +48,7 @@ export default function AdminProducts() {
       <p className="mt-1 text-sm text-stone-500">Manage every product listed on the marketplace.</p>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-        <SearchBar value={search} onChange={setSearch} className="flex-1" />
+        <SearchBar value={search} onChange={setSearch} className="flex-1" suggestions={false} />
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}

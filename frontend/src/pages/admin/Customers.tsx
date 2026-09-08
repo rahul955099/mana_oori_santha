@@ -28,7 +28,7 @@ export default function AdminCustomers() {
       <h1 className="text-2xl font-extrabold text-stone-900">Customers</h1>
       <p className="mt-1 text-sm text-stone-500">Manage registered customers on the platform.</p>
 
-      <SearchBar value={search} onChange={setSearch} className="mt-6 max-w-md" placeholder="Search customers..." />
+      <SearchBar value={search} onChange={setSearch} className="mt-6 max-w-md" placeholder="Search customers..." suggestions={false} />
 
       <div className="mt-6 overflow-hidden rounded-2xl border border-stone-200 bg-white">
         <div className="overflow-x-auto">

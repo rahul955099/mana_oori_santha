@@ -10,10 +10,14 @@ interface CartContextValue {
   clearCart: () => void;
   totalItems: number;
   subtotal: number;
+  couponCode: string | null;
+  applyCouponCode: (code: string) => void;
+  removeCouponCode: () => void;
 }
 
 const CartContext = createContext<CartContextValue | undefined>(undefined);
 const STORAGE_KEY = "mos_cart";
+const COUPON_STORAGE_KEY = "mos_cart_coupon";
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(() => {
@@ -24,10 +28,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return [];
     }
   });
+  const [couponCode, setCouponCode] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(COUPON_STORAGE_KEY);
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   }, [items]);
+
+  useEffect(() => {
+    try {
+      if (couponCode) {
+        localStorage.setItem(COUPON_STORAGE_KEY, couponCode);
+      } else {
+        localStorage.removeItem(COUPON_STORAGE_KEY);
+      }
+    } catch {
+      // ignore
+    }
+  }, [couponCode]);
 
   function addToCart(productId: string, quantity = 1) {
     setItems((prev) => {
@@ -55,6 +78,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   function clearCart() {
     setItems([]);
+    setCouponCode(null);
+  }
+
+  function applyCouponCode(code: string) {
+    setCouponCode(code);
+  }
+
+  function removeCouponCode() {
+    setCouponCode(null);
   }
 
   const totalItems = useMemo(() => items.reduce((sum, i) => sum + i.quantity, 0), [items]);
@@ -74,6 +106,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     clearCart,
     totalItems,
     subtotal,
+    couponCode,
+    applyCouponCode,
+    removeCouponCode,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

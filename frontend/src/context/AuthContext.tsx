@@ -14,16 +14,29 @@ interface AuthContextValue {
     password: string;
   }) => void;
   logout: () => void;
+  updateProfile: (updates: Partial<Pick<AuthUser, "name" | "email" | "mobile" | "profilePhoto">>) => void;
+  /** Demo-mode password change: this app has no real password store, so this
+   * only validates input and confirms the change was "applied". Wire up to a
+   * real auth endpoint when one exists. */
+  changePassword: (currentPassword: string, newPassword: string) => { success: boolean; message: string };
+  deleteAccount: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const STORAGE_KEY = "mos_auth_user";
 
+function generateUserId(): string {
+  return `MOS-${Math.floor(10000 + Math.random() * 89999)}`;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as AuthUser) : null;
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as AuthUser;
+      // Backfill userId for sessions created before this field existed.
+      return parsed.userId ? parsed : { ...parsed, userId: generateUserId() };
     } catch {
       return null;
     }
@@ -47,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const mockUser: AuthUser = {
       id: `user-${Date.now()}`,
+      userId: generateUserId(),
       name: role === "admin" ? "Admin" : role === "seller" ? "Ramulu Naidu" : "Anita Reddy",
       email: identifier.includes("@") ? identifier : `${identifier}@example.com`,
       mobile: identifier.includes("@") ? "9876543210" : identifier,
@@ -61,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function registerCustomer(data: { name: string; mobile: string; email: string; password: string }) {
     const mockUser: AuthUser = {
       id: `user-${Date.now()}`,
+      userId: generateUserId(),
       name: data.name,
       email: data.email,
       mobile: data.mobile,
@@ -79,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }) {
     const mockUser: AuthUser = {
       id: `user-${Date.now()}`,
+      userId: generateUserId(),
       name: data.name,
       email: data.email,
       mobile: data.mobile,
@@ -93,8 +109,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
+  function updateProfile(updates: Partial<Pick<AuthUser, "name" | "email" | "mobile" | "profilePhoto">>) {
+    setUser((prev) => (prev ? { ...prev, ...updates } : prev));
+  }
+
+  function changePassword(currentPassword: string, newPassword: string) {
+    if (!currentPassword || !newPassword) {
+      return { success: false, message: "Please fill in both password fields." };
+    }
+    if (newPassword.length < 6) {
+      return { success: false, message: "New password must be at least 6 characters." };
+    }
+    return { success: true, message: "Password updated successfully." };
+  }
+
+  function deleteAccount() {
+    setUser(null);
+  }
+
   return (
-    <AuthContext.Provider value={{ user, login, registerCustomer, registerSeller, logout }}>
+    <AuthContext.Provider
+      value={{ user, login, registerCustomer, registerSeller, logout, updateProfile, changePassword, deleteAccount }}
+    >
       {children}
     </AuthContext.Provider>
   );

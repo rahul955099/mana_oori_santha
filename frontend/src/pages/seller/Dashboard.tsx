@@ -6,15 +6,7 @@ import { useProducts } from "@/context/ProductsContext";
 import { useOrders } from "@/context/OrdersContext";
 import { formatCurrency, formatDate } from "@/utils/format";
 import { CURRENT_SELLER_ID } from "@/data/currentSeller";
-import type { OrderStatus } from "@/types";
-
-const statusTone: Record<OrderStatus, "green" | "gold" | "red" | "gray" | "blue"> = {
-  pending: "gray",
-  confirmed: "blue",
-  shipped: "gold",
-  delivered: "green",
-  cancelled: "red",
-};
+import { ORDER_STATUS_LABELS, ORDER_STATUS_TONE } from "@/utils/orderStatus";
 
 export default function SellerDashboard() {
   const { products } = useProducts();
@@ -68,7 +60,7 @@ export default function SellerDashboard() {
                     <td className="py-3 pr-4 text-stone-500">{formatDate(order.date)}</td>
                     <td className="py-3 pr-4 font-semibold text-stone-800">{formatCurrency(order.total)}</td>
                     <td className="py-3 pr-4">
-                      <Badge tone={statusTone[order.status]}>{order.status.toUpperCase()}</Badge>
+                      <Badge tone={ORDER_STATUS_TONE[order.status]}>{ORDER_STATUS_LABELS[order.status]}</Badge>
                     </td>
                   </tr>
                 ))}

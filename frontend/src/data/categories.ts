@@ -9,7 +9,7 @@ export const categories: Category[] = [
     description:
       "Ancient, nutrient-rich grains grown by local farmers using traditional, chemical-free methods. Perfect for a wholesome, healthy diet.",
     image: themedImage("millet grains", 201),
-    productCount: 8,
+    productCount: 11,
   },
   {
     id: "cat-2",
@@ -64,6 +64,24 @@ export const categories: Category[] = [
       "Stone-ground spice and masala powders, made fresh in small batches for authentic home-style flavour.",
     image: themedImage("chilli powder spice", 209),
     productCount: 1,
+  },
+  {
+    id: "cat-10",
+    name: "Flours",
+    slug: "flours",
+    description:
+      "Freshly stone-ground flours made from quality millets and grains — no additives, milled fresh for maximum nutrition.",
+    image: themedImage("flour sack grains", 210),
+    productCount: 7,
+  },
+  {
+    id: "cat-11",
+    name: "Dairy Products",
+    slug: "dairy",
+    description:
+      "Pure, fresh dairy sourced daily from local farms — milk, curd, ghee and more, delivered with care.",
+    image: themedImage("fresh dairy milk products", 211),
+    productCount: 6,
   },
 ];
 

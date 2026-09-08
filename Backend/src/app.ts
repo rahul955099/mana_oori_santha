@@ -5,6 +5,7 @@ import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 import { env } from "./config/env";
 import { notFoundHandler, errorHandler } from "./middleware/error.middleware";
+import authRoutes from "./routes/auth.routes";
 
 const app = express();
 
@@ -27,7 +28,9 @@ app.get("/api/health", (_req, res) => {
   res.json({ success: true, message: "Mana Oori Santha API is running", data: { env: env.nodeEnv } });
 });
 
-// Feature routes are mounted here in later phases (auth, products, orders, etc.)
+app.use("/api/auth", authRoutes);
+
+// Further feature routes are mounted here in later phases (products, orders, etc.)
 
 app.use(notFoundHandler);
 app.use(errorHandler);

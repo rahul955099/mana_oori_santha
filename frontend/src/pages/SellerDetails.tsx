@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
-import { BadgeCheck, MapPin, Phone, Mail, Calendar, Package } from "lucide-react";
-import { sellers } from "@/data/sellers";
+import { BadgeCheck, MapPin, Phone, Mail, Calendar, Package, Sprout, Images } from "lucide-react";
+import { useSellers } from "@/context/SellersContext";
 import { useProducts } from "@/context/ProductsContext";
 import { RatingStars } from "@/components/common/RatingStars";
 import { ProductCard } from "@/components/ProductCard";
@@ -10,6 +10,7 @@ import { buttonClasses } from "@/components/common/Button";
 export default function SellerDetails() {
   const { id } = useParams<{ id: string }>();
   const { products } = useProducts();
+  const { sellers } = useSellers();
   const seller = sellers.find((s) => s.id === id);
   const sellerProducts = products.filter((p) => p.sellerId === id);
 
@@ -64,6 +65,27 @@ export default function SellerDetails() {
             <div className="rounded-2xl border border-stone-200 bg-white p-5">
               <h3 className="mb-2 text-sm font-bold text-stone-800">About the Seller</h3>
               <p className="text-sm leading-relaxed text-stone-600">{seller.about}</p>
+              {(seller.farmingType || seller.experienceYears) && (
+                <div className="mt-4 flex items-start gap-2.5 border-t border-stone-100 pt-4">
+                  <Sprout size={15} className="mt-0.5 shrink-0 text-primary-600" />
+                  <div className="text-sm text-stone-600">
+                    {seller.farmingType && <p className="font-semibold text-stone-800">{seller.farmingType}</p>}
+                    {seller.experienceYears && <p className="text-xs text-stone-400">{seller.experienceYears}+ years of experience</p>}
+                  </div>
+                </div>
+              )}
+              {seller.mainProducts && seller.mainProducts.length > 0 && (
+                <div className="mt-4 border-t border-stone-100 pt-4">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Main Crops/Products</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {seller.mainProducts.map((p) => (
+                      <span key={p} className="rounded-full bg-primary-50 px-2.5 py-1 text-[11px] font-semibold text-primary-700">
+                        {p}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="rounded-2xl border border-stone-200 bg-white p-5">
               <h3 className="mb-3 text-sm font-bold text-stone-800">Contact</h3>
@@ -78,6 +100,25 @@ export default function SellerDetails() {
           </aside>
 
           <div>
+            {seller.photos && seller.photos.length > 0 && (
+              <div className="mb-10">
+                <h2 className="mb-4 flex items-center gap-2 text-xl font-extrabold text-stone-900">
+                  <Images size={20} className="text-primary-600" /> Shop & Farm Photos
+                </h2>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {seller.photos.map((photo, i) => (
+                    <img
+                      key={i}
+                      src={photo}
+                      alt={`${seller.farmName} — photo ${i + 1}`}
+                      loading="lazy"
+                      className="aspect-square w-full rounded-xl object-cover shadow-sm"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
             <h2 className="mb-6 text-2xl font-extrabold text-stone-900">Products by {seller.farmName}</h2>
             {sellerProducts.length === 0 ? (
               <EmptyState title="No products listed yet" description="This seller hasn't added any products." />

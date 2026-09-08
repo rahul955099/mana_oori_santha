@@ -1,9 +1,10 @@
 import { Leaf, Users, ShieldCheck, Heart } from "lucide-react";
-import { sellers } from "@/data/sellers";
+import { useSellers } from "@/context/SellersContext";
 import { SellerCard } from "@/components/SellerCard";
 import { themedImage } from "@/utils/placeholder";
 
 export default function About() {
+  const { sellers } = useSellers();
   return (
     <div>
       <section className="bg-primary-800 py-16 text-center text-white">

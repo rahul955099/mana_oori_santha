@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { sellers } from "@/data/sellers";
+import { useSellers } from "@/context/SellersContext";
 import { SellerCard } from "@/components/SellerCard";
 import { SearchBar } from "@/components/common/SearchBar";
 import { EmptyState } from "@/components/common/EmptyState";
 
 export default function Sellers() {
+  const { sellers } = useSellers();
   const [search, setSearch] = useState("");
 
   const filtered = sellers.filter(

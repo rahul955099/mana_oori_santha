@@ -51,7 +51,7 @@ export const mockOrders: Order[] = [
       },
     ],
     total: 850,
-    status: "shipped",
+    status: "out-for-delivery",
     paymentMethod: "online",
     customer: {
       fullName: "Anita Reddy",

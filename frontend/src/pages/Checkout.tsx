@@ -1,13 +1,19 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Truck, Wallet, CheckCircle2 } from "lucide-react";
+import { Truck, Wallet, CheckCircle2, MapPinCheck } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useProducts } from "@/context/ProductsContext";
 import { useOrders } from "@/context/OrdersContext";
 import { useToast } from "@/context/ToastContext";
+import { useAddresses } from "@/context/AddressContext";
+import { useAuth } from "@/context/AuthContext";
+import { useNotifications } from "@/context/NotificationContext";
 import { EmptyState } from "@/components/common/EmptyState";
 import { buttonClasses } from "@/components/common/Button";
 import { formatCurrency } from "@/utils/format";
+import { DeliveryLocationBar } from "@/components/location/DeliveryLocationBar";
+import { CouponBox } from "@/components/checkout/CouponBox";
+import type { Address } from "@/types";
 
 const DELIVERY_CHARGE = 40;
 const FREE_DELIVERY_THRESHOLD = 500;
@@ -15,30 +21,58 @@ const FREE_DELIVERY_THRESHOLD = 500;
 const inputClass =
   "w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100";
 
+function addressToForm(address: Address, fallbackEmail: string) {
+  return {
+    fullName: address.fullName,
+    mobile: address.phone,
+    email: fallbackEmail,
+    address: `${address.houseNo}, ${address.street}`,
+    village: address.city,
+    district: "",
+    state: address.state,
+    pincode: address.pincode,
+  };
+}
+
 export default function Checkout() {
-  const { items, subtotal, clearCart } = useCart();
+  const { items, subtotal, clearCart, couponCode } = useCart();
   const { getProductById } = useProducts();
   const { placeOrder } = useOrders();
   const { showToast } = useToast();
+  const { addresses, defaultAddress } = useAddresses();
+  const { user } = useAuth();
+  const { notifyUser } = useNotifications();
   const navigate = useNavigate();
 
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "online">("cod");
-  const [form, setForm] = useState({
-    fullName: "",
-    mobile: "",
-    email: "",
-    address: "",
-    village: "",
-    district: "",
-    state: "",
-    pincode: "",
-  });
+  const [discount, setDiscount] = useState(0);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(defaultAddress?.id ?? null);
+  const [form, setForm] = useState(() =>
+    defaultAddress
+      ? addressToForm(defaultAddress, user?.email ?? "")
+      : {
+          fullName: user?.name ?? "",
+          mobile: user?.mobile ?? "",
+          email: user?.email ?? "",
+          address: "",
+          village: "",
+          district: "",
+          state: "",
+          pincode: "",
+        },
+  );
+
+  function useSavedAddress(address: Address) {
+    setSelectedAddressId(address.id);
+    setForm(addressToForm(address, user?.email ?? form.email));
+  }
 
   const deliveryCharge = subtotal >= FREE_DELIVERY_THRESHOLD || subtotal === 0 ? 0 : DELIVERY_CHARGE;
-  const total = subtotal + deliveryCharge;
+  const total = Math.max(0, subtotal - discount) + deliveryCharge;
 
   function updateField(field: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setSelectedAddressId(null);
   }
 
   function handleSubmit(e: FormEvent) {
@@ -61,9 +95,21 @@ export default function Checkout() {
     const order = placeOrder({
       items: orderItems,
       total,
+      discount: discount > 0 ? discount : undefined,
+      couponCode: discount > 0 ? (couponCode ?? undefined) : undefined,
       paymentMethod,
+      userId: user?.userId,
       customer: form,
     });
+
+    if (user) {
+      notifyUser(user.userId, {
+        type: "order-placed",
+        title: `Order ${order.id} placed`,
+        message: `Your order for ${orderItems.length} item(s) totalling ${formatCurrency(total)} has been placed successfully.`,
+        orderId: order.id,
+      });
+    }
 
     clearCart();
     showToast(`Order ${order.id} placed successfully!`);
@@ -92,8 +138,29 @@ export default function Checkout() {
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          <DeliveryLocationBar />
+
           <div className="rounded-2xl border border-stone-200 bg-white p-6">
             <h2 className="mb-4 text-lg font-bold text-stone-900">Customer Information</h2>
+            {addresses.length > 0 && (
+              <div className="mb-4 flex flex-wrap gap-2">
+                {addresses.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => useSavedAddress(a)}
+                    className={`flex items-center gap-1.5 rounded-full border-2 px-3.5 py-1.5 text-xs font-bold capitalize transition ${
+                      selectedAddressId === a.id
+                        ? "border-primary-500 bg-primary-50 text-primary-800"
+                        : "border-stone-200 text-stone-500 hover:border-primary-300"
+                    }`}
+                  >
+                    {selectedAddressId === a.id && <MapPinCheck size={13} />}
+                    {a.type} {a.isDefault && "· Default"}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <input required placeholder="Full Name" value={form.fullName} onChange={(e) => updateField("fullName", e.target.value)} className={inputClass} />
               <input required type="tel" pattern="[0-9]{10}" placeholder="Mobile Number" value={form.mobile} onChange={(e) => updateField("mobile", e.target.value)} className={inputClass} />
@@ -160,11 +227,21 @@ export default function Checkout() {
               );
             })}
           </div>
+          <div className="mb-4">
+            <CouponBox onDiscountChange={setDiscount} />
+          </div>
+
           <div className="space-y-2 border-t border-stone-200 pt-4 text-sm">
             <div className="flex justify-between text-stone-600">
               <span>Subtotal</span>
               <span className="font-semibold text-stone-900">{formatCurrency(subtotal)}</span>
             </div>
+            {discount > 0 && (
+              <div className="flex justify-between text-primary-700">
+                <span>Coupon Discount {couponCode ? `(${couponCode})` : ""}</span>
+                <span className="font-semibold">-{formatCurrency(discount)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-stone-600">
               <span>Delivery Charge</span>
               <span className="font-semibold text-stone-900">

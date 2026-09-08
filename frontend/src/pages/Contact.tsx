@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from "react";
-import { Mail, Phone, MapPin, Send } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Mail, Phone, MapPin, Send, LifeBuoy, ArrowRight } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
 import { buttonClasses } from "@/components/common/Button";
+import { SUPPORT_PHONE, SUPPORT_EMAIL } from "@/config/support";
 
 const inputClass =
   "w-full rounded-xl border border-stone-200 px-4 py-3 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100";
@@ -26,12 +28,26 @@ export default function Contact() {
         </p>
       </div>
 
+      <Link
+        to="/help"
+        className="mx-auto mb-10 flex max-w-3xl items-center gap-4 rounded-2xl border border-primary-200 bg-primary-50 p-5 transition hover:border-primary-300 hover:bg-primary-100"
+      >
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white">
+          <LifeBuoy size={20} />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-bold text-stone-900">Need help with an order, delivery or your account?</p>
+          <p className="text-xs text-stone-500">Visit our Customer Support / Help Center for FAQs and quick answers.</p>
+        </div>
+        <ArrowRight size={18} className="shrink-0 text-primary-700" />
+      </Link>
+
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-5">
         <div className="space-y-4 lg:col-span-2">
           {[
             { icon: MapPin, title: "Address", value: "Hyderabad, Telangana, India" },
-            { icon: Phone, title: "Phone", value: "+91 90000 12345" },
-            { icon: Mail, title: "Email", value: "hello@manaoorisantha.in" },
+            { icon: Phone, title: "Phone", value: SUPPORT_PHONE },
+            { icon: Mail, title: "Email", value: SUPPORT_EMAIL },
           ].map((item) => (
             <div key={item.title} className="flex items-center gap-4 rounded-2xl border border-stone-200 bg-white p-5">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">

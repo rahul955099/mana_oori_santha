@@ -12,14 +12,20 @@ import {
 } from "lucide-react";
 import { categories } from "@/data/categories";
 import { themedImage } from "@/utils/placeholder";
-import { sellers } from "@/data/sellers";
+import { useSellers } from "@/context/SellersContext";
+import { banners } from "@/data/banners";
 import { CategoryCard } from "@/components/CategoryCard";
 import { SellerCard } from "@/components/SellerCard";
+import { PromoCarousel } from "@/components/PromoCarousel";
 import { buttonClasses } from "@/components/common/Button";
 
 export default function Home() {
+  const { sellers } = useSellers();
   return (
     <div>
+      {/* PROMO CAROUSEL */}
+      <PromoCarousel banners={banners} />
+
       {/* HERO */}
       <section className="relative overflow-hidden bg-gradient-to-br from-primary-800 via-primary-700 to-primary-900">
         <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-accent-500/20 blur-3xl" />

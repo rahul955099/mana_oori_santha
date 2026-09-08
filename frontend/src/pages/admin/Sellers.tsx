@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Eye, Trash2, BadgeCheck } from "lucide-react";
-import { sellers as initialSellers } from "@/data/sellers";
+import { Eye, Trash2, BadgeCheck, ShieldCheck, ShieldX } from "lucide-react";
+import { useSellers } from "@/context/SellersContext";
 import { SearchBar } from "@/components/common/SearchBar";
 import { Badge } from "@/components/common/Badge";
 import { Modal } from "@/components/common/Modal";
@@ -9,7 +9,7 @@ import { buttonClasses } from "@/components/common/Button";
 import type { Seller } from "@/types";
 
 export default function AdminSellers() {
-  const [sellers, setSellers] = useState<Seller[]>(initialSellers);
+  const { sellers, updateSeller, deleteSeller } = useSellers();
   const [search, setSearch] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Seller | null>(null);
 
@@ -21,17 +21,19 @@ export default function AdminSellers() {
 
   function confirmDelete() {
     if (deleteTarget) {
-      setSellers((prev) => prev.filter((s) => s.id !== deleteTarget.id));
+      deleteSeller(deleteTarget.id);
       setDeleteTarget(null);
     }
   }
 
   return (
     <div>
-      <h1 className="text-2xl font-extrabold text-stone-900">Sellers</h1>
-      <p className="mt-1 text-sm text-stone-500">All local sellers and farmers registered on the platform.</p>
+      <h1 className="text-2xl font-extrabold text-stone-900">Farmers/Sellers</h1>
+      <p className="mt-1 text-sm text-stone-500">
+        All local sellers and farmers registered on the platform. Verify a farmer to show their "Verified Farmer" badge site-wide.
+      </p>
 
-      <SearchBar value={search} onChange={setSearch} className="mt-6 max-w-md" placeholder="Search sellers..." />
+      <SearchBar value={search} onChange={setSearch} className="mt-6 max-w-md" placeholder="Search sellers..." suggestions={false} />
 
       <div className="mt-6 overflow-hidden rounded-2xl border border-stone-200 bg-white">
         <div className="overflow-x-auto">
@@ -71,6 +73,23 @@ export default function AdminSellers() {
                       <Link to={`/sellers/${seller.id}`} className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-blue-50 hover:text-blue-600">
                         <Eye size={15} />
                       </Link>
+                      {seller.verified ? (
+                        <button
+                          onClick={() => updateSeller(seller.id, { verified: false })}
+                          title="Reject / revoke verification"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-amber-50 hover:text-amber-600"
+                        >
+                          <ShieldX size={15} />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => updateSeller(seller.id, { verified: true })}
+                          title="Verify farmer"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-green-50 hover:text-green-600"
+                        >
+                          <ShieldCheck size={15} />
+                        </button>
+                      )}
                       <button onClick={() => setDeleteTarget(seller)} className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-red-50 hover:text-red-600">
                         <Trash2 size={15} />
                       </button>

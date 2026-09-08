@@ -6,15 +6,8 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { formatCurrency, formatDate } from "@/utils/format";
 import { CURRENT_SELLER_ID } from "@/data/currentSeller";
 import type { OrderStatus } from "@/types";
+import { ALL_ORDER_STATUSES, ORDER_STATUS_LABELS, ORDER_STATUS_TONE } from "@/utils/orderStatus";
 import { ShoppingBag } from "lucide-react";
-
-const statusTone: Record<OrderStatus, "green" | "gold" | "red" | "gray" | "blue"> = {
-  pending: "gray",
-  confirmed: "blue",
-  shipped: "gold",
-  delivered: "green",
-  cancelled: "red",
-};
 
 export default function SellerOrders() {
   const { orders } = useOrders();
@@ -40,11 +33,9 @@ export default function SellerOrders() {
           className="rounded-full border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-600 outline-none focus:border-primary-400"
         >
           <option value="all">All Status</option>
-          <option value="pending">Pending</option>
-          <option value="confirmed">Confirmed</option>
-          <option value="shipped">Shipped</option>
-          <option value="delivered">Delivered</option>
-          <option value="cancelled">Cancelled</option>
+          {ALL_ORDER_STATUSES.map((s) => (
+            <option key={s} value={s}>{ORDER_STATUS_LABELS[s]}</option>
+          ))}
         </select>
       </div>
 
@@ -76,7 +67,7 @@ export default function SellerOrders() {
                       <td className="px-5 py-3 text-stone-500">{myItems.length} item(s)</td>
                       <td className="px-5 py-3 font-semibold text-stone-800">{formatCurrency(amount)}</td>
                       <td className="px-5 py-3">
-                        <Badge tone={statusTone[order.status]}>{order.status.toUpperCase()}</Badge>
+                        <Badge tone={ORDER_STATUS_TONE[order.status]}>{ORDER_STATUS_LABELS[order.status]}</Badge>
                       </td>
                     </tr>
                   );

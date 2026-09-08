@@ -3,6 +3,7 @@ import { Mail, Phone, MapPin } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 import { FacebookIcon, InstagramIcon, TwitterIcon } from "@/components/common/SocialIcons";
 import { categories } from "@/data/categories";
+import { SUPPORT_PHONE, SUPPORT_EMAIL } from "@/config/support";
 
 export function Footer() {
   return (
@@ -59,10 +60,10 @@ export function Footer() {
               <MapPin size={16} className="mt-0.5 shrink-0" /> Hyderabad, Telangana, India
             </li>
             <li className="flex items-center gap-2">
-              <Phone size={16} className="shrink-0" /> +91 90000 12345
+              <Phone size={16} className="shrink-0" /> {SUPPORT_PHONE}
             </li>
             <li className="flex items-center gap-2">
-              <Mail size={16} className="shrink-0" /> hello@manaoorisantha.in
+              <Mail size={16} className="shrink-0" /> {SUPPORT_EMAIL}
             </li>
           </ul>
         </div>

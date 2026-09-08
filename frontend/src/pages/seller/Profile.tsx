@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { sellers } from "@/data/sellers";
+import { useSellers } from "@/context/SellersContext";
 import { useToast } from "@/context/ToastContext";
 import { buttonClasses } from "@/components/common/Button";
 import { CURRENT_SELLER_ID } from "@/data/currentSeller";
@@ -9,6 +9,7 @@ const inputClass =
 const labelClass = "mb-1.5 block text-xs font-bold text-stone-600";
 
 export default function SellerProfile() {
+  const { sellers, updateSeller } = useSellers();
   const seller = sellers.find((s) => s.id === CURRENT_SELLER_ID)!;
   const { showToast } = useToast();
 
@@ -23,6 +24,7 @@ export default function SellerProfile() {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    updateSeller(seller.id, form);
     showToast("Profile updated successfully!");
   }
 

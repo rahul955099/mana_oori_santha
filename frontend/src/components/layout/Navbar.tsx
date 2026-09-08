@@ -5,6 +5,12 @@ import { Logo } from "@/components/common/Logo";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { categories } from "@/data/categories";
+import { LocationSelector } from "@/components/location/LocationSelector";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { SearchSuggestions } from "@/components/search/SearchSuggestions";
+import { useRotatingPlaceholder } from "@/hooks/useRotatingPlaceholder";
+import { useRecentSearches } from "@/hooks/useRecentSearches";
+import { ROTATING_PLACEHOLDER_TERMS } from "@/data/searchTerms";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `text-sm font-semibold transition-colors ${isActive ? "text-primary-700" : "text-stone-600 hover:text-primary-700"}`;
@@ -15,15 +21,26 @@ export function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [mobileSearchFocused, setMobileSearchFocused] = useState(false);
   const { totalItems } = useCart();
   const { user, logout } = useAuth();
+  const { addRecentSearch } = useRecentSearches();
+  const rotatingPlaceholder = useRotatingPlaceholder(ROTATING_PLACEHOLDER_TERMS, searchValue.length > 0);
   const navigate = useNavigate();
+
+  function runSearch(term: string) {
+    addRecentSearch(term);
+    navigate(`/products?search=${encodeURIComponent(term)}`);
+    setSearchOpen(false);
+    setSearchFocused(false);
+    setMobileSearchFocused(false);
+    setSearchValue("");
+  }
 
   function submitSearch(e: FormEvent) {
     e.preventDefault();
-    navigate(`/products?search=${encodeURIComponent(searchValue)}`);
-    setSearchOpen(false);
-    setSearchValue("");
+    if (searchValue.trim()) runSearch(searchValue);
   }
 
   return (
@@ -71,7 +88,9 @@ export function Navbar() {
           </NavLink>
         </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1 sm:gap-3">
+          <LocationSelector />
+
           <div className="relative hidden sm:block">
             {searchOpen ? (
               <form onSubmit={submitSearch} className="flex items-center">
@@ -79,13 +98,24 @@ export function Navbar() {
                   autoFocus
                   value={searchValue}
                   onChange={(e) => setSearchValue(e.target.value)}
-                  onBlur={() => !searchValue && setSearchOpen(false)}
-                  placeholder="Search products..."
+                  onFocus={() => setSearchFocused(true)}
+                  onBlur={() => {
+                    setTimeout(() => {
+                      setSearchFocused(false);
+                      if (!searchValue) setSearchOpen(false);
+                    }, 150);
+                  }}
+                  placeholder={rotatingPlaceholder}
                   className="w-52 rounded-full border border-stone-200 py-2 pl-4 pr-9 text-sm outline-none focus:border-primary-400"
                 />
                 <button type="submit" className="absolute right-2 text-stone-400 hover:text-primary-600">
                   <Search size={16} />
                 </button>
+                {searchFocused && (
+                  <div className="absolute left-0 right-0 top-full z-40 mt-2 max-h-80 w-72 overflow-y-auto rounded-2xl border border-stone-100 bg-white shadow-2xl">
+                    <SearchSuggestions query={searchValue} onSelectTerm={runSearch} onNavigate={() => setSearchOpen(false)} />
+                  </div>
+                )}
               </form>
             ) : (
               <button
@@ -97,6 +127,8 @@ export function Navbar() {
               </button>
             )}
           </div>
+
+          {user?.role === "customer" && <NotificationBell />}
 
           <Link to="/cart" className="relative rounded-full p-2 text-stone-500 hover:bg-stone-100" aria-label="Cart">
             <ShoppingCart size={20} />
@@ -129,9 +161,14 @@ export function Navbar() {
                     </Link>
                   )}
                   {user.role === "customer" && (
-                    <Link to="/my-orders" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-stone-600 hover:bg-primary-50 hover:text-primary-700">
-                      <Package size={15} /> My Orders
-                    </Link>
+                    <>
+                      <Link to="/profile" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-stone-600 hover:bg-primary-50 hover:text-primary-700">
+                        <User size={15} /> My Profile
+                      </Link>
+                      <Link to="/my-orders" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-stone-600 hover:bg-primary-50 hover:text-primary-700">
+                        <Package size={15} /> My Orders
+                      </Link>
+                    </>
                   )}
                   <button
                     onClick={() => { logout(); navigate("/"); }}
@@ -163,16 +200,26 @@ export function Navbar() {
 
       {mobileOpen && (
         <div className="border-t border-stone-100 bg-white px-4 pb-4 lg:hidden">
+          <div className="border-b border-stone-100 py-1">
+            <LocationSelector compact />
+          </div>
           <form onSubmit={submitSearch} className="relative my-3">
             <input
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
-              placeholder="Search products..."
+              onFocus={() => setMobileSearchFocused(true)}
+              onBlur={() => setTimeout(() => setMobileSearchFocused(false), 150)}
+              placeholder={rotatingPlaceholder}
               className="w-full rounded-full border border-stone-200 py-2.5 pl-4 pr-10 text-sm outline-none focus:border-primary-400"
             />
             <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400">
               <Search size={16} />
             </button>
+            {mobileSearchFocused && (
+              <div className="absolute left-0 right-0 top-full z-40 mt-2 max-h-64 overflow-y-auto rounded-2xl border border-stone-100 bg-white shadow-2xl">
+                <SearchSuggestions query={searchValue} onSelectTerm={runSearch} onNavigate={() => setMobileOpen(false)} />
+              </div>
+            )}
           </form>
           <div className="flex flex-col gap-1">
             {[
@@ -204,12 +251,24 @@ export function Navbar() {
             ))}
             <div className="mt-3 border-t border-stone-100 pt-3">
               {user ? (
-                <button
-                  onClick={() => { logout(); setMobileOpen(false); navigate("/"); }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-red-600"
-                >
-                  <LogOut size={16} /> Logout
-                </button>
+                <>
+                  {user.role === "customer" && (
+                    <>
+                      <Link to="/profile" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-stone-700 hover:bg-primary-50">
+                        <User size={16} /> My Profile
+                      </Link>
+                      <Link to="/my-orders" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-stone-700 hover:bg-primary-50">
+                        <Package size={16} /> My Orders
+                      </Link>
+                    </>
+                  )}
+                  <button
+                    onClick={() => { logout(); setMobileOpen(false); navigate("/"); }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-red-600"
+                  >
+                    <LogOut size={16} /> Logout
+                  </button>
+                </>
               ) : (
                 <div className="flex gap-2">
                   <Link

@@ -19,6 +19,14 @@ export const sellers: Seller[] = [
     verified: true,
     phone: "+91 98765 43210",
     email: "ramulu.farms@example.com",
+    farmingType: "Organic Farming",
+    experienceYears: 20,
+    mainProducts: ["Foxtail Millet", "Rice", "Chickpeas", "Ragi Flour"],
+    photos: [
+      themedImage("organic farm field sunrise", 701, 500),
+      themedImage("farmer harvesting grain", 702, 500),
+      themedImage("grain storage warehouse", 703, 500),
+    ],
   },
   {
     id: "seller-2",
@@ -37,6 +45,14 @@ export const sellers: Seller[] = [
     verified: true,
     phone: "+91 98765 12345",
     email: "vanabhoomi@example.com",
+    farmingType: "Women's Farming Collective",
+    experienceYears: 12,
+    mainProducts: ["Almonds", "Cashews", "Chia Seeds", "Fresh Paneer"],
+    photos: [
+      themedImage("women farmers cooperative", 704, 500),
+      themedImage("dry fruits sorting shop", 705, 500),
+      themedImage("rural marketplace stall", 706, 500),
+    ],
   },
   {
     id: "seller-3",
@@ -55,6 +71,14 @@ export const sellers: Seller[] = [
     verified: true,
     phone: "+91 91234 56789",
     email: "pallegadda@example.com",
+    farmingType: "Rainwater-Fed Farming",
+    experienceYears: 15,
+    mainProducts: ["Toor Dal", "Bajra Flour", "Fresh Cow Milk", "Curd"],
+    photos: [
+      themedImage("rain fed farmland", 707, 500),
+      themedImage("dairy farm cattle shed", 708, 500),
+      themedImage("village farm produce selling", 709, 500),
+    ],
   },
   {
     id: "seller-4",
@@ -73,5 +97,13 @@ export const sellers: Seller[] = [
     verified: false,
     phone: "+91 99887 66554",
     email: "greenvillage@example.com",
+    farmingType: "Compost-Based Organic Farming",
+    experienceYears: 8,
+    mainProducts: ["Finger Millet (Ragi)", "Pumpkin Seeds", "Multi-Grain Flour"],
+    photos: [
+      themedImage("finger millet farm field", 710, 500),
+      themedImage("organic compost farming", 711, 500),
+      themedImage("farm shop front village", 712, 500),
+    ],
   },
 ];
