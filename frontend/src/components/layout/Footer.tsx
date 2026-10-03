@@ -2,9 +2,8 @@ import { Link } from "react-router-dom";
 import { Mail, Phone, MapPin } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 import { FacebookIcon, InstagramIcon, TwitterIcon } from "@/components/common/SocialIcons";
-import { SOCIAL_LINKS } from "@/config/support";
 import { useCategories } from "@/context/CategoriesContext";
-import { SUPPORT_PHONE, SUPPORT_EMAIL } from "@/config/support";
+import { SUPPORT_ADDRESS, SUPPORT_EMAIL, SUPPORT_PHONE, SOCIAL_LINKS } from "@/config/support";
 
 export function Footer() {
   const { categories } = useCategories();
@@ -70,7 +69,8 @@ export function Footer() {
           <h4 className="mb-4 text-sm font-bold uppercase tracking-wide text-accent-300">Get in Touch</h4>
           <ul className="space-y-3 text-sm text-primary-200">
             <li className="flex items-start gap-2">
-              <MapPin size={16} className="mt-0.5 shrink-0" /> Hyderabad, Telangana, India
+              <MapPin size={16} className="mt-0.5 shrink-0" />
+              <address className="not-italic leading-relaxed">{SUPPORT_ADDRESS}</address>
             </li>
             <li className="flex items-center gap-2">
               <Phone size={16} className="shrink-0" /> {SUPPORT_PHONE}

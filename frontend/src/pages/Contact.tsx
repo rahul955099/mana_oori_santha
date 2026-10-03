@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Mail, Phone, MapPin, Send, LifeBuoy, ArrowRight } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
 import { buttonClasses } from "@/components/common/Button";
-import { SUPPORT_PHONE, SUPPORT_EMAIL } from "@/config/support";
+import { SUPPORT_ADDRESS, SUPPORT_PHONE, SUPPORT_EMAIL } from "@/config/support";
 
 const inputClass =
   "w-full rounded-xl border border-stone-200 px-4 py-3 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100";
@@ -45,7 +45,7 @@ export default function Contact() {
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-5">
         <div className="space-y-4 lg:col-span-2">
           {[
-            { icon: MapPin, title: "Address", value: "Hyderabad, Telangana, India" },
+            { icon: MapPin, title: "Address", value: SUPPORT_ADDRESS },
             { icon: Phone, title: "Phone", value: SUPPORT_PHONE },
             { icon: Mail, title: "Email", value: SUPPORT_EMAIL },
           ].map((item) => (
