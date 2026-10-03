@@ -7,6 +7,8 @@ import { AppError } from "../utils/AppError";
 import { success } from "../utils/response";
 import { escapeRegex, slugify } from "../utils/slugify";
 import { toProduct } from "../utils/serialize";
+import { CAN_MANAGE_PRODUCTS, sellableSellerIds } from "../services/sellerAccess.service";
+import type { SellerStatus } from "../models/Seller";
 import type { AuthRequest } from "../middleware/auth.middleware";
 
 const SORTS: Record<string, Record<string, SortOrder>> = {
@@ -23,9 +25,22 @@ const MAX_LIMIT = 500;
 
 /** The Seller profile id of the logged-in seller, or null for other roles. */
 async function ownSellerId(req: AuthRequest): Promise<Types.ObjectId | null> {
+  return (await ownSeller(req))?._id ?? null;
+}
+
+async function ownSeller(req: AuthRequest) {
   if (req.userRole !== "seller") return null;
-  const seller = await Seller.findOne({ user: req.userId, isActive: true }).select("_id");
-  return seller?._id ?? null;
+  return Seller.findOne({ user: req.userId, isActive: true }).select("_id status");
+}
+
+/** Throws unless the logged-in seller's account may add or edit products. */
+function assertCanManage(seller: { status: SellerStatus } | null) {
+  if (!seller) {
+    throw new AppError("Seller profile not found", 403, "FORBIDDEN");
+  }
+  if (!CAN_MANAGE_PRODUCTS.includes(seller.status)) {
+    throw new AppError(`Your shop is ${seller.status}, so products can't be changed. Please contact support.`, 403, "SELLER_NOT_ACTIVE");
+  }
 }
 
 async function uniqueSlug(name: string, excludeId?: Types.ObjectId): Promise<string> {
@@ -56,10 +71,11 @@ async function findEditableProduct(req: AuthRequest): Promise<ProductDocument> {
     throw new AppError("Product not found", 404, "NOT_FOUND");
   }
   if (req.userRole !== "admin") {
-    const sellerId = await ownSellerId(req);
-    if (!sellerId || !product.seller.equals(sellerId)) {
+    const seller = await ownSeller(req);
+    if (!seller || !product.seller.equals(seller._id)) {
       throw new AppError("You can only manage your own products", 403, "FORBIDDEN");
     }
+    assertCanManage(seller);
   }
   return product;
 }
@@ -75,8 +91,12 @@ export async function listProducts(req: AuthRequest, res: Response) {
   if (q.category) {
     filter.category = { $in: q.category.split(",").map((c) => c.trim().toLowerCase()) };
   }
+  // Only approved sellers' products are on sale.
+  const sellable = await sellableSellerIds();
   if (q.seller) {
-    filter.seller = new Types.ObjectId(q.seller);
+    filter.seller = sellable.some((id) => id.equals(q.seller)) ? new Types.ObjectId(q.seller) : { $in: [] };
+  } else {
+    filter.seller = { $in: sellable };
   }
   if (q.minPrice || q.maxPrice) {
     filter.price = {
@@ -105,16 +125,32 @@ export async function listProducts(req: AuthRequest, res: Response) {
   });
 }
 
-/** Accepts either a Mongo id or a slug. */
+/** Accepts either a Mongo id or a slug. Products of sellers who aren't
+ * approved are visible only to that seller and admins. */
 export async function getProduct(req: AuthRequest, res: Response) {
   const key = String(req.params.idOrSlug);
   const product = await Product.findOne(
     Types.ObjectId.isValid(key) ? { _id: key, isActive: true } : { slug: key.toLowerCase(), isActive: true }
   );
-  if (!product) {
+  const visible =
+    product &&
+    (req.userRole === "admin" ||
+      (await sellableSellerIds()).some((id) => id.equals(product.seller)) ||
+      (await ownSellerId(req))?.equals(product.seller));
+  if (!product || !visible) {
     throw new AppError("Product not found", 404, "NOT_FOUND");
   }
   success(res, "Product fetched", { product: toProduct(product) });
+}
+
+/** Seller: all of their own listed products, whether or not the shop is approved yet. */
+export async function listMyProducts(req: AuthRequest, res: Response) {
+  const sellerId = await ownSellerId(req);
+  if (!sellerId) {
+    throw new AppError("Seller profile not found", 404, "NOT_FOUND");
+  }
+  const products = await Product.find({ seller: sellerId, isActive: true }).sort({ createdAt: -1 });
+  success(res, "Products fetched", { products: products.map(toProduct) });
 }
 
 export async function createProduct(req: AuthRequest, res: Response) {
@@ -128,10 +164,9 @@ export async function createProduct(req: AuthRequest, res: Response) {
     }
     sellerId = seller._id;
   } else {
-    sellerId = await ownSellerId(req);
-    if (!sellerId) {
-      throw new AppError("Seller profile not found", 403, "FORBIDDEN");
-    }
+    const seller = await ownSeller(req);
+    assertCanManage(seller);
+    sellerId = seller!._id;
   }
 
   await assertCategoryExists(b.category);

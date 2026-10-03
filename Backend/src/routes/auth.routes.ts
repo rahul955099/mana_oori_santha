@@ -11,6 +11,7 @@ import {
 } from "../controllers/auth.controller";
 import { requireAuth } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validate.middleware";
+import { isImageUrl } from "../utils/validators";
 
 const router = Router();
 
@@ -55,7 +56,7 @@ router.patch(
     name().optional(),
     email().optional(),
     phone().optional(),
-    body("profileImage").optional().isString().isLength({ max: 2_000_000 }),
+    body("profileImage").optional().isString().trim().custom(isImageUrl).withMessage("Profile photo must be an https:// URL"),
   ]),
   updateMe
 );

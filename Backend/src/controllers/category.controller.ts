@@ -5,11 +5,13 @@ import { AppError } from "../utils/AppError";
 import { success } from "../utils/response";
 import { slugify } from "../utils/slugify";
 import { toCategory } from "../utils/serialize";
+import { sellableSellerIds } from "../services/sellerAccess.service";
 import type { AuthRequest } from "../middleware/auth.middleware";
 
 async function productCountsBySlug(): Promise<Map<string, number>> {
   const rows = await Product.aggregate<{ _id: string; count: number }>([
-    { $match: { isActive: true } },
+    // Count only products customers can actually see.
+    { $match: { isActive: true, seller: { $in: await sellableSellerIds() } } },
     { $group: { _id: "$category", count: { $sum: 1 } } },
   ]);
   return new Map(rows.map((r) => [r._id, r.count]));
@@ -32,7 +34,11 @@ export async function getCategory(req: Request, res: Response) {
   if (!category) {
     throw new AppError("Category not found", 404, "NOT_FOUND");
   }
-  const count = await Product.countDocuments({ category: category.slug, isActive: true });
+  const count = await Product.countDocuments({
+    category: category.slug,
+    isActive: true,
+    seller: { $in: await sellableSellerIds() },
+  });
   success(res, "Category fetched", { category: toCategory(category, count) });
 }
 

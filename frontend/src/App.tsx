@@ -42,6 +42,7 @@ import AdminSupport from "@/pages/admin/Support";
 import AdminReviews from "@/pages/admin/Reviews";
 import AdminCoupons from "@/pages/admin/Coupons";
 import AdminNotifications from "@/pages/admin/Notifications";
+import AdminPayouts from "@/pages/admin/Payouts";
 
 function App() {
   return (
@@ -131,6 +132,7 @@ function App() {
           <Route path="sellers" element={<AdminSellers />} />
           <Route path="customers" element={<AdminCustomers />} />
           <Route path="orders" element={<AdminOrders />} />
+          <Route path="payouts" element={<AdminPayouts />} />
           <Route path="categories" element={<AdminCategories />} />
           <Route path="support" element={<AdminSupport />} />
           <Route path="reviews" element={<AdminReviews />} />

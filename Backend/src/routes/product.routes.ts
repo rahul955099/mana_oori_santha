@@ -6,10 +6,13 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  listMyProducts,
 } from "../controllers/product.controller";
+import { optionalAuth } from "../middleware/optionalAuth.middleware";
 import { requireAuth } from "../middleware/auth.middleware";
 import { requireRole } from "../middleware/role.middleware";
 import { validate } from "../middleware/validate.middleware";
+import { isImageUrl } from "../utils/validators";
 
 const router = Router();
 
@@ -26,9 +29,9 @@ function productFields(isCreate: boolean): ValidationChain[] {
     body("description").optional().isString().trim().isLength({ max: 3000 }),
     body("benefits").optional().isArray({ max: 20 }),
     body("benefits.*").isString().trim().isLength({ max: 120 }),
-    body("image").optional().isString().trim().isLength({ max: 1000 }),
+    body("image").optional().isString().trim().custom(isImageUrl).withMessage("Image must be an https:// URL"),
     body("images").optional().isArray({ max: 10 }),
-    body("images.*").isString().trim().isLength({ max: 1000 }),
+    body("images.*").isString().trim().custom(isImageUrl).withMessage("Images must be https:// URLs"),
     body("isOrganic").optional().isBoolean().toBoolean(),
     body("isFeatured").optional().isBoolean().toBoolean(),
     body("priceAvailable").optional().isBoolean().toBoolean(),
@@ -52,7 +55,8 @@ router.get(
   ]),
   listProducts
 );
-router.get("/:idOrSlug", getProduct);
+router.get("/mine", requireAuth, requireRole("seller"), listMyProducts);
+router.get("/:idOrSlug", optionalAuth, getProduct);
 router.post("/", requireAuth, requireRole("seller", "admin"), validate(productFields(true)), createProduct);
 router.patch(
   "/:id",

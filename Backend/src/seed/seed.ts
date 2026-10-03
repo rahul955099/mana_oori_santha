@@ -89,6 +89,7 @@ export async function seedCatalog(options: { reset: boolean; adminEmail: string;
           about: s.about,
           image: s.image,
           verified: s.verified,
+          status: "approved",
           farmingType: s.farmingType,
           experienceYears: s.experienceYears,
           mainProducts: s.mainProducts ?? [],

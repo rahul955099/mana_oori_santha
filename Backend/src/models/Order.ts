@@ -57,6 +57,8 @@ export interface OrderDocument extends Document {
   deliveryCharge: number;
   total: number;
   couponCode?: string;
+  /** Platform commission percent at the time of the order. */
+  commissionRate: number;
   paymentMethod: "cod";
   paymentStatus: PaymentStatus;
   status: OrderStatus;
@@ -105,6 +107,7 @@ const orderSchema = new Schema<OrderDocument>(
     deliveryCharge: { type: Number, default: 0, min: 0 },
     total: { type: Number, required: true, min: 0 },
     couponCode: { type: String, uppercase: true, trim: true },
+    commissionRate: { type: Number, default: 5, min: 0, max: 100 },
     paymentMethod: { type: String, enum: ["cod"], default: "cod" },
     paymentStatus: { type: String, enum: ["pending", "paid", "refunded"], default: "pending" },
     status: { type: String, enum: ORDER_STATUSES, default: "pending", index: true },

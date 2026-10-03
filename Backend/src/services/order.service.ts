@@ -8,6 +8,7 @@ import type { UserRole } from "../models/User";
 import { AppError } from "../utils/AppError";
 import { deliveryRules, isServiceablePincode, isValidPincode } from "../config/delivery";
 import { buildQuote, type RequestedItem } from "./pricing.service";
+import { env } from "../config/env";
 
 /** Which statuses an order may move to from each status. */
 const FLOW: Record<OrderStatus, OrderStatus[]> = {
@@ -111,6 +112,7 @@ export async function placeOrder(
       deliveryCharge: quote.deliveryCharge,
       total: quote.total,
       couponCode: quote.coupon?.valid ? quote.coupon.code : undefined,
+      commissionRate: env.commissionPercent,
       paymentMethod: "cod",
       paymentStatus: "pending",
       status: "pending",

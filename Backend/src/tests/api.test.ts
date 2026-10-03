@@ -70,8 +70,11 @@ describe("auth", () => {
     assert.equal(res.body.data.user.role, "seller");
     assert.equal(res.body.data.user.shopName, "Ravi Farms");
     sellerToken = res.body.data.token;
-    const shop = await api("GET", `/sellers/${res.body.data.user.sellerId}`);
+    // A new shop is pending approval, so only its owner (or an admin) can see it.
+    assert.equal((await api("GET", `/sellers/${res.body.data.user.sellerId}`)).status, 404);
+    const shop = await api("GET", "/sellers/me", { token: sellerToken });
     assert.equal(shop.body.data.seller.verified, false);
+    assert.equal(shop.body.data.seller.status, "pending");
   });
 
   it("updates profile and password", async () => {

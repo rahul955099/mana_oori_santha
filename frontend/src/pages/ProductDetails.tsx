@@ -14,6 +14,7 @@ import { useToast } from "@/context/ToastContext";
 import { formatCurrency, discountPercent, categoryLabel } from "@/utils/format";
 import { DeliveryInfo } from "@/components/location/DeliveryInfo";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
+import { optimizedImage } from "@/utils/image";
 
 export default function ProductDetails() {
   const { slug } = useParams<{ slug: string }>();
@@ -24,6 +25,7 @@ export default function ProductDetails() {
   const { isWishlisted, toggleWishlist } = useWishlist();
   const { showToast } = useToast();
   const [quantity, setQuantity] = useState(1);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   const product = slug ? getProductBySlug(slug) : undefined;
 
@@ -49,6 +51,8 @@ export default function ProductDetails() {
 
   const seller = sellers.find((s) => s.id === product.sellerId);
   const discount = discountPercent(product.price, product.mrp);
+  const gallery = [product.image, ...(product.images ?? [])].filter(Boolean);
+  const mainPhoto = selectedPhoto && gallery.includes(selectedPhoto) ? selectedPhoto : product.image;
   const related = products.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 4);
   const purchasable = product.priceAvailable !== false && product.stock > 0;
 
@@ -76,8 +80,9 @@ export default function ProductDetails() {
       </nav>
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
+        <div>
         <div className="relative overflow-hidden rounded-3xl bg-stone-100">
-          <img src={product.image} alt={product.name} className="aspect-square w-full object-cover" />
+          <img src={optimizedImage(mainPhoto, 900)} alt={product.name} className="aspect-square w-full object-cover" />
           {product.isOrganic && (
             <span className="absolute left-4 top-4 rounded-full bg-primary-600 px-3 py-1.5 text-xs font-bold text-white shadow">
               🌿 Organic Certified
@@ -88,6 +93,24 @@ export default function ProductDetails() {
               {discount}% OFF
             </span>
           )}
+        </div>
+        {gallery.length > 1 && (
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            {gallery.map((url) => (
+              <button
+                key={url}
+                type="button"
+                onClick={() => setSelectedPhoto(url)}
+                aria-label="Show photo"
+                className={`h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 transition ${
+                  url === mainPhoto ? "border-primary-500" : "border-transparent opacity-70 hover:opacity-100"
+                }`}
+              >
+                <img src={optimizedImage(url, 160)} alt="" className="h-full w-full object-cover" />
+              </button>
+            ))}
+          </div>
+        )}
         </div>
 
         <div>

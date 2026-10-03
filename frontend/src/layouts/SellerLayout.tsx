@@ -1,5 +1,6 @@
 import { LayoutDashboard, Package, PlusCircle, ShoppingBag, Wallet, UserCircle } from "lucide-react";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
+import { SellerAccountProvider } from "@/context/SellerAccountContext";
 import type { SidebarLink } from "@/components/layout/DashboardSidebar";
 
 const links: SidebarLink[] = [
@@ -12,5 +13,9 @@ const links: SidebarLink[] = [
 ];
 
 export function SellerLayout() {
-  return <DashboardLayout title="Seller Panel" subtitle="Mana Oori Santha" links={links} />;
+  return (
+    <SellerAccountProvider>
+      <DashboardLayout title="Seller Panel" subtitle="Mana Oori Santha" links={links} />
+    </SellerAccountProvider>
+  );
 }

@@ -30,9 +30,17 @@ database, seeded with the sample catalog, and prints test logins. Data resets on
 | GET | `/api/products` | public — `search, category (comma list), seller, minPrice, maxPrice, organic, featured, inStock, sort (relevance, newest, price-low, price-high, rating), page, limit` |
 | GET | `/api/products/:idOrSlug` | public |
 | POST / PATCH / DELETE | `/api/products/:id` | the owning seller or an admin; only admins can set `isFeatured` |
-| GET | `/api/sellers`, `/api/sellers/:id` | public |
-| GET / PATCH | `/api/sellers/me` | seller |
+| GET | `/api/products/mine` | seller — own products, including while awaiting approval |
+| GET | `/api/sellers`, `/api/sellers/:id` | public — approved sellers (`?all=true` for admins: every status, KYC masked) |
+| GET / PATCH | `/api/sellers/me` | seller — own shop with status and masked KYC |
+| PUT | `/api/sellers/me/kyc` | seller — submit PAN and UPI / bank payout details |
+| GET | `/api/sellers/me/earnings` | seller — sales, commission, payable balance, payouts |
+| GET | `/api/sellers/:id/kyc`, `/api/sellers/:id/earnings` | admin — full KYC for review; seller's earnings |
+| PATCH | `/api/sellers/:id/status` | admin — approve / reject / suspend (reason required to reject or suspend) |
 | PATCH / DELETE | `/api/sellers/:id` | admin (verify badge, remove seller) |
+| GET | `/api/payouts/balances` | admin — what each seller is owed |
+| POST | `/api/payouts` | admin — record a payment made to a seller (up to their balance) |
+| POST | `/api/uploads/signature` | logged in — short-lived Cloudinary upload signature (`purpose`: product, seller, profile) |
 | GET / PUT | `/api/cart` | logged in — PUT replaces the whole cart `{ items, couponCode }` |
 | GET / PUT | `/api/wishlist` | logged in — PUT replaces `{ productIds }` |
 | GET / POST | `/api/addresses` | logged in — address book; first address becomes the default |
@@ -60,3 +68,10 @@ Deleting products, sellers or accounts is a soft delete (`isActive: false`), so 
   - A seller can move an order through fulfilment (or cancel it) when every item in it is theirs; mixed-seller orders are handled by an admin.
   - Admins can make any valid move, including approving or rejecting returns.
 - Payment is cash on delivery: marked `paid` on delivery and `refunded` when a return is approved.
+
+## Sellers, images and payouts
+
+- New sellers start **pending**. They can set up their shop and add products, but nothing is shown or sold until an admin approves them, which requires PAN and payout (UPI or bank) details. Admins can also reject (the seller can fix and resubmit) or suspend (products hidden).
+- PAN and bank account numbers are only ever shown masked, except in the admin KYC review.
+- Images upload straight from the browser to Cloudinary using a signature from `/api/uploads/signature`. The signature locks the folder and file types; the API secret never leaves the server. Set the `CLOUDINARY_*` values in `.env`.
+- Sellers earn their item prices minus `PLATFORM_COMMISSION_PERCENT` (default 5%, recorded on each order). Coupon discounts and delivery charges are the platform's. Earnings become payable once the order's return window closes; admins pay sellers outside the platform and record each payment with its UTR.

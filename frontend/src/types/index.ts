@@ -13,6 +13,34 @@ export interface Category {
   isActive?: boolean;
 }
 
+export type SellerStatus = "pending" | "approved" | "rejected" | "suspended";
+
+export interface PayoutDetails {
+  method: "upi" | "bank";
+  upiId?: string;
+  accountHolder?: string;
+  /** Masked (e.g. "••••••9012") except in the admin KYC review. */
+  accountNumber?: string;
+  ifsc?: string;
+  bankName?: string;
+}
+
+export interface SellerKyc {
+  legalName: string;
+  /** Masked except in the admin KYC review. */
+  pan: string;
+  gstin?: string;
+  submittedAt: string;
+}
+
+/** The seller as they (or an admin) see it: adds onboarding and payout details. */
+export interface SellerAccount extends Seller {
+  status: SellerStatus;
+  statusReason?: string;
+  kyc: SellerKyc | null;
+  payout: PayoutDetails | null;
+}
+
 export interface Seller {
   id: string;
   name: string;
@@ -48,6 +76,8 @@ export interface Product {
   mrp: number;
   unit: string;
   image: string;
+  /** Extra gallery photos shown on the product page. */
+  images?: string[];
   sellerId: string;
   rating: number;
   reviewCount: number;

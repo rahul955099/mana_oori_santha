@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
-import { ImagePlus } from "lucide-react";
 import type { CategorySlug, Product } from "@/types";
 import { useCategories } from "@/context/CategoriesContext";
 import { buttonClasses } from "@/components/common/Button";
+import { ImageUploader } from "@/components/common/ImageUploader";
 
 export interface ProductFormValues {
   name: string;
@@ -13,6 +13,7 @@ export interface ProductFormValues {
   unit: string;
   stock: number;
   image: string;
+  images: string[];
   isOrganic: boolean;
   isFeatured: boolean;
   benefits: string[];
@@ -34,19 +35,28 @@ export function ProductForm({ initial, onSubmit, submitLabel, canFeature = false
   const { categories } = useCategories();
   const [submitting, setSubmitting] = useState(false);
   const [name, setName] = useState(initial?.name ?? "");
-  const [category, setCategory] = useState<CategorySlug>(initial?.category ?? categories[0]?.slug ?? "");
+  const [chosenCategory, setCategory] = useState<CategorySlug>(initial?.category ?? "");
+  // Until the seller picks one, default to the first category (which may load after the form opens).
+  const category = chosenCategory || categories[0]?.slug || "";
   const [description, setDescription] = useState(initial?.description ?? "");
   const [price, setPrice] = useState(initial?.price ?? 0);
   const [mrp, setMrp] = useState(initial?.mrp ?? 0);
   const [unit, setUnit] = useState(initial?.unit ?? "1 kg");
   const [stock, setStock] = useState(initial?.stock ?? 0);
-  const [image, setImage] = useState(initial?.image ?? "");
+  // The first photo is the main product image; the rest form the gallery.
+  const [photos, setPhotos] = useState<string[]>(() => [initial?.image, ...(initial?.images ?? [])].filter((u): u is string => !!u));
+  const [photoError, setPhotoError] = useState("");
   const [isOrganic, setIsOrganic] = useState(initial?.isOrganic ?? false);
   const [isFeatured, setIsFeatured] = useState(initial?.isFeatured ?? false);
   const [benefitsText, setBenefitsText] = useState(initial?.benefits.join(", ") ?? "");
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (photos.length === 0) {
+      setPhotoError("Please add at least one product photo.");
+      return;
+    }
+    setPhotoError("");
     setSubmitting(true);
     await onSubmit({
       name,
@@ -56,7 +66,8 @@ export function ProductForm({ initial, onSubmit, submitLabel, canFeature = false
       mrp: Number(mrp),
       unit,
       stock: Number(stock),
-      image: image || `https://picsum.photos/seed/mos-${Date.now()}/600/600`,
+      image: photos[0],
+      images: photos.slice(1),
       isOrganic,
       isFeatured,
       benefits: benefitsText
@@ -122,22 +133,9 @@ export function ProductForm({ initial, onSubmit, submitLabel, canFeature = false
       </div>
 
       <div>
-        <label className={labelClass}>Product Image URL</label>
-        <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-stone-100">
-            {image ? (
-              <img src={image} alt="Preview" className="h-full w-full object-cover" />
-            ) : (
-              <ImagePlus size={22} className="text-stone-400" />
-            )}
-          </div>
-          <input
-            value={image}
-            onChange={(e) => setImage(e.target.value)}
-            className={inputClass}
-            placeholder="https://... (leave blank for placeholder image)"
-          />
-        </div>
+        <label className={labelClass}>Product Photos</label>
+        <ImageUploader value={photos} onChange={setPhotos} purpose="product" max={5} allowUrl />
+        {photoError && <p className="mt-1 text-xs font-medium text-red-600">{photoError}</p>}
       </div>
 
       <div className="flex flex-wrap gap-6">

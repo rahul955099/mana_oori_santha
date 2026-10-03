@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
-import { Package, ShoppingBag, IndianRupee, Clock, ArrowRight } from "lucide-react";
+import { Package, ShoppingBag, IndianRupee, Clock, ArrowRight, AlertTriangle } from "lucide-react";
+import { SellerStatusBanner } from "@/components/seller/SellerStatusBanner";
+import { LOW_STOCK_THRESHOLD } from "@/utils/stock";
 import { StatCard } from "@/components/common/StatCard";
 import { Badge } from "@/components/common/Badge";
 import { useProducts } from "@/context/ProductsContext";
@@ -10,10 +12,10 @@ import { ORDER_STATUS_LABELS, ORDER_STATUS_TONE } from "@/utils/orderStatus";
 
 export default function SellerDashboard() {
   const sellerId = useAuth().user?.sellerId;
-  const { products } = useProducts();
+  const { myProducts } = useProducts();
   const { orders } = useOrders();
 
-  const myProducts = products.filter((p) => p.sellerId === sellerId);
+  const lowStock = myProducts.filter((p) => p.stock <= LOW_STOCK_THRESHOLD).sort((a, b) => a.stock - b.stock);
   // Orders from the API already contain only this seller's items.
   const myOrders = orders;
   const totalSales = myOrders
@@ -29,12 +31,39 @@ export default function SellerDashboard() {
       <h1 className="text-2xl font-extrabold text-stone-900">Seller Dashboard</h1>
       <p className="mt-1 text-sm text-stone-500">Welcome back! Here's how your store is performing.</p>
 
+      <div className="mt-6">
+        <SellerStatusBanner />
+      </div>
+
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Package} label="Total Products" value={String(myProducts.length)} tone="primary" />
         <StatCard icon={ShoppingBag} label="Total Orders" value={String(myOrders.length)} tone="blue" />
         <StatCard icon={IndianRupee} label="Total Sales" value={formatCurrency(totalSales)} tone="accent" />
         <StatCard icon={Clock} label="Pending Orders" value={String(pendingOrders)} tone="earth" />
       </div>
+
+      {lowStock.length > 0 && (
+        <div className="mt-8 rounded-2xl border border-accent-200 bg-accent-50 p-6">
+          <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-stone-900">
+            <AlertTriangle size={18} className="text-accent-600" /> Low Stock ({lowStock.length})
+          </h2>
+          <ul className="divide-y divide-accent-100 text-sm">
+            {lowStock.slice(0, 6).map((p) => (
+              <li key={p.id} className="flex items-center justify-between gap-3 py-2">
+                <span className="font-semibold text-stone-800">{p.name}</span>
+                <span className="flex items-center gap-3">
+                  <span className={p.stock === 0 ? "font-bold text-red-600" : "text-accent-800"}>
+                    {p.stock === 0 ? "Out of stock" : `${p.stock} left`}
+                  </span>
+                  <Link to={`/seller/products/edit/${p.id}`} className="text-xs font-bold text-primary-700 hover:underline">
+                    Restock
+                  </Link>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="mt-8 rounded-2xl border border-stone-200 bg-white p-6">
         <div className="mb-4 flex items-center justify-between">

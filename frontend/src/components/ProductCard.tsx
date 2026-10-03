@@ -7,6 +7,7 @@ import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useToast } from "@/context/ToastContext";
 import { formatCurrency, discountPercent } from "@/utils/format";
+import { optimizedImage } from "@/utils/image";
 
 export function ProductCard({ product }: { product: Product }) {
   const { user } = useAuth();
@@ -70,7 +71,7 @@ export function ProductCard({ product }: { product: Product }) {
     >
       <div className="relative aspect-square overflow-hidden bg-stone-100">
         <img
-          src={product.image}
+          src={optimizedImage(product.image, 400)}
           alt={product.name}
           loading="lazy"
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"

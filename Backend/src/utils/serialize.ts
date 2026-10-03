@@ -67,6 +67,36 @@ export function toSeller(seller: SellerDocument, productsCount = 0) {
   };
 }
 
+/** Shows only the last few characters of a sensitive value, e.g. "••••••3456". */
+export function mask(value: string | undefined, visible = 4): string | undefined {
+  if (!value) return value;
+  return value.length <= visible ? value : `${"•".repeat(Math.min(6, value.length - visible))}${value.slice(-visible)}`;
+}
+
+/** The seller as the seller themselves or an admin sees it: adds onboarding
+ * status, KYC and payout details. `full` (admins reviewing KYC) skips masking. */
+export function toSellerPrivate(seller: SellerDocument, productsCount = 0, options: { full?: boolean } = {}) {
+  const m = (v: string | undefined) => (options.full ? v : mask(v));
+  return {
+    ...toSeller(seller, productsCount),
+    status: seller.status,
+    statusReason: seller.statusReason,
+    kyc: seller.kyc
+      ? { legalName: seller.kyc.legalName, pan: m(seller.kyc.pan), gstin: seller.kyc.gstin, submittedAt: seller.kyc.submittedAt }
+      : null,
+    payout: seller.payout
+      ? {
+          method: seller.payout.method,
+          upiId: seller.payout.upiId,
+          accountHolder: seller.payout.accountHolder,
+          accountNumber: m(seller.payout.accountNumber),
+          ifsc: seller.payout.ifsc,
+          bankName: seller.payout.bankName,
+        }
+      : null,
+  };
+}
+
 export function toProduct(product: ProductDocument) {
   return {
     id: product._id.toString(),

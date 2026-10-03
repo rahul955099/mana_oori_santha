@@ -8,20 +8,19 @@ import { Badge } from "@/components/common/Badge";
 import { Modal } from "@/components/common/Modal";
 import { buttonClasses } from "@/components/common/Button";
 import { formatCurrency, categoryLabel } from "@/utils/format";
-import { useAuth } from "@/context/AuthContext";
 import { errorMessage } from "@/lib/api";
+import { LOW_STOCK_THRESHOLD } from "@/utils/stock";
+import { SellerStatusBanner } from "@/components/seller/SellerStatusBanner";
 
 export default function SellerMyProducts() {
-  const sellerId = useAuth().user?.sellerId;
-  const { products, deleteProduct } = useProducts();
+  const { myProducts, deleteProduct } = useProducts();
   const { showToast } = useToast();
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  const myProducts = products.filter((p) => p.sellerId === sellerId);
 
   async function confirmDelete() {
     if (!deleteTarget) return;
-    const product = products.find((p) => p.id === deleteTarget);
+    const product = myProducts.find((p) => p.id === deleteTarget);
     try {
       await deleteProduct(deleteTarget);
       showToast(`${product?.name ?? "Product"} deleted`);
@@ -43,6 +42,8 @@ export default function SellerMyProducts() {
           <Plus size={16} /> Add Product
         </Link>
       </div>
+
+      <SellerStatusBanner />
 
       {myProducts.length === 0 ? (
         <EmptyState
@@ -82,8 +83,8 @@ export default function SellerMyProducts() {
                     </td>
                     <td className="px-5 py-3 text-stone-500">{product.stock}</td>
                     <td className="px-5 py-3">
-                      <Badge tone={product.stock > 0 ? "green" : "red"}>
-                        {product.stock > 0 ? "In Stock" : "Out of Stock"}
+                      <Badge tone={product.stock === 0 ? "red" : product.stock <= LOW_STOCK_THRESHOLD ? "gold" : "green"}>
+                        {product.stock === 0 ? "Out of Stock" : product.stock <= LOW_STOCK_THRESHOLD ? "Low Stock" : "In Stock"}
                       </Badge>
                     </td>
                     <td className="px-5 py-3">

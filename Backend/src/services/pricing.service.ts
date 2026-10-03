@@ -3,6 +3,7 @@ import { Product, type ProductDocument } from "../models/Product";
 import { Coupon, type CouponDocument } from "../models/Coupon";
 import { Order } from "../models/Order";
 import { deliveryChargeFor } from "../config/delivery";
+import { sellableSellerIds } from "./sellerAccess.service";
 
 export interface RequestedItem {
   productId: string;
@@ -57,7 +58,11 @@ export function normalizeItems(items: RequestedItem[]): RequestedItem[] {
  * never from the client. */
 export async function priceItems(items: RequestedItem[]): Promise<{ lines: PricedLine[]; problems: LineProblem[] }> {
   const requested = normalizeItems(items);
-  const products = await Product.find({ _id: { $in: requested.map((i) => i.productId) }, isActive: true });
+  const products = await Product.find({
+    _id: { $in: requested.map((i) => i.productId) },
+    isActive: true,
+    seller: { $in: await sellableSellerIds() },
+  });
   const byId = new Map(products.map((p) => [p._id.toString(), p]));
 
   const lines: PricedLine[] = [];
