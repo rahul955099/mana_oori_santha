@@ -201,6 +201,7 @@ export default function ProductDetails() {
             <div className="flex items-center rounded-full border border-stone-300">
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                aria-label="Decrease quantity"
                 disabled={!purchasable}
                 className="flex h-11 w-11 items-center justify-center text-stone-500 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
@@ -209,6 +210,7 @@ export default function ProductDetails() {
               <span className="w-10 text-center text-sm font-bold text-stone-800">{quantity}</span>
               <button
                 onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
+                aria-label="Increase quantity"
                 disabled={!purchasable}
                 className="flex h-11 w-11 items-center justify-center text-stone-500 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-40"
               >

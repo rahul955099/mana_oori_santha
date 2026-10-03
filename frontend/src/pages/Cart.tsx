@@ -66,6 +66,7 @@ export default function Cart() {
                   <div className="flex items-center rounded-full border border-stone-300">
                     <button
                       onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                      aria-label={`Decrease quantity of ${product.name}`}
                       className="flex h-9 w-9 items-center justify-center text-stone-500 hover:text-primary-700"
                     >
                       <Minus size={14} />
@@ -73,6 +74,7 @@ export default function Cart() {
                     <span className="w-8 text-center text-sm font-bold">{item.quantity}</span>
                     <button
                       onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                      aria-label={`Increase quantity of ${product.name}`}
                       className="flex h-9 w-9 items-center justify-center text-stone-500 hover:text-primary-700"
                     >
                       <Plus size={14} />

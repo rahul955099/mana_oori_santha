@@ -81,6 +81,7 @@ export default function Category() {
           <div className="flex flex-col gap-3 sm:flex-row">
             <SearchBar value={search} onChange={setSearch} className="sm:w-64" placeholder="Search in category..." />
             <select
+              aria-label="Sort products"
               value={sort}
               onChange={(e) => setSort(e.target.value as SortOption)}
               className="rounded-full border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-600 outline-none focus:border-primary-400"

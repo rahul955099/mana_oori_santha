@@ -89,6 +89,7 @@ export default function Products() {
         <h4 className="mb-3 text-sm font-bold text-stone-800">Max Price: ₹{maxPrice}</h4>
         <input
           type="range"
+          aria-label="Maximum price"
           min={50}
           max={highestPrice}
           step={10}
@@ -121,6 +122,7 @@ export default function Products() {
         <SearchBar value={search} onChange={handleSearchChange} className="flex-1" />
         <div className="flex gap-3">
           <select
+            aria-label="Sort products"
             value={sort}
             onChange={(e) => setSort(e.target.value as SortOption)}
             className="rounded-full border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-600 outline-none focus:border-primary-400"
