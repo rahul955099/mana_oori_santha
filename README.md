@@ -80,8 +80,8 @@ Website settings (`frontend/.env`, see `frontend/.env.example`): `VITE_API_URL` 
    protected by the username and password.
 5. **Database → Connect → Drivers** → copy the connection string. It looks like
    `mongodb+srv://USER:<password>@cluster0.xxxxx.mongodb.net/?...`
-6. In `Backend/.env`, set `MONGODB_URI` to it, replacing `<password>` with your password and adding the
-   database name after `.net/`: `...mongodb.net/mana-oori-santha?retryWrites=true&w=majority`
+6. In `Backend/.env`, set `MONGODB_URI` to it, replacing `<db_password>` with your password (no `< >`).
+   If the string doesn't name a database after `.net/`, the API uses `mana-oori-santha`.
 7. Fill in `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` and `SEED_SELLER_PASSWORD`, then run
    `npm run seed` in `Backend/`.
 
