@@ -4,6 +4,7 @@ import { useToast } from "@/context/ToastContext";
 import { buttonClasses } from "@/components/common/Button";
 import { EmptyState } from "@/components/common/EmptyState";
 import { api, errorMessage } from "@/lib/api";
+import { EmailCheck } from "@/components/admin/EmailCheck";
 
 const inputClass =
   "w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100";
@@ -85,6 +86,8 @@ export default function AdminNotifications() {
           <Send size={15} /> {sending ? "Sending..." : "Send to All Customers"}
         </button>
       </form>
+
+      <EmailCheck />
 
       <div className="mt-8">
         <h2 className="mb-4 text-lg font-bold text-stone-900">Sent Broadcasts</h2>

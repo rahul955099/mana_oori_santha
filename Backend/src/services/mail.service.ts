@@ -62,3 +62,41 @@ export async function sendMail(message: MailMessage): Promise<void> {
 export function sendMailInBackground(message: MailMessage): void {
   void sendMail(message);
 }
+
+/** Admin troubleshooting: checks the SMTP login and sends one test message,
+ * reporting the provider's actual answer instead of swallowing errors.
+ * Never returns the password. */
+export async function diagnoseMail(to: string) {
+  const report = {
+    configured: mailConfigured(),
+    host: env.smtp.host || null,
+    port: env.smtp.port,
+    from: env.smtp.from || null,
+    userSet: Boolean(env.smtp.user),
+    passwordSet: Boolean(env.smtp.pass),
+    loginOk: false,
+    sent: false,
+    providerResponse: null as string | null,
+    error: null as string | null,
+  };
+  if (!report.configured) {
+    report.error = "Email isn't set up on this server: SMTP_HOST, SMTP_USER, SMTP_PASS and MAIL_FROM must all be set.";
+    return report;
+  }
+  try {
+    await getTransporter().verify();
+    report.loginOk = true;
+    const info = await getTransporter().sendMail({
+      from: env.smtp.from,
+      to,
+      subject: "Mana Oori Santha: email check",
+      text: "This is a test from the admin panel's email check. If you can read this, email works.",
+    });
+    report.sent = true;
+    report.providerResponse = String(info.response ?? "");
+  } catch (err) {
+    const e = err as { message?: string; response?: string; code?: string };
+    report.error = [e.code, e.response ?? e.message].filter(Boolean).join(": ");
+  }
+  return report;
+}
