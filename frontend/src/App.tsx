@@ -61,14 +61,7 @@ function App() {
           <Route element={<MainLayout />}>
             <Route index element={<Home />} />
             <Route path="products" element={<Products />} />
-            <Route
-              path="products/:slug"
-              element={
-                <RequireAuth>
-                  <ProductDetails />
-                </RequireAuth>
-              }
-            />
+            <Route path="products/:slug" element={<ProductDetails />} />
             <Route path="category/:slug" element={<Category />} />
             <Route path="sellers" element={<Sellers />} />
             <Route path="sellers/:id" element={<SellerDetails />} />

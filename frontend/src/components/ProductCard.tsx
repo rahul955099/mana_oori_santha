@@ -25,19 +25,9 @@ export function ProductCard({ product }: { product: Product }) {
     navigate("/login", { state: { from: { pathname: productPath } } });
   }
 
-  function handleCardClick(e: MouseEvent) {
-    if (!user) {
-      e.preventDefault();
-      redirectToLogin();
-    }
-  }
-
   function handleAddToCart(e: MouseEvent) {
     e.preventDefault();
-    if (!user) {
-      redirectToLogin();
-      return;
-    }
+    // Guests can shop; their cart joins their account when they log in at checkout.
     if (!purchasable) return;
     addToCart(product.id, 1);
     showToast(`${product.name} added to cart`);
@@ -45,10 +35,6 @@ export function ProductCard({ product }: { product: Product }) {
 
   function handleBuyNow(e: MouseEvent) {
     e.preventDefault();
-    if (!user) {
-      redirectToLogin();
-      return;
-    }
     if (!purchasable) return;
     addToCart(product.id, 1);
     navigate("/cart");
@@ -66,7 +52,6 @@ export function ProductCard({ product }: { product: Product }) {
   return (
     <Link
       to={productPath}
-      onClick={handleCardClick}
       className="group flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
     >
       <div className="relative aspect-square overflow-hidden bg-stone-100">

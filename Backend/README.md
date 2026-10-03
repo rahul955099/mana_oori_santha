@@ -16,6 +16,8 @@ database, seeded with the sample catalog, and prints test logins. Data resets on
 
 `npm test` runs the API tests against an in-memory database.
 
+`npm run mail:test -- you@example.com` sends one test email to check the SMTP settings.
+
 ## Endpoints
 
 | Method | Path | Who |
