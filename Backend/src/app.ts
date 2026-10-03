@@ -43,6 +43,11 @@ const apiLimiter = rateLimit({
 });
 app.use("/api", apiLimiter);
 
+// Someone opening the bare API address gets a pointer instead of a 404.
+app.get("/", (_req, res) => {
+  res.json({ success: true, message: "Mana Oori Santha API. The website is at the address in CLIENT_URL.", data: { health: "/api/health" } });
+});
+
 app.get("/api/health", (_req, res) => {
   res.json({ success: true, message: "Mana Oori Santha API is running", data: { env: env.nodeEnv } });
 });
