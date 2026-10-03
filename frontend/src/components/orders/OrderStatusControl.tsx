@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useOrders } from "@/context/OrdersContext";
 import { useAuth } from "@/context/AuthContext";
-import { useNotifications } from "@/context/NotificationContext";
 import { useProducts } from "@/context/ProductsContext";
 import { useToast } from "@/context/ToastContext";
 import { Badge } from "@/components/common/Badge";
@@ -13,7 +12,6 @@ import type { Order, OrderStatus } from "@/types";
 export function OrderStatusControl({ order }: { order: Order }) {
   const { user } = useAuth();
   const { updateOrderStatus } = useOrders();
-  const { notifyUser } = useNotifications();
   const { reload: reloadProducts } = useProducts();
   const { showToast } = useToast();
   const [busy, setBusy] = useState(false);
@@ -26,14 +24,6 @@ export function OrderStatusControl({ order }: { order: Order }) {
     try {
       await updateOrderStatus(order.id, status);
       if (status === "cancelled") void reloadProducts();
-      if (order.userId) {
-        notifyUser(order.userId, {
-          type: "order-status",
-          title: `Order ${order.id}: ${ORDER_STATUS_LABELS[status]}`,
-          message: `Your order ${order.id} is now "${ORDER_STATUS_LABELS[status]}".`,
-          orderId: order.id,
-        });
-      }
       showToast(`Order ${order.id}: ${ORDER_STATUS_LABELS[status]}`);
     } catch (err) {
       showToast(errorMessage(err), "error");

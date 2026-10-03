@@ -3,7 +3,6 @@ import { Link, useLocation } from "react-router-dom";
 import { Package, ChevronDown, ChevronUp, LifeBuoy, XCircle, RotateCcw, FileText } from "lucide-react";
 import { useOrders } from "@/context/OrdersContext";
 import { useSupport } from "@/context/SupportContext";
-import { useNotifications } from "@/context/NotificationContext";
 import { useToast } from "@/context/ToastContext";
 import { useProducts } from "@/context/ProductsContext";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -23,7 +22,6 @@ export default function MyOrders() {
   const { myOrders: orders, loading, updateOrderStatus } = useOrders();
   const { reload: reloadProducts } = useProducts();
   const { openSupport } = useSupport();
-  const { notifyUser } = useNotifications();
   const { showToast } = useToast();
   const location = useLocation();
   const placedOrderId = (location.state as { placedOrderId?: string } | null)?.placedOrderId ?? null;
@@ -47,16 +45,6 @@ export default function MyOrders() {
       await updateOrderStatus(order.id, status);
       const cancelled = status === "cancelled";
       if (cancelled) void reloadProducts(); // stock was returned
-      if (order.userId) {
-        notifyUser(order.userId, {
-          type: "order-status",
-          title: cancelled ? `Order ${order.id} cancelled` : `Return requested for ${order.id}`,
-          message: cancelled
-            ? `Your order ${order.id} has been cancelled as requested.`
-            : `We've received your return request for order ${order.id}. Our team will review it shortly.`,
-          orderId: order.id,
-        });
-      }
       showToast(cancelled ? `Order ${order.id} cancelled` : "Return requested");
     } catch (err) {
       showToast(errorMessage(err), "error");

@@ -31,27 +31,10 @@ import { buttonClasses } from "@/components/common/Button";
 import { EditProfileModal } from "@/components/profile/EditProfileModal";
 import { AddressFormModal } from "@/components/profile/AddressFormModal";
 import { ChangePasswordModal } from "@/components/profile/ChangePasswordModal";
-import type { Address, Review } from "@/types";
-
-const NOTIF_KEY = "mos_notification_prefs";
-
-interface NotifPrefs {
-  orderUpdates: boolean;
-  promotions: boolean;
-  deliveryAlerts: boolean;
-}
-
-function loadNotifPrefs(): NotifPrefs {
-  try {
-    const raw = localStorage.getItem(NOTIF_KEY);
-    return raw ? (JSON.parse(raw) as NotifPrefs) : { orderUpdates: true, promotions: false, deliveryAlerts: true };
-  } catch {
-    return { orderUpdates: true, promotions: false, deliveryAlerts: true };
-  }
-}
+import type { Address, NotificationPrefs, Review } from "@/types";
 
 export default function Profile() {
-  const { user, logout, deleteAccount } = useAuth();
+  const { user, logout, deleteAccount, updateNotificationPrefs } = useAuth();
   const { addresses, deleteAddress, setDefaultAddress } = useAddresses();
   const { openSupport } = useSupport();
   const { showToast } = useToast();
@@ -81,7 +64,6 @@ export default function Profile() {
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [deleteAddressTarget, setDeleteAddressTarget] = useState<Address | null>(null);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
-  const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(loadNotifPrefs);
 
   if (!user) return null;
 
@@ -115,14 +97,10 @@ export default function Profile() {
     }
   }
 
-  function toggleNotif(key: keyof NotifPrefs) {
-    const next = { ...notifPrefs, [key]: !notifPrefs[key] };
-    setNotifPrefs(next);
-    try {
-      localStorage.setItem(NOTIF_KEY, JSON.stringify(next));
-    } catch {
-      // ignore
-    }
+  async function toggleNotif(key: keyof NotificationPrefs) {
+    if (!user) return;
+    const result = await updateNotificationPrefs({ [key]: !user.notificationPrefs[key] });
+    if (!result.success) showToast(result.message, "error");
   }
 
   async function confirmDeleteAccount() {
@@ -308,19 +286,19 @@ export default function Profile() {
 
           <div className="py-3">
             <p className="mb-2 flex items-center gap-3 text-sm font-semibold text-stone-700">
-              <Bell size={16} className="text-stone-400" /> Notification Preferences
+              <Bell size={16} className="text-stone-400" /> Email Me About
             </p>
             <div className="ml-7 space-y-2">
               {([
                 ["orderUpdates", "Order updates"],
-                ["deliveryAlerts", "Delivery alerts"],
-                ["promotions", "Promotions & offers"],
-              ] as [keyof NotifPrefs, string][]).map(([key, label]) => (
+                ["deliveryAlerts", "Out for delivery & delivered"],
+                ["promotions", "Offers & announcements"],
+              ] as [keyof NotificationPrefs, string][]).map(([key, label]) => (
                 <label key={key} className="flex items-center justify-between gap-3 text-xs text-stone-600">
                   {label}
                   <input
                     type="checkbox"
-                    checked={notifPrefs[key]}
+                    checked={user.notificationPrefs?.[key] ?? false}
                     onChange={() => toggleNotif(key)}
                     className="h-4 w-4 accent-primary-600"
                   />

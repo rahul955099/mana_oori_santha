@@ -11,4 +11,12 @@ export default defineConfig({
       '@': path.resolve(import.meta.dirname, './src'),
     },
   },
+  server: {
+    // The API builds these from the live catalog; serve them on the site's own
+    // address like production does (see the deployment notes).
+    proxy: {
+      '/sitemap.xml': 'http://localhost:5000',
+      '/robots.txt': 'http://localhost:5000',
+    },
+  },
 })

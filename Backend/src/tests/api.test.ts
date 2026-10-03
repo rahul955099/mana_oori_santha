@@ -90,6 +90,8 @@ describe("auth", () => {
       body: { currentPassword: "secret12", newPassword: "newsecret1" },
     });
     assert.equal(pw.status, 200);
+    // Changing the password ends other sessions; this one continues with the new token.
+    customerToken = pw.body.data.token;
     const login = await api("POST", "/auth/login", { body: { email: "anita@example.com", password: "newsecret1" } });
     assert.equal(login.status, 200);
   });

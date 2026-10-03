@@ -9,6 +9,7 @@ import { AppError } from "../utils/AppError";
 import { deliveryRules, isServiceablePincode, isValidPincode } from "../config/delivery";
 import { buildQuote, type RequestedItem } from "./pricing.service";
 import { env } from "../config/env";
+import { onOrderPlaced, onOrderStatusChanged } from "./events.service";
 
 /** Which statuses an order may move to from each status. */
 const FLOW: Record<OrderStatus, OrderStatus[]> = {
@@ -121,6 +122,7 @@ export async function placeOrder(
     });
     // The order now holds what was in the cart.
     await Cart.updateOne({ user: actor.userId }, { $set: { items: [] }, $unset: { couponCode: 1 } });
+    onOrderPlaced(order);
     return order;
   } catch (err) {
     await releaseStock(stockLines);
@@ -209,5 +211,6 @@ export async function changeStatus(actor: Actor, orderNumber: string, next: Orde
   if (next === "cancelled") {
     await releaseStock(order.items.map((i) => ({ productId: i.product, quantity: i.quantity })));
   }
+  onOrderStatusChanged(updated, order.status, next, actor.role);
   return updated;
 }

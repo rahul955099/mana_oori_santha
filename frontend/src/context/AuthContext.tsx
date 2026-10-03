@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { AuthUser, UserRole } from "@/types";
+import type { AuthUser, NotificationPrefs, UserRole } from "@/types";
 import { api, getToken, setToken, ApiError } from "@/lib/api";
 
 interface Result {
@@ -27,6 +27,10 @@ interface AuthContextValue {
   deleteAccount: () => Promise<Result>;
   /** Re-reads the user from the server, e.g. after a seller edits their shop name. */
   refreshUser: () => Promise<void>;
+  updateNotificationPrefs: (prefs: Partial<NotificationPrefs>) => Promise<Result>;
+  resendVerification: () => Promise<Result>;
+  /** Completes a password reset from an emailed link and logs the user in. */
+  resetPassword: (token: string, password: string) => Promise<Result>;
 }
 
 /** The user as the API returns it. */
@@ -38,6 +42,8 @@ interface ApiUser {
   phone: string;
   role: UserRole;
   profileImage?: string;
+  emailVerified: boolean;
+  notificationPrefs: NotificationPrefs;
   sellerId?: string;
   shopName?: string;
   location?: string;
@@ -52,6 +58,8 @@ function toAuthUser(u: ApiUser): AuthUser {
     mobile: u.phone,
     role: u.role,
     profilePhoto: u.profileImage,
+    emailVerified: u.emailVerified,
+    notificationPrefs: u.notificationPrefs,
     sellerId: u.sellerId,
     shopName: u.shopName,
     location: u.location,
@@ -169,8 +177,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, message: "New password must be at least 6 characters." };
     }
     try {
-      await api.patch("/auth/me/password", { currentPassword, newPassword });
-      return { success: true, message: "Password updated successfully." };
+      // Other sessions are signed out; keep this one with the fresh token.
+      const { token } = await api.patch<{ token: string }>("/auth/me/password", { currentPassword, newPassword });
+      setToken(token);
+      return { success: true, message: "Password updated. Other devices have been logged out." };
+    } catch (err) {
+      return failure(err);
+    }
+  }
+
+  async function updateNotificationPrefs(prefs: Partial<NotificationPrefs>) {
+    try {
+      const { user } = await api.patch<{ user: ApiUser }>("/auth/me", { notificationPrefs: prefs });
+      setUser(toAuthUser(user));
+      return { success: true, message: "Preferences saved." };
+    } catch (err) {
+      return failure(err);
+    }
+  }
+
+  async function resendVerification() {
+    try {
+      await api.post("/auth/verify-email/resend");
+      return { success: true, message: `We've sent a confirmation link to ${user?.email ?? "your email"}.` };
+    } catch (err) {
+      return failure(err);
+    }
+  }
+
+  async function resetPassword(token: string, password: string) {
+    try {
+      startSession(await api.post("/auth/reset-password", { token, password }));
+      return { success: true, message: "Password updated. You're now logged in." };
     } catch (err) {
       return failure(err);
     }
@@ -199,6 +237,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         changePassword,
         deleteAccount,
         refreshUser,
+        updateNotificationPrefs,
+        resendVerification,
+        resetPassword,
       }}
     >
       {children}

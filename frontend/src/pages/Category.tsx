@@ -6,6 +6,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { SearchBar } from "@/components/common/SearchBar";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Loading } from "@/components/common/Loading";
+import { Seo } from "@/components/common/Seo";
 
 type SortOption = "relevance" | "price-low" | "price-high" | "rating";
 
@@ -57,6 +58,7 @@ export default function Category() {
 
   return (
     <div>
+      <Seo title={category.name} description={category.description} image={category.image} />
       <div className="relative h-56 overflow-hidden sm:h-72">
         <img src={category.image} alt={category.name} className="h-full w-full object-cover" />
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-stone-900/55 px-4 text-center text-white">

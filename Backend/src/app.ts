@@ -16,6 +16,8 @@ import uploadRoutes from "./routes/upload.routes";
 import reviewRoutes from "./routes/review.routes";
 import supportRoutes from "./routes/support.routes";
 import adminRoutes from "./routes/admin.routes";
+import notificationRoutes from "./routes/notification.routes";
+import seoRoutes from "./routes/seo.routes";
 
 const app = express();
 
@@ -39,6 +41,7 @@ app.get("/api/health", (_req, res) => {
   res.json({ success: true, message: "Mana Oori Santha API is running", data: { env: env.nodeEnv } });
 });
 
+app.use(seoRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
@@ -48,6 +51,7 @@ app.use("/api/payouts", payoutRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/api/support", supportRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/notifications", notificationRoutes);
 // /api/products/:id/reviews and /api/reviews
 app.use("/api", reviewRoutes);
 // /api/cart, /api/wishlist, /api/addresses, /api/coupons

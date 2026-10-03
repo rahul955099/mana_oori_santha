@@ -73,6 +73,12 @@ export default function Login() {
             </div>
           </div>
 
+          <div className="flex justify-end">
+            <Link to="/forgot-password" className="text-xs font-semibold text-primary-700 hover:underline">
+              Forgot password?
+            </Link>
+          </div>
+
           {error && <p className="text-sm font-medium text-red-600">{error}</p>}
 
           <button type="submit" disabled={submitting} className={buttonClasses("primary", "lg", "w-full")}>

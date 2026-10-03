@@ -6,6 +6,7 @@ import { success } from "../utils/response";
 import { mask } from "../utils/serialize";
 import { sellerEarnings } from "../services/earnings.service";
 import type { AuthRequest } from "../middleware/auth.middleware";
+import { onPayoutRecorded } from "../services/events.service";
 
 /** Admin: what the platform owes each seller right now. */
 export async function listBalances(_req: AuthRequest, res: Response) {
@@ -59,6 +60,7 @@ export async function recordPayout(req: AuthRequest, res: Response) {
     paidAt: req.body.paidAt ?? new Date(),
     recordedBy: req.userId,
   });
+  onPayoutRecorded(seller.user, amount, payout.reference);
   success(
     res,
     `Payout of ₹${amount} recorded for ${seller.farmName}`,

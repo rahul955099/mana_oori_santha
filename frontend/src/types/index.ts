@@ -179,6 +179,8 @@ export interface AuthUser {
   shopName?: string;
   location?: string;
   profilePhoto?: string;
+  emailVerified: boolean;
+  notificationPrefs: NotificationPrefs;
 }
 
 export type AddressType = "home" | "work" | "other";
@@ -323,18 +325,25 @@ export type NotificationType =
   | "order-placed"
   | "order-status"
   | "support-update"
-  | "offer";
+  | "offer"
+  | "account";
 
 export interface AppNotification {
   id: string;
-  /** The AuthUser.userId this notification belongs to, or "all" for a broadcast to every customer. */
-  userId: string;
   type: NotificationType;
   title: string;
   message: string;
+  /** Page to open when the notification is clicked, e.g. "/my-orders". */
+  link?: string;
   read: boolean;
   createdAt: string;
-  orderId?: string;
+}
+
+/** Which emails the user wants. In-app notifications are always shown. */
+export interface NotificationPrefs {
+  orderUpdates: boolean;
+  deliveryAlerts: boolean;
+  promotions: boolean;
 }
 
 /** Why a cart line can't be bought right now (from the server's quote). */

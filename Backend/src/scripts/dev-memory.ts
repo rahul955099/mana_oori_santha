@@ -10,6 +10,8 @@
  */
 process.env.MONGODB_URI = process.env.MONGODB_URI || "mongodb://in-memory";
 process.env.JWT_SECRET = process.env.JWT_SECRET || "local-in-memory-dev-only-secret";
+// Throwaway demo data never sends real email; messages are printed to this log instead.
+process.env.SMTP_HOST = "";
 // Reuse the MongoDB binary cached by `npm install`, whatever directory this is launched from.
 process.env.MONGOMS_DOWNLOAD_DIR ||= require("node:path").resolve(__dirname, "../../node_modules/.cache/mongodb-memory-server");
 

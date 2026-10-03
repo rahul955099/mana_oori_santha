@@ -5,6 +5,8 @@ import type { UserRole } from "../models/User";
 export interface JwtPayload {
   userId: string;
   role: UserRole;
+  /** Issued-at, in seconds (added by jsonwebtoken). */
+  iat?: number;
 }
 
 export function signToken(payload: JwtPayload): string {

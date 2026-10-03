@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { LifeBuoy } from "lucide-react";
 import { useSupport } from "@/context/SupportContext";
-import { useNotifications } from "@/context/NotificationContext";
 import { useToast } from "@/context/ToastContext";
 import { SearchBar } from "@/components/common/SearchBar";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -18,7 +17,6 @@ const statusOptions: SupportRequestStatus[] = ["open", "in-progress", "resolved"
 
 export default function AdminSupport() {
   const { requests, loading, updateRequestStatus } = useSupport();
-  const { notifyUser } = useNotifications();
   const { showToast } = useToast();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | SupportRequestStatus>("all");
@@ -26,16 +24,9 @@ export default function AdminSupport() {
 
   const selected = requests.find((r) => r.id === openId) ?? null;
 
-  async function handleStatusChange(id: string, userId: string | undefined, status: SupportRequestStatus) {
+  async function handleStatusChange(id: string, status: SupportRequestStatus) {
     try {
       await updateRequestStatus(id, status);
-      if (userId) {
-        notifyUser(userId, {
-          type: "support-update",
-          title: `Support request ${id} updated`,
-          message: `Your support request is now "${SUPPORT_STATUS[status].label}".`,
-        });
-      }
     } catch (err) {
       showToast(errorMessage(err), "error");
     }
@@ -126,7 +117,7 @@ export default function AdminSupport() {
               <span className="text-xs font-bold text-stone-500">Status</span>
               <select
                 value={selected.status}
-                onChange={(e) => handleStatusChange(selected.id, selected.userId, e.target.value as SupportRequestStatus)}
+                onChange={(e) => handleStatusChange(selected.id, e.target.value as SupportRequestStatus)}
                 className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-bold text-stone-600 outline-none"
               >
                 {statusOptions.map((s) => (

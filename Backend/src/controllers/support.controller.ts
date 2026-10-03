@@ -1,5 +1,6 @@
 import type { Response } from "express";
-import type { QueryFilter } from "mongoose";
+import type { QueryFilter, Types } from "mongoose";
+import { onSupportCreated, onSupportReply, onSupportStatusChanged } from "../services/events.service";
 import { SupportTicket, type SupportTicketDocument } from "../models/SupportTicket";
 import { Order } from "../models/Order";
 import { User } from "../models/User";
@@ -28,6 +29,12 @@ function toTicket(t: SupportTicketDocument) {
   };
 }
 
+/** The customer's user id (the ticket's user is populated when loaded here). */
+function ownerOf(ticket: SupportTicketDocument): Types.ObjectId {
+  const user = ticket.user as unknown as { _id?: Types.ObjectId };
+  return user._id ?? ticket.user;
+}
+
 /** The ticket, if the caller owns it or is an admin. */
 async function findVisible(req: AuthRequest) {
   const ticket = await SupportTicket.findOne({ ticketNumber: req.params.ticketNumber }).populate("user", USER_FIELDS);
@@ -51,6 +58,7 @@ export async function createTicket(req: AuthRequest, res: Response) {
     orderNumber: orderId || undefined,
   });
   await ticket.populate("user", USER_FIELDS);
+  onSupportCreated(ticket.ticketNumber, ticket.category);
   success(res, `Support request ${ticket.ticketNumber} submitted`, { ticket: toTicket(ticket) }, 201);
 }
 
@@ -78,6 +86,7 @@ export async function replyToTicket(req: AuthRequest, res: Response) {
   if (isAdmin && ticket.status === "open") ticket.status = "in-progress";
   if (!isAdmin && ticket.status === "resolved") ticket.status = "open";
   await ticket.save();
+  onSupportReply(ticket.ticketNumber, ownerOf(ticket), req.body.message, req.userRole!);
   success(res, "Reply sent", { ticket: toTicket(ticket) });
 }
 
@@ -96,7 +105,9 @@ export async function adminListTickets(req: AuthRequest, res: Response) {
 
 export async function adminSetTicketStatus(req: AuthRequest, res: Response) {
   const ticket = await findVisible(req);
+  const changed = ticket.status !== req.body.status;
   ticket.status = req.body.status;
   await ticket.save();
+  if (changed) onSupportStatusChanged(ticket.ticketNumber, ownerOf(ticket), ticket.status);
   success(res, "Status updated", { ticket: toTicket(ticket) });
 }

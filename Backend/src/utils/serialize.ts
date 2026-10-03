@@ -20,6 +20,12 @@ export function toSafeUser(user: UserDocument, seller?: SellerDocument | null) {
     role: user.role,
     address: user.address,
     profileImage: user.profileImage,
+    emailVerified: user.emailVerified,
+    notificationPrefs: {
+      orderUpdates: user.notificationPrefs?.orderUpdates ?? true,
+      deliveryAlerts: user.notificationPrefs?.deliveryAlerts ?? true,
+      promotions: user.notificationPrefs?.promotions ?? false,
+    },
     isActive: user.isActive,
     createdAt: user.createdAt,
     ...(seller

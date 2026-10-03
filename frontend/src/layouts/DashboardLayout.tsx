@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { DashboardSidebar, type SidebarLink } from "@/components/layout/DashboardSidebar";
+import { Seo } from "@/components/common/Seo";
+import { Loading } from "@/components/common/Loading";
 
 interface DashboardLayoutProps {
   title: string;
@@ -14,6 +16,7 @@ export function DashboardLayout({ title, subtitle, links }: DashboardLayoutProps
 
   return (
     <div className="flex min-h-screen bg-stone-50">
+      <Seo title={title} noIndex />
       <div className="hidden lg:block">
         <DashboardSidebar title={title} subtitle={subtitle} links={links} />
       </div>
@@ -35,7 +38,9 @@ export function DashboardLayout({ title, subtitle, links }: DashboardLayoutProps
           <span className="text-sm font-bold text-primary-700">{title}</span>
         </div>
         <div className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
-          <Outlet />
+          <Suspense fallback={<Loading />}>
+            <Outlet />
+          </Suspense>
         </div>
       </div>
     </div>

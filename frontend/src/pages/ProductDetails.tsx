@@ -15,6 +15,7 @@ import { formatCurrency, discountPercent, categoryLabel } from "@/utils/format";
 import { DeliveryInfo } from "@/components/location/DeliveryInfo";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
 import { optimizedImage } from "@/utils/image";
+import { Seo } from "@/components/common/Seo";
 
 export default function ProductDetails() {
   const { slug } = useParams<{ slug: string }>();
@@ -70,6 +71,28 @@ export default function ProductDetails() {
 
   return (
     <div className="container-app py-10">
+      <Seo
+        title={product.name}
+        description={product.description || `${product.name} (${product.unit}) from local farmers.`}
+        image={product.image}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Product",
+          name: product.name,
+          description: product.description,
+          image: gallery,
+          sku: product.id,
+          ...(product.reviewCount > 0
+            ? { aggregateRating: { "@type": "AggregateRating", ratingValue: product.rating, reviewCount: product.reviewCount } }
+            : {}),
+          offers: {
+            "@type": "Offer",
+            priceCurrency: "INR",
+            price: product.price,
+            availability: product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+          },
+        }}
+      />
       <nav className="mb-6 flex items-center gap-2 text-xs text-stone-400">
         <Link to="/" className="hover:text-primary-600">Home</Link> /
         <Link to="/products" className="hover:text-primary-600">Products</Link> /

@@ -8,6 +8,7 @@ import { success } from "../utils/response";
 import { toSeller, toSellerPrivate } from "../utils/serialize";
 import { sellerEarnings } from "../services/earnings.service";
 import type { AuthRequest } from "../middleware/auth.middleware";
+import { onKycSubmitted, onSellerStatusChanged } from "../services/events.service";
 
 const USER_FIELDS = "name email phone";
 
@@ -141,6 +142,7 @@ export async function submitMyKyc(req: AuthRequest, res: Response) {
           bankName: payout.bankName,
         };
   // A rejected seller who fixes their details goes back into the review queue.
+  onKycSubmitted(seller.farmName);
   if (seller.status === "rejected") {
     seller.status = "pending";
     seller.statusReason = undefined;
@@ -188,9 +190,11 @@ export async function adminSetSellerStatus(req: AuthRequest, res: Response) {
     throw new AppError("This seller hasn't submitted KYC and payout details yet.", 400, "KYC_MISSING");
   }
 
+  const previous = seller.status;
   seller.status = status;
   seller.statusReason = status === "approved" || status === "pending" ? undefined : reason;
   await seller.save();
+  if (previous !== status) onSellerStatusChanged(seller.user, seller.farmName, status, reason);
   success(res, `Seller ${status}`, { seller: await privateView(seller) });
 }
 

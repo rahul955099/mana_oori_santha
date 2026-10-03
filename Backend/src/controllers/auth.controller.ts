@@ -8,6 +8,22 @@ import { AppError } from "../utils/AppError";
 import { success } from "../utils/response";
 import { toSafeUser } from "../utils/serialize";
 import type { AuthRequest } from "../middleware/auth.middleware";
+import type { UserDocument } from "../models/User";
+import { createOneTimeToken, hashToken } from "../utils/tokens";
+import { sendMailInBackground } from "../services/mail.service";
+import { notifyAdmins } from "../services/notification.service";
+import { passwordReset, siteLink, verifyEmail } from "../services/emailTemplates";
+
+const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
+const RESET_TTL_MS = 30 * 60 * 1000;
+
+/** Stores a fresh verification token on the user (caller saves) and emails the link. */
+function startEmailVerification(user: UserDocument) {
+  const { raw, hash } = createOneTimeToken();
+  user.emailVerifyTokenHash = hash;
+  user.emailVerifyExpires = new Date(Date.now() + VERIFY_TTL_MS);
+  sendMailInBackground({ to: user.email, ...verifyEmail(user.name, siteLink(`/verify-email?token=${raw}`)) });
+}
 
 async function assertEmailFree(email: string, exceptUserId?: string) {
   const existing = await User.findOne({ email });
@@ -31,7 +47,9 @@ export async function register(req: Request, res: Response) {
 
   // Public registration can only ever create "customer" accounts — role is
   // never taken from the request body, regardless of what a caller sends.
-  const user = await User.create({ name, email, phone, password, role: "customer", address });
+  const user = new User({ name, email, phone, password, role: "customer", address });
+  startEmailVerification(user);
+  await user.save();
 
   const token = signToken({ userId: user._id.toString(), role: user.role });
   success(res, "Registered successfully", { token, user: toSafeUser(user) }, 201);
@@ -41,7 +59,9 @@ export async function registerSeller(req: Request, res: Response) {
   const { name, email, phone, password, shopName, location } = req.body;
   await assertEmailFree(email);
 
-  const user = await User.create({ name, email, phone, password, role: "seller" });
+  const user = new User({ name, email, phone, password, role: "seller" });
+  startEmailVerification(user);
+  await user.save();
   let seller;
   try {
     // New sellers start unverified; an admin verifies them from the admin panel.
@@ -50,6 +70,13 @@ export async function registerSeller(req: Request, res: Response) {
     await User.deleteOne({ _id: user._id });
     throw err;
   }
+
+  void notifyAdmins({
+    type: "account",
+    title: "New seller signed up",
+    message: `${shopName} (${name}) registered and is waiting for review.`,
+    link: "/admin/sellers",
+  });
 
   const token = signToken({ userId: user._id.toString(), role: user.role });
   success(res, "Seller account created successfully", { token, user: toSafeUser(user, seller) }, 201);
@@ -83,7 +110,7 @@ export async function me(req: AuthRequest, res: Response) {
 }
 
 export async function updateMe(req: AuthRequest, res: Response) {
-  const { name, email, phone, profileImage } = req.body;
+  const { name, email, phone, profileImage, notificationPrefs } = req.body;
   const user = await User.findById(req.userId);
   if (!user) {
     throw new AppError("User not found", 404, "NOT_FOUND");
@@ -92,10 +119,16 @@ export async function updateMe(req: AuthRequest, res: Response) {
   if (email !== undefined && email !== user.email) {
     await assertEmailFree(email, user._id.toString());
     user.email = email;
+    // A new address has to be confirmed again.
+    user.emailVerified = false;
+    startEmailVerification(user);
   }
   if (name !== undefined) user.name = name;
   if (phone !== undefined) user.phone = phone;
   if (profileImage !== undefined) user.profileImage = profileImage;
+  for (const key of ["orderUpdates", "deliveryAlerts", "promotions"] as const) {
+    if (notificationPrefs?.[key] !== undefined) user.set(`notificationPrefs.${key}`, notificationPrefs[key]);
+  }
   await user.save();
 
   success(res, "Profile updated successfully", { user: await loadSafeUser(req.userId!) });
@@ -114,7 +147,68 @@ export async function changePassword(req: AuthRequest, res: Response) {
 
   user.password = newPassword;
   await user.save();
-  success(res, "Password updated successfully");
+  // Other sessions are signed out; this one continues with a fresh token.
+  success(res, "Password updated successfully", { token: signToken({ userId: user._id.toString(), role: user.role }) });
+}
+
+export async function confirmEmail(req: Request, res: Response) {
+  const user = await User.findOne({
+    emailVerifyTokenHash: hashToken(req.body.token),
+    emailVerifyExpires: { $gt: new Date() },
+  });
+  if (!user) {
+    throw new AppError("This link is invalid or has expired. Request a new one from your profile.", 400, "INVALID_TOKEN");
+  }
+  user.emailVerified = true;
+  user.emailVerifyTokenHash = undefined;
+  user.emailVerifyExpires = undefined;
+  await user.save();
+  success(res, "Email confirmed. Thank you!");
+}
+
+export async function resendVerification(req: AuthRequest, res: Response) {
+  const user = await User.findById(req.userId);
+  if (!user) throw new AppError("User not found", 404, "NOT_FOUND");
+  if (user.emailVerified) {
+    return success(res, "Your email is already confirmed");
+  }
+  startEmailVerification(user);
+  await user.save();
+  success(res, `We've sent a confirmation link to ${user.email}`);
+}
+
+/** Always answers the same way, so it can't be used to find out which
+ * emails have accounts. */
+export async function forgotPassword(req: Request, res: Response) {
+  const user = await User.findOne({ email: req.body.email, isActive: true });
+  if (user) {
+    const { raw, hash } = createOneTimeToken();
+    user.passwordResetTokenHash = hash;
+    user.passwordResetExpires = new Date(Date.now() + RESET_TTL_MS);
+    await user.save();
+    sendMailInBackground({ to: user.email, ...passwordReset(user.name, siteLink(`/reset-password?token=${raw}`)) });
+  }
+  success(res, "If an account exists for that email, we've sent a link to reset the password.");
+}
+
+export async function resetPassword(req: Request, res: Response) {
+  const user = await User.findOne({
+    passwordResetTokenHash: hashToken(req.body.token),
+    passwordResetExpires: { $gt: new Date() },
+    isActive: true,
+  });
+  if (!user) {
+    throw new AppError("This reset link is invalid or has expired. Please request a new one.", 400, "INVALID_TOKEN");
+  }
+  user.password = req.body.password;
+  user.passwordResetTokenHash = undefined;
+  user.passwordResetExpires = undefined;
+  // Using a link sent to the inbox proves they own the address.
+  user.emailVerified = true;
+  await user.save();
+
+  const token = signToken({ userId: user._id.toString(), role: user.role });
+  success(res, "Password updated. You're now logged in.", { token, user: await loadSafeUser(user._id.toString()) });
 }
 
 /** Deactivates (rather than erases) the account so order history stays

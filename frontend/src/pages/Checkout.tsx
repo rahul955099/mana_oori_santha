@@ -7,7 +7,6 @@ import { useOrders, type ShippingDetails } from "@/context/OrdersContext";
 import { useToast } from "@/context/ToastContext";
 import { useAddresses } from "@/context/AddressContext";
 import { useAuth } from "@/context/AuthContext";
-import { useNotifications } from "@/context/NotificationContext";
 import { EmptyState } from "@/components/common/EmptyState";
 import { buttonClasses } from "@/components/common/Button";
 import { formatCurrency } from "@/utils/format";
@@ -42,7 +41,6 @@ export default function Checkout() {
   const { showToast } = useToast();
   const { addresses, defaultAddress, addAddress } = useAddresses();
   const { user } = useAuth();
-  const { notifyUser } = useNotifications();
   const navigate = useNavigate();
 
   const [submitting, setSubmitting] = useState(false);
@@ -103,14 +101,6 @@ export default function Checkout() {
         }).catch(() => showToast("Order placed, but the address couldn't be saved.", "info"));
       }
 
-      if (user) {
-        notifyUser(user.userId, {
-          type: "order-placed",
-          title: `Order ${order.id} placed`,
-          message: `Your order for ${order.items.length} item(s) totalling ${formatCurrency(order.total)} has been placed successfully.`,
-          orderId: order.id,
-        });
-      }
 
       clearCart();
       void reloadProducts(); // stock levels changed

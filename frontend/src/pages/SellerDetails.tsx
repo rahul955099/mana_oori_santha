@@ -7,6 +7,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Loading } from "@/components/common/Loading";
 import { buttonClasses } from "@/components/common/Button";
+import { Seo } from "@/components/common/Seo";
 
 export default function SellerDetails() {
   const { id } = useParams<{ id: string }>();
@@ -37,6 +38,11 @@ export default function SellerDetails() {
 
   return (
     <div>
+      <Seo
+        title={`${seller.farmName}, ${seller.location}`}
+        description={seller.about || `Farm-fresh products from ${seller.farmName} in ${seller.location}.`}
+        image={seller.image || undefined}
+      />
       <div className="bg-primary-800 py-14">
         <div className="container-app flex flex-col items-center gap-6 text-center sm:flex-row sm:text-left">
           <div className="relative shrink-0">

@@ -30,9 +30,13 @@ export async function requireAuth(req: AuthRequest, _res: Response, next: NextFu
     throw new AppError("Invalid or expired token", 401, "INVALID_TOKEN");
   }
 
-  const user = await User.findById(payload.userId).select("role isActive");
+  const user = await User.findById(payload.userId).select("role isActive passwordChangedAt");
   if (!user || !user.isActive) {
     throw new AppError("Invalid or expired token", 401, "INVALID_TOKEN");
+  }
+  // A password change or reset signs out sessions that started before it.
+  if (user.passwordChangedAt && (payload.iat ?? 0) * 1000 < user.passwordChangedAt.getTime()) {
+    throw new AppError("Your session has expired. Please log in again.", 401, "INVALID_TOKEN");
   }
 
   req.userId = user._id.toString();

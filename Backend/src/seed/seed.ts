@@ -59,6 +59,7 @@ export async function seedCatalog(options: { reset: boolean; adminEmail: string;
   const adminEmail = options.adminEmail.toLowerCase();
   if (!(await User.exists({ email: adminEmail }))) {
     await User.create({
+      emailVerified: true,
       name: "Admin",
       email: adminEmail,
       phone: "9000000000",
@@ -76,7 +77,7 @@ export async function seedCatalog(options: { reset: boolean; adminEmail: string;
     const email = s.email.toLowerCase();
     let user = await User.findOne({ email });
     if (!user) {
-      user = await User.create({ name: s.name, email, phone: s.phone, password: options.sellerPassword, role: "seller" });
+      user = await User.create({ name: s.name, email, phone: s.phone, password: options.sellerPassword, role: "seller", emailVerified: true });
     }
     const seller = await Seller.findOneAndUpdate(
       { user: user._id },
