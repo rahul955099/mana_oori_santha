@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { AppError } from "../utils/AppError";
 import { verifyToken } from "../utils/jwt";
-import type { UserRole } from "../models/User";
+import { User, type UserRole } from "../models/User";
 
 export interface AuthRequest extends Request {
   userId?: string;
@@ -9,9 +9,10 @@ export interface AuthRequest extends Request {
 }
 
 /** Requires a valid `Authorization: Bearer <token>` header and attaches the
- * decoded userId/role to the request. Does not hit the database — routes
- * that need the full user record (e.g. /me) look it up themselves. */
-export function requireAuth(req: AuthRequest, _res: Response, next: NextFunction) {
+ * userId/role to the request. The user is re-read from the database so a
+ * deactivated account or a changed role takes effect immediately rather than
+ * when the token expires. */
+export async function requireAuth(req: AuthRequest, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith("Bearer ")) {
     throw new AppError("Authentication required", 401, "UNAUTHORIZED");
@@ -29,7 +30,16 @@ export function requireAuth(req: AuthRequest, _res: Response, next: NextFunction
     throw new AppError("Invalid or expired token", 401, "INVALID_TOKEN");
   }
 
-  req.userId = payload.userId;
-  req.userRole = payload.role;
+  const user = await User.findById(payload.userId).select("role isActive passwordChangedAt");
+  if (!user || !user.isActive) {
+    throw new AppError("Invalid or expired token", 401, "INVALID_TOKEN");
+  }
+  // A password change or reset signs out sessions that started before it.
+  if (user.passwordChangedAt && (payload.iat ?? 0) * 1000 < user.passwordChangedAt.getTime()) {
+    throw new AppError("Your session has expired. Please log in again.", 401, "INVALID_TOKEN");
+  }
+
+  req.userId = user._id.toString();
+  req.userRole = user.role;
   next();
 }

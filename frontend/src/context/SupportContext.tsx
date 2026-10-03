@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { SupportCategory, SupportRequest, SupportRequestStatus } from "@/types";
+import { useAuth } from "@/context/AuthContext";
+import { api } from "@/lib/api";
 
 export interface SupportPrefill {
   orderId?: string;
@@ -8,16 +10,14 @@ export interface SupportPrefill {
 }
 
 interface SupportContextValue {
+  /** The customer's own tickets, or every ticket for admins. */
   requests: SupportRequest[];
-  submitRequest: (input: {
-    userId: string;
-    userName: string;
-    userEmail: string;
-    category: SupportCategory;
-    message: string;
-    orderId?: string;
-  }) => SupportRequest;
-  updateRequestStatus: (id: string, status: SupportRequestStatus) => void;
+  loading: boolean;
+  reload: () => Promise<void>;
+  submitRequest: (input: { category: SupportCategory; message: string; orderId?: string }) => Promise<SupportRequest>;
+  reply: (id: string, message: string) => Promise<SupportRequest>;
+  /** Admin only. */
+  updateRequestStatus: (id: string, status: SupportRequestStatus) => Promise<SupportRequest>;
   isModalOpen: boolean;
   prefill: SupportPrefill | null;
   openSupport: (prefill?: SupportPrefill) => void;
@@ -25,44 +25,61 @@ interface SupportContextValue {
 }
 
 const SupportContext = createContext<SupportContextValue | undefined>(undefined);
-const STORAGE_KEY = "mos_support_requests";
+
+type TicketResponse = { ticket: SupportRequest };
 
 export function SupportProvider({ children }: { children: ReactNode }) {
-  const [requests, setRequests] = useState<SupportRequest[]>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as SupportRequest[]) : [];
-    } catch {
-      return [];
-    }
-  });
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const userId = user?.id ?? null;
+  const [requests, setRequests] = useState<SupportRequest[]>([]);
+  const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [prefill, setPrefill] = useState<SupportPrefill | null>(null);
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
-  }, [requests]);
+  const reload = useCallback(async () => {
+    if (!userId) {
+      setRequests([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = await api.get<{ tickets: SupportRequest[] }>(isAdmin ? "/support" : "/support/mine");
+      setRequests(data.tickets);
+    } catch {
+      // Keep what we have; the pages show their own errors on actions.
+    } finally {
+      setLoading(false);
+    }
+  }, [userId, isAdmin]);
 
-  function submitRequest(input: {
-    userId: string;
-    userName: string;
-    userEmail: string;
-    category: SupportCategory;
-    message: string;
-    orderId?: string;
-  }): SupportRequest {
-    const newRequest: SupportRequest = {
-      ...input,
-      id: `SUP-${Math.floor(10000 + Math.random() * 89999)}`,
-      status: "open",
-      createdAt: new Date().toISOString(),
-    };
-    setRequests((prev) => [newRequest, ...prev]);
-    return newRequest;
+  useEffect(() => {
+    // Old demo builds kept support requests in the browser.
+    try {
+      localStorage.removeItem("mos_support_requests");
+    } catch {
+      // ignore
+    }
+    void reload();
+  }, [reload]);
+
+  function upsert(ticket: SupportRequest) {
+    setRequests((prev) => [ticket, ...prev.filter((t) => t.id !== ticket.id)]);
+    return ticket;
   }
 
-  function updateRequestStatus(id: string, status: SupportRequestStatus) {
-    setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+  async function submitRequest(input: { category: SupportCategory; message: string; orderId?: string }) {
+    return upsert((await api.post<TicketResponse>("/support", input)).ticket);
+  }
+
+  async function reply(id: string, message: string) {
+    return upsert((await api.post<TicketResponse>(`/support/${id}/replies`, { message })).ticket);
+  }
+
+  async function updateRequestStatus(id: string, status: SupportRequestStatus) {
+    const { ticket } = await api.patch<TicketResponse>(`/support/${id}/status`, { status });
+    setRequests((prev) => prev.map((t) => (t.id === id ? ticket : t)));
+    return ticket;
   }
 
   const openSupport = useCallback((next?: SupportPrefill) => {
@@ -77,7 +94,18 @@ export function SupportProvider({ children }: { children: ReactNode }) {
 
   return (
     <SupportContext.Provider
-      value={{ requests, submitRequest, updateRequestStatus, isModalOpen, prefill, openSupport, closeSupport }}
+      value={{
+        requests,
+        loading,
+        reload,
+        submitRequest,
+        reply,
+        updateRequestStatus,
+        isModalOpen,
+        prefill,
+        openSupport,
+        closeSupport,
+      }}
     >
       {children}
     </SupportContext.Provider>

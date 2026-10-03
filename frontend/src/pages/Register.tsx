@@ -27,14 +27,21 @@ export default function Register() {
     password: "",
   });
 
-  function handleSubmit(e: FormEvent) {
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (accountType === "customer") {
-      registerCustomer(customerForm);
-    } else {
-      registerSeller(sellerForm);
+    setError("");
+    setSubmitting(true);
+    const result =
+      accountType === "customer" ? await registerCustomer(customerForm) : await registerSeller(sellerForm);
+    setSubmitting(false);
+    if (!result.success) {
+      setError(result.message);
+      return;
     }
-    showToast("Account created successfully!");
+    showToast(result.message);
     navigate(accountType === "seller" ? "/seller/dashboard" : "/");
   }
 
@@ -74,25 +81,27 @@ export default function Register() {
           {accountType === "customer" ? (
             <>
               <input required placeholder="Full Name" value={customerForm.name} onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })} className={inputClass} />
-              <input required type="tel" placeholder="Mobile Number" value={customerForm.mobile} onChange={(e) => setCustomerForm({ ...customerForm, mobile: e.target.value })} className={inputClass} />
+              <input required type="tel" pattern="[6-9][0-9]{9}" title="10-digit mobile number" placeholder="Mobile Number" value={customerForm.mobile} onChange={(e) => setCustomerForm({ ...customerForm, mobile: e.target.value })} className={inputClass} />
               <input required type="email" placeholder="Email Address" value={customerForm.email} onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })} className={inputClass} />
-              <input required type="password" placeholder="Password" value={customerForm.password} onChange={(e) => setCustomerForm({ ...customerForm, password: e.target.value })} className={inputClass} />
+              <input required minLength={6} type="password" autoComplete="new-password" placeholder="Password (min 6 characters)" value={customerForm.password} onChange={(e) => setCustomerForm({ ...customerForm, password: e.target.value })} className={inputClass} />
             </>
           ) : (
             <>
               <input required placeholder="Seller Name" value={sellerForm.name} onChange={(e) => setSellerForm({ ...sellerForm, name: e.target.value })} className={inputClass} />
               <input required placeholder="Shop / Farm Name" value={sellerForm.shopName} onChange={(e) => setSellerForm({ ...sellerForm, shopName: e.target.value })} className={inputClass} />
               <div className="grid grid-cols-2 gap-4">
-                <input required type="tel" placeholder="Mobile Number" value={sellerForm.mobile} onChange={(e) => setSellerForm({ ...sellerForm, mobile: e.target.value })} className={inputClass} />
+                <input required type="tel" pattern="[6-9][0-9]{9}" title="10-digit mobile number" placeholder="Mobile Number" value={sellerForm.mobile} onChange={(e) => setSellerForm({ ...sellerForm, mobile: e.target.value })} className={inputClass} />
                 <input required placeholder="Location" value={sellerForm.location} onChange={(e) => setSellerForm({ ...sellerForm, location: e.target.value })} className={inputClass} />
               </div>
               <input required type="email" placeholder="Email Address" value={sellerForm.email} onChange={(e) => setSellerForm({ ...sellerForm, email: e.target.value })} className={inputClass} />
-              <input required type="password" placeholder="Password" value={sellerForm.password} onChange={(e) => setSellerForm({ ...sellerForm, password: e.target.value })} className={inputClass} />
+              <input required minLength={6} type="password" autoComplete="new-password" placeholder="Password (min 6 characters)" value={sellerForm.password} onChange={(e) => setSellerForm({ ...sellerForm, password: e.target.value })} className={inputClass} />
             </>
           )}
 
-          <button type="submit" className={buttonClasses("primary", "lg", "w-full")}>
-            Create {accountType === "seller" ? "Seller" : "Customer"} Account
+          {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+
+          <button type="submit" disabled={submitting} className={buttonClasses("primary", "lg", "w-full")}>
+            {submitting ? "Creating account..." : `Create ${accountType === "seller" ? "Seller" : "Customer"} Account`}
           </button>
         </form>
 

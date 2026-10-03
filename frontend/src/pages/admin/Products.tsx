@@ -2,7 +2,9 @@ import { useMemo, useState } from "react";
 import { Pencil, Trash2, Eye } from "lucide-react";
 import { useProducts } from "@/context/ProductsContext";
 import { useSellers } from "@/context/SellersContext";
-import { categories } from "@/data/categories";
+import { useToast } from "@/context/ToastContext";
+import { errorMessage } from "@/lib/api";
+import { useCategories } from "@/context/CategoriesContext";
 import { SearchBar } from "@/components/common/SearchBar";
 import { Badge } from "@/components/common/Badge";
 import { Modal } from "@/components/common/Modal";
@@ -12,7 +14,9 @@ import { formatCurrency, categoryLabel } from "@/utils/format";
 import type { Product } from "@/types";
 
 export default function AdminProducts() {
+  const { categories } = useCategories();
   const { products, updateProduct, deleteProduct } = useProducts();
+  const { showToast } = useToast();
   const { sellers } = useSellers();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -28,16 +32,25 @@ export default function AdminProducts() {
     });
   }, [products, search, categoryFilter]);
 
-  function handleEditSubmit(values: ProductFormValues) {
-    if (editTarget) {
-      updateProduct(editTarget.id, values);
+  async function handleEditSubmit(values: ProductFormValues) {
+    if (!editTarget) return;
+    try {
+      await updateProduct(editTarget.id, values);
+      showToast("Product updated");
       setEditTarget(null);
+    } catch (err) {
+      showToast(errorMessage(err), "error");
     }
   }
 
-  function confirmDelete() {
-    if (deleteTarget) {
-      deleteProduct(deleteTarget.id);
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    try {
+      await deleteProduct(deleteTarget.id);
+      showToast(`${deleteTarget.name} deleted`);
+    } catch (err) {
+      showToast(errorMessage(err), "error");
+    } finally {
       setDeleteTarget(null);
     }
   }
@@ -126,7 +139,7 @@ export default function AdminProducts() {
       </Modal>
 
       <Modal isOpen={!!editTarget} onClose={() => setEditTarget(null)} title="Edit Product">
-        {editTarget && <ProductForm initial={editTarget} onSubmit={handleEditSubmit} submitLabel="Save Changes" />}
+        {editTarget && <ProductForm initial={editTarget} onSubmit={handleEditSubmit} submitLabel="Save Changes" canFeature />}
       </Modal>
 
       <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Product">

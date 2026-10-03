@@ -5,14 +5,20 @@ import { useProducts } from "@/context/ProductsContext";
 import { RatingStars } from "@/components/common/RatingStars";
 import { ProductCard } from "@/components/ProductCard";
 import { EmptyState } from "@/components/common/EmptyState";
+import { Loading } from "@/components/common/Loading";
 import { buttonClasses } from "@/components/common/Button";
+import { Seo } from "@/components/common/Seo";
 
 export default function SellerDetails() {
   const { id } = useParams<{ id: string }>();
   const { products } = useProducts();
-  const { sellers } = useSellers();
+  const { sellers, loading } = useSellers();
   const seller = sellers.find((s) => s.id === id);
   const sellerProducts = products.filter((p) => p.sellerId === id);
+
+  if (loading) {
+    return <Loading label="Loading farmer profile..." />;
+  }
 
   if (!seller) {
     return (
@@ -32,6 +38,11 @@ export default function SellerDetails() {
 
   return (
     <div>
+      <Seo
+        title={`${seller.farmName}, ${seller.location}`}
+        description={seller.about || `Farm-fresh products from ${seller.farmName} in ${seller.location}.`}
+        image={seller.image || undefined}
+      />
       <div className="bg-primary-800 py-14">
         <div className="container-app flex flex-col items-center gap-6 text-center sm:flex-row sm:text-left">
           <div className="relative shrink-0">

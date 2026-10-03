@@ -1,47 +1,51 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Seller } from "@/types";
-import { sellers as initialSellers } from "@/data/sellers";
+import { api, errorMessage } from "@/lib/api";
 
 interface SellersContextValue {
+  /** Approved sellers shown on the storefront. Sellers manage their own shop
+   * through SellerAccountContext; admins manage sellers from the admin panel. */
   sellers: Seller[];
-  updateSeller: (id: string, updates: Partial<Seller>) => void;
-  deleteSeller: (id: string) => void;
+  loading: boolean;
+  error: string | null;
+  reload: () => Promise<void>;
   getSellerById: (id: string) => Seller | undefined;
 }
 
 const SellersContext = createContext<SellersContextValue | undefined>(undefined);
-const STORAGE_KEY = "mos_sellers";
 
 export function SellersProvider({ children }: { children: ReactNode }) {
-  const [sellers, setSellers] = useState<Seller[]>(() => {
+  const [sellers, setSellers] = useState<Seller[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as Seller[]) : initialSellers;
-    } catch {
-      return initialSellers;
+      const data = await api.get<{ sellers: Seller[] }>("/sellers");
+      setSellers(data.sellers);
+      setError(null);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setLoading(false);
     }
-  });
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sellers));
-  }, [sellers]);
-
-  function updateSeller(id: string, updates: Partial<Seller>) {
-    setSellers((prev) => prev.map((s) => (s.id === id ? { ...s, ...updates } : s)));
-  }
-
-  function deleteSeller(id: string) {
-    setSellers((prev) => prev.filter((s) => s.id !== id));
-  }
+    try {
+      localStorage.removeItem("mos_sellers");
+    } catch {
+      // ignore
+    }
+    void reload();
+  }, [reload]);
 
   function getSellerById(id: string) {
     return sellers.find((s) => s.id === id);
   }
 
   return (
-    <SellersContext.Provider value={{ sellers, updateSeller, deleteSeller, getSellerById }}>
-      {children}
-    </SellersContext.Provider>
+    <SellersContext.Provider value={{ sellers, loading, error, reload, getSellerById }}>{children}</SellersContext.Provider>
   );
 }
 

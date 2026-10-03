@@ -1,15 +1,5 @@
-export type CategorySlug =
-  | "millets"
-  | "dry-fruits"
-  | "pulses"
-  | "seeds"
-  | "rice"
-  | "oil"
-  | "powders"
-  | "spices"
-  | "traditional-foods"
-  | "flours"
-  | "dairy";
+/** Categories are managed by admins in the database, so any slug is possible. */
+export type CategorySlug = string;
 
 export interface Category {
   id: string;
@@ -18,6 +8,37 @@ export interface Category {
   description: string;
   image: string;
   productCount: number;
+  sortOrder?: number;
+  /** False for categories hidden from the storefront (only admins see these). */
+  isActive?: boolean;
+}
+
+export type SellerStatus = "pending" | "approved" | "rejected" | "suspended";
+
+export interface PayoutDetails {
+  method: "upi" | "bank";
+  upiId?: string;
+  accountHolder?: string;
+  /** Masked (e.g. "••••••9012") except in the admin KYC review. */
+  accountNumber?: string;
+  ifsc?: string;
+  bankName?: string;
+}
+
+export interface SellerKyc {
+  legalName: string;
+  /** Masked except in the admin KYC review. */
+  pan: string;
+  gstin?: string;
+  submittedAt: string;
+}
+
+/** The seller as they (or an admin) see it: adds onboarding and payout details. */
+export interface SellerAccount extends Seller {
+  status: SellerStatus;
+  statusReason?: string;
+  kyc: SellerKyc | null;
+  payout: PayoutDetails | null;
 }
 
 export interface Seller {
@@ -55,6 +76,8 @@ export interface Product {
   mrp: number;
   unit: string;
   image: string;
+  /** Extra gallery photos shown on the product page. */
+  images?: string[];
   sellerId: string;
   rating: number;
   reviewCount: number;
@@ -87,24 +110,47 @@ export type OrderStatus =
 
 export interface OrderItem {
   productId: string;
+  sellerId: string;
+  category: string;
   name: string;
   image: string;
+  /** Price per unit at the time of purchase. */
   price: number;
   unit: string;
   quantity: number;
 }
 
+export type PaymentStatus = "pending" | "paid" | "refunded";
+
+export interface OrderStatusChange {
+  status: OrderStatus;
+  at: string;
+  byRole: UserRole;
+  note?: string;
+}
+
 export interface Order {
+  /** Order number, e.g. "MOS-100001". */
   id: string;
   date: string;
+  createdAt: string;
   items: OrderItem[];
+  subtotal: number;
+  deliveryCharge: number;
   total: number;
   /** Discount applied via a coupon code at checkout, if any. */
-  discount?: number;
+  discount: number;
   couponCode?: string;
   status: OrderStatus;
-  paymentMethod: "cod" | "online";
-  /** Links the order back to the AuthUser who placed it, when logged in at checkout. Absent for legacy/demo orders. */
+  paymentMethod: "cod";
+  paymentStatus: PaymentStatus;
+  statusHistory: OrderStatusChange[];
+  deliveredAt?: string;
+  /** Last moment a return can be requested (set once delivered). */
+  returnDeadline?: string;
+  /** True in a seller's view of a mixed-seller order: other sellers' items are hidden. */
+  partial?: boolean;
+  /** The buyer's AuthUser.userId (e.g. "MOS-10245"). */
   userId?: string;
   customer: {
     fullName: string;
@@ -128,9 +174,13 @@ export interface AuthUser {
   email: string;
   mobile: string;
   role: UserRole;
+  /** The seller profile id, for seller accounts. */
+  sellerId?: string;
   shopName?: string;
   location?: string;
   profilePhoto?: string;
+  emailVerified: boolean;
+  notificationPrefs: NotificationPrefs;
 }
 
 export type AddressType = "home" | "work" | "other";
@@ -143,6 +193,7 @@ export interface Address {
   houseNo: string;
   street: string;
   city: string;
+  district?: string;
   state: string;
   pincode: string;
   landmark?: string;
@@ -179,7 +230,16 @@ export interface SupportRequest {
   message: string;
   orderId?: string;
   status: SupportRequestStatus;
+  replies: SupportReply[];
   createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupportReply {
+  byRole: UserRole;
+  authorName: string;
+  message: string;
+  at: string;
 }
 
 export interface PromoBanner {
@@ -222,16 +282,24 @@ export interface LocationSuggestion {
   longitude: number;
 }
 
+export type ReviewStatus = "published" | "hidden";
+
 export interface Review {
   id: string;
   productId: string;
-  userId: string;
   userName: string;
   rating: number;
   comment: string;
   createdAt: string;
-  /** True only when this user has a real order containing this product. Never fabricated. */
+  updatedAt?: string;
+  /** True only when this user had a delivered order containing this product. Never fabricated. */
   verifiedPurchase: boolean;
+  /** Present in admin and "my reviews" views. */
+  productName?: string;
+  productSlug?: string;
+  status?: ReviewStatus;
+  /** Admin-only: why a review was hidden. */
+  moderationNote?: string;
 }
 
 export type CouponType = "percent" | "flat";
@@ -246,22 +314,52 @@ export interface Coupon {
   minOrderValue?: number;
   /** Restrict the discount to items from this category only, e.g. "millets". */
   categoryOnly?: CategorySlug;
+  /** Upper limit on a percentage discount, in rupees. */
+  maxDiscount?: number;
+  /** Orders per customer, e.g. 1 for a first-order coupon. */
+  usageLimitPerUser?: number;
+  expiresAt?: string;
 }
 
 export type NotificationType =
   | "order-placed"
   | "order-status"
   | "support-update"
-  | "offer";
+  | "offer"
+  | "account";
 
 export interface AppNotification {
   id: string;
-  /** The AuthUser.userId this notification belongs to, or "all" for a broadcast to every customer. */
-  userId: string;
   type: NotificationType;
   title: string;
   message: string;
+  /** Page to open when the notification is clicked, e.g. "/my-orders". */
+  link?: string;
   read: boolean;
   createdAt: string;
-  orderId?: string;
+}
+
+/** Which emails the user wants. In-app notifications are always shown. */
+export interface NotificationPrefs {
+  orderUpdates: boolean;
+  deliveryAlerts: boolean;
+  promotions: boolean;
+}
+
+/** Why a cart line can't be bought right now (from the server's quote). */
+export interface CartProblem {
+  productId: string;
+  name?: string;
+  reason: "unavailable" | "out-of-stock" | "insufficient-stock" | "no-price";
+  available?: number;
+}
+
+/** Server-calculated price breakdown for the cart. */
+export interface CartQuote {
+  subtotal: number;
+  discount: number;
+  deliveryCharge: number;
+  total: number;
+  problems: CartProblem[];
+  coupon: { code: string; valid: boolean; message: string; discount: number } | null;
 }

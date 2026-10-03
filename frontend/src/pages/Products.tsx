@@ -2,16 +2,18 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { SlidersHorizontal, X } from "lucide-react";
 import { useProducts } from "@/context/ProductsContext";
-import { categories } from "@/data/categories";
+import { useCategories } from "@/context/CategoriesContext";
 import { ProductCard } from "@/components/ProductCard";
 import { SearchBar } from "@/components/common/SearchBar";
 import { EmptyState } from "@/components/common/EmptyState";
+import { Loading } from "@/components/common/Loading";
 import type { CategorySlug } from "@/types";
 
 type SortOption = "relevance" | "price-low" | "price-high" | "rating";
 
 export default function Products() {
-  const { products } = useProducts();
+  const { categories } = useCategories();
+  const { products, loading, error, reload } = useProducts();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get("search") ?? "");
   const [selectedCategories, setSelectedCategories] = useState<CategorySlug[]>([]);
@@ -19,7 +21,9 @@ export default function Products() {
     () => products.reduce((max, p) => Math.max(max, p.price), 1000),
     [products]
   );
-  const [maxPrice, setMaxPrice] = useState(highestPrice);
+  // null = no limit chosen yet, so the slider follows the catalog once it loads.
+  const [chosenMaxPrice, setMaxPrice] = useState<number | null>(null);
+  const maxPrice = chosenMaxPrice ?? highestPrice;
   const [sort, setSort] = useState<SortOption>("relevance");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -57,7 +61,7 @@ export default function Products() {
 
   function clearFilters() {
     setSelectedCategories([]);
-    setMaxPrice(highestPrice);
+    setMaxPrice(null);
     setSort("relevance");
     handleSearchChange("");
   }
@@ -85,6 +89,7 @@ export default function Products() {
         <h4 className="mb-3 text-sm font-bold text-stone-800">Max Price: ₹{maxPrice}</h4>
         <input
           type="range"
+          aria-label="Maximum price"
           min={50}
           max={highestPrice}
           step={10}
@@ -117,6 +122,7 @@ export default function Products() {
         <SearchBar value={search} onChange={handleSearchChange} className="flex-1" />
         <div className="flex gap-3">
           <select
+            aria-label="Sort products"
             value={sort}
             onChange={(e) => setSort(e.target.value as SortOption)}
             className="rounded-full border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-600 outline-none focus:border-primary-400"
@@ -154,7 +160,19 @@ export default function Products() {
         )}
 
         <div>
-          {filtered.length === 0 ? (
+          {loading ? (
+            <Loading label="Loading products..." />
+          ) : error ? (
+            <EmptyState
+              title="Couldn't load products"
+              description={error}
+              action={
+                <button onClick={() => void reload()} className="mt-2 text-sm font-bold text-primary-700 hover:underline">
+                  Try again
+                </button>
+              }
+            />
+          ) : filtered.length === 0 ? (
             <EmptyState
               title="No products found"
               description="Try adjusting your search or filters to find what you're looking for."

@@ -1,106 +1,66 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Coupon, Product } from "@/types";
-import { coupons as initialCoupons } from "@/data/coupons";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import type { Coupon } from "@/types";
+import { useAuth } from "@/context/AuthContext";
+import { api } from "@/lib/api";
 
-export interface CouponValidationResult {
-  valid: boolean;
-  message: string;
-  discount: number;
-  coupon?: Coupon;
-}
+export type CouponInput = Omit<Coupon, "id">;
 
 interface CouponsContextValue {
+  /** All coupons for admins; active offers for everyone else. */
   coupons: Coupon[];
   activeCoupons: Coupon[];
-  addCoupon: (coupon: Omit<Coupon, "id">) => void;
-  updateCoupon: (id: string, updates: Partial<Coupon>) => void;
-  deleteCoupon: (id: string) => void;
-  /** Validates a code against the current cart and returns the computed discount. Never invents fake codes. */
-  validateCoupon: (
-    code: string,
-    cartItems: { productId: string; quantity: number }[],
-    products: Product[],
-    subtotal: number,
-  ) => CouponValidationResult;
+  reload: () => Promise<void>;
+  addCoupon: (coupon: CouponInput) => Promise<void>;
+  updateCoupon: (id: string, updates: Partial<CouponInput>) => Promise<void>;
+  deleteCoupon: (id: string) => Promise<void>;
 }
 
 const CouponsContext = createContext<CouponsContextValue | undefined>(undefined);
-const STORAGE_KEY = "mos_coupons";
 
+/** Coupon definitions. Whether a code applies to a cart is decided by the
+ * server's quote (see CartContext), never in the browser. */
 export function CouponsProvider({ children }: { children: ReactNode }) {
-  const [coupons, setCoupons] = useState<Coupon[]>(() => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+
+  const reload = useCallback(async () => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as Coupon[]) : initialCoupons;
+      const data = await api.get<{ coupons: Coupon[] }>("/coupons", isAdmin ? { all: true } : undefined);
+      setCoupons(data.coupons);
     } catch {
-      return initialCoupons;
+      setCoupons([]);
     }
-  });
+  }, [isAdmin]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(coupons));
-  }, [coupons]);
+    try {
+      localStorage.removeItem("mos_coupons");
+    } catch {
+      // ignore
+    }
+    void reload();
+  }, [reload]);
 
-  function addCoupon(coupon: Omit<Coupon, "id">) {
-    setCoupons((prev) => [...prev, { ...coupon, id: `coupon-${Date.now()}` }]);
+  async function addCoupon(coupon: CouponInput) {
+    const { coupon: created } = await api.post<{ coupon: Coupon }>("/coupons", coupon);
+    setCoupons((prev) => [...prev, created]);
   }
 
-  function updateCoupon(id: string, updates: Partial<Coupon>) {
-    setCoupons((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
+  async function updateCoupon(id: string, updates: Partial<CouponInput>) {
+    const { coupon: updated } = await api.patch<{ coupon: Coupon }>(`/coupons/${id}`, updates);
+    setCoupons((prev) => prev.map((c) => (c.id === id ? updated : c)));
   }
 
-  function deleteCoupon(id: string) {
+  async function deleteCoupon(id: string) {
+    await api.delete(`/coupons/${id}`);
     setCoupons((prev) => prev.filter((c) => c.id !== id));
   }
 
-  function validateCoupon(
-    code: string,
-    cartItems: { productId: string; quantity: number }[],
-    products: Product[],
-    subtotal: number,
-  ): CouponValidationResult {
-    const coupon = coupons.find((c) => c.code.toLowerCase() === code.trim().toLowerCase());
-    if (!coupon || !coupon.active) {
-      return { valid: false, message: "Invalid or expired coupon code.", discount: 0 };
-    }
-    if (coupon.minOrderValue && subtotal < coupon.minOrderValue) {
-      return {
-        valid: false,
-        message: `This coupon needs a minimum order of ₹${coupon.minOrderValue}.`,
-        discount: 0,
-      };
-    }
-
-    let eligibleAmount = subtotal;
-    if (coupon.categoryOnly) {
-      eligibleAmount = cartItems.reduce((sum, item) => {
-        const product = products.find((p) => p.id === item.productId);
-        if (product && product.category === coupon.categoryOnly) {
-          return sum + product.price * item.quantity;
-        }
-        return sum;
-      }, 0);
-      if (eligibleAmount === 0) {
-        return {
-          valid: false,
-          message: `This coupon only applies to ${coupon.categoryOnly} products in your cart.`,
-          discount: 0,
-        };
-      }
-    }
-
-    const discount =
-      coupon.type === "flat" ? Math.min(coupon.value, eligibleAmount) : Math.round((eligibleAmount * coupon.value) / 100);
-
-    return { valid: true, message: `Coupon "${coupon.code}" applied!`, discount, coupon };
-  }
-
-  const activeCoupons = coupons.filter((c) => c.active);
+  const activeCoupons = coupons.filter((c) => c.active && (!c.expiresAt || new Date(c.expiresAt) > new Date()));
 
   return (
-    <CouponsContext.Provider
-      value={{ coupons, activeCoupons, addCoupon, updateCoupon, deleteCoupon, validateCoupon }}
-    >
+    <CouponsContext.Provider value={{ coupons, activeCoupons, reload, addCoupon, updateCoupon, deleteCoupon }}>
       {children}
     </CouponsContext.Provider>
   );

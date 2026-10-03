@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Clock, TrendingUp, Search, Package, LayoutGrid, Store } from "lucide-react";
 import { useProducts } from "@/context/ProductsContext";
 import { useSellers } from "@/context/SellersContext";
-import { categories } from "@/data/categories";
+import { useCategories } from "@/context/CategoriesContext";
 import { useRecentSearches } from "@/hooks/useRecentSearches";
 import { POPULAR_SEARCH_TERMS } from "@/data/searchTerms";
 import { categoryLabel } from "@/utils/format";
@@ -16,6 +16,7 @@ interface SearchSuggestionsProps {
 const MAX_MATCHES = 3;
 
 export function SearchSuggestions({ query, onSelectTerm, onNavigate }: SearchSuggestionsProps) {
+  const { categories } = useCategories();
   const { products } = useProducts();
   const { sellers } = useSellers();
   const { recentSearches } = useRecentSearches();

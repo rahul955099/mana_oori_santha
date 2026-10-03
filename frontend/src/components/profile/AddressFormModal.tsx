@@ -3,6 +3,7 @@ import { Modal } from "@/components/common/Modal";
 import { buttonClasses } from "@/components/common/Button";
 import { useAddresses } from "@/context/AddressContext";
 import { useToast } from "@/context/ToastContext";
+import { errorMessage } from "@/lib/api";
 import type { Address, AddressType } from "@/types";
 
 const inputClass =
@@ -15,6 +16,7 @@ const emptyForm = {
   houseNo: "",
   street: "",
   city: "",
+  district: "",
   state: "",
   pincode: "",
   landmark: "",
@@ -32,23 +34,35 @@ export function AddressFormModal({
   const { addAddress, updateAddress } = useAddresses();
   const { showToast } = useToast();
   const [form, setForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setForm(editingAddress ? { ...editingAddress, landmark: editingAddress.landmark ?? "" } : emptyForm);
+      setForm(
+        editingAddress
+          ? { ...editingAddress, district: editingAddress.district ?? "", landmark: editingAddress.landmark ?? "" }
+          : emptyForm,
+      );
     }
   }, [isOpen, editingAddress]);
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (editingAddress) {
-      updateAddress(editingAddress.id, form);
-      showToast("Address updated.");
-    } else {
-      addAddress(form);
-      showToast("Address added.");
+    setSaving(true);
+    try {
+      if (editingAddress) {
+        await updateAddress(editingAddress.id, form);
+        showToast("Address updated.");
+      } else {
+        await addAddress(form);
+        showToast("Address added.");
+      }
+      onClose();
+    } catch (err) {
+      showToast(errorMessage(err), "error");
+    } finally {
+      setSaving(false);
     }
-    onClose();
   }
 
   return (
@@ -74,18 +88,19 @@ export function AddressFormModal({
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <input required placeholder="Full Name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} className={inputClass} />
-          <input required type="tel" pattern="[0-9]{10}" placeholder="Phone Number" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inputClass} />
+          <input required type="tel" pattern="[6-9][0-9]{9}" title="10-digit mobile number" placeholder="Phone Number" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inputClass} />
           <input required placeholder="House / Flat No." value={form.houseNo} onChange={(e) => setForm({ ...form, houseNo: e.target.value })} className={inputClass} />
           <input required placeholder="Street / Area" value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} className={inputClass} />
-          <input required placeholder="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className={inputClass} />
+          <input required placeholder="City / Village" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className={inputClass} />
+          <input placeholder="District" value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} className={inputClass} />
           <input required placeholder="State" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} className={inputClass} />
-          <input required pattern="[0-9]{6}" placeholder="Pincode" value={form.pincode} onChange={(e) => setForm({ ...form, pincode: e.target.value })} className={inputClass} />
+          <input required pattern="[1-9][0-9]{5}" title="6-digit pincode" placeholder="Pincode" value={form.pincode} onChange={(e) => setForm({ ...form, pincode: e.target.value })} className={inputClass} />
           <input placeholder="Landmark (optional)" value={form.landmark} onChange={(e) => setForm({ ...form, landmark: e.target.value })} className={inputClass} />
         </div>
 
         <div className="flex justify-end gap-3 pt-2">
           <button type="button" onClick={onClose} className={buttonClasses("ghost", "md")}>Cancel</button>
-          <button type="submit" className={buttonClasses("primary", "md")}>
+          <button type="submit" disabled={saving} className={buttonClasses("primary", "md")}>
             {editingAddress ? "Save Changes" : "Add Address"}
           </button>
         </div>

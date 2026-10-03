@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   User,
@@ -18,12 +18,12 @@ import {
   Bell,
   LogOut,
   AlertTriangle,
+  LifeBuoy,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useAddresses } from "@/context/AddressContext";
+import { api, errorMessage } from "@/lib/api";
 import { useSupport } from "@/context/SupportContext";
-import { useReviews } from "@/context/ReviewsContext";
-import { useProducts } from "@/context/ProductsContext";
 import { useToast } from "@/context/ToastContext";
 import { Modal } from "@/components/common/Modal";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -31,40 +31,31 @@ import { buttonClasses } from "@/components/common/Button";
 import { EditProfileModal } from "@/components/profile/EditProfileModal";
 import { AddressFormModal } from "@/components/profile/AddressFormModal";
 import { ChangePasswordModal } from "@/components/profile/ChangePasswordModal";
-import type { Address } from "@/types";
-
-const NOTIF_KEY = "mos_notification_prefs";
-
-interface NotifPrefs {
-  orderUpdates: boolean;
-  promotions: boolean;
-  deliveryAlerts: boolean;
-}
-
-function loadNotifPrefs(): NotifPrefs {
-  try {
-    const raw = localStorage.getItem(NOTIF_KEY);
-    return raw ? (JSON.parse(raw) as NotifPrefs) : { orderUpdates: true, promotions: false, deliveryAlerts: true };
-  } catch {
-    return { orderUpdates: true, promotions: false, deliveryAlerts: true };
-  }
-}
+import type { Address, NotificationPrefs, Review } from "@/types";
 
 export default function Profile() {
-  const { user, logout, deleteAccount } = useAuth();
+  const { user, logout, deleteAccount, updateNotificationPrefs } = useAuth();
   const { addresses, deleteAddress, setDefaultAddress } = useAddresses();
   const { openSupport } = useSupport();
-  const { reviews, deleteReview } = useReviews();
-  const { getProductById } = useProducts();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  const myReviews = reviews.filter((r) => r.userId === user?.userId);
+  const [myReviews, setMyReviews] = useState<Review[]>([]);
+  useEffect(() => {
+    api
+      .get<{ reviews: Review[] }>("/reviews/mine")
+      .then((d) => setMyReviews(d.reviews))
+      .catch(() => setMyReviews([]));
+  }, []);
 
-  function handleDeleteReview(reviewId: string) {
-    if (!user) return;
-    deleteReview(reviewId, user.userId);
-    showToast("Review deleted.");
+  async function handleDeleteReview(review: Review) {
+    try {
+      await api.delete(`/products/${review.productId}/reviews/mine`);
+      setMyReviews((prev) => prev.filter((r) => r.id !== review.id));
+      showToast("Review deleted.");
+    } catch (err) {
+      showToast(errorMessage(err), "error");
+    }
   }
 
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -73,7 +64,6 @@ export default function Profile() {
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [deleteAddressTarget, setDeleteAddressTarget] = useState<Address | null>(null);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
-  const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(loadNotifPrefs);
 
   if (!user) return null;
 
@@ -87,33 +77,46 @@ export default function Profile() {
     setAddressModalOpen(true);
   }
 
-  function confirmDeleteAddress() {
-    if (deleteAddressTarget) {
-      deleteAddress(deleteAddressTarget.id);
+  async function confirmDeleteAddress() {
+    if (!deleteAddressTarget) return;
+    try {
+      await deleteAddress(deleteAddressTarget.id);
       showToast("Address removed.");
+    } catch (err) {
+      showToast(errorMessage(err), "error");
+    } finally {
       setDeleteAddressTarget(null);
     }
   }
 
-  function toggleNotif(key: keyof NotifPrefs) {
-    const next = { ...notifPrefs, [key]: !notifPrefs[key] };
-    setNotifPrefs(next);
+  async function makeDefault(id: string) {
     try {
-      localStorage.setItem(NOTIF_KEY, JSON.stringify(next));
-    } catch {
-      // ignore
+      await setDefaultAddress(id);
+    } catch (err) {
+      showToast(errorMessage(err), "error");
     }
   }
 
-  function confirmDeleteAccount() {
-    deleteAccount();
-    showToast("Your account has been deleted.", "info");
+  async function toggleNotif(key: keyof NotificationPrefs) {
+    if (!user) return;
+    const result = await updateNotificationPrefs({ [key]: !user.notificationPrefs[key] });
+    if (!result.success) showToast(result.message, "error");
+  }
+
+  async function confirmDeleteAccount() {
+    const result = await deleteAccount();
+    if (!result.success) {
+      showToast(result.message, "error");
+      return;
+    }
+    showToast(result.message, "info");
     navigate("/");
   }
 
   const shoppingLinks = [
     { to: "/my-orders", label: "My Orders", icon: Package },
     { to: "/wishlist", label: "Wishlist", icon: Heart },
+    { to: "/my-support", label: "Support Requests", icon: LifeBuoy },
     { to: "/cart", label: "My Cart", icon: ShoppingCart },
   ];
 
@@ -213,7 +216,7 @@ export default function Profile() {
                     Delete
                   </button>
                   {!address.isDefault && (
-                    <button onClick={() => setDefaultAddress(address.id)} className="rounded-full border border-primary-300 px-3 py-1 text-[11px] font-bold text-primary-700 hover:bg-primary-50">
+                    <button onClick={() => makeDefault(address.id)} className="rounded-full border border-primary-300 px-3 py-1 text-[11px] font-bold text-primary-700 hover:bg-primary-50">
                       Set as Default
                     </button>
                   )}
@@ -236,18 +239,18 @@ export default function Profile() {
         ) : (
           <div className="space-y-3">
             {myReviews.map((review) => {
-              const product = getProductById(review.productId);
               return (
                 <div key={review.id} className="rounded-xl border border-stone-200 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    {product ? (
-                      <Link to={`/products/${product.slug}`} className="text-sm font-bold text-stone-800 hover:text-primary-700">
-                        {product.name}
+                    {review.productSlug ? (
+                      <Link to={`/products/${review.productSlug}`} className="text-sm font-bold text-stone-800 hover:text-primary-700">
+                        {review.productName}
+                        {review.status === "hidden" && <span className="ml-2 text-[11px] font-semibold text-stone-400">(not shown publicly)</span>}
                       </Link>
                     ) : (
                       <p className="text-sm font-bold text-stone-800">Product</p>
                     )}
-                    <button onClick={() => handleDeleteReview(review.id)} className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline">
+                    <button onClick={() => handleDeleteReview(review)} className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline">
                       <Trash2 size={12} /> Delete
                     </button>
                   </div>
@@ -283,19 +286,19 @@ export default function Profile() {
 
           <div className="py-3">
             <p className="mb-2 flex items-center gap-3 text-sm font-semibold text-stone-700">
-              <Bell size={16} className="text-stone-400" /> Notification Preferences
+              <Bell size={16} className="text-stone-400" /> Email Me About
             </p>
             <div className="ml-7 space-y-2">
               {([
                 ["orderUpdates", "Order updates"],
-                ["deliveryAlerts", "Delivery alerts"],
-                ["promotions", "Promotions & offers"],
-              ] as [keyof NotifPrefs, string][]).map(([key, label]) => (
+                ["deliveryAlerts", "Out for delivery & delivered"],
+                ["promotions", "Offers & announcements"],
+              ] as [keyof NotificationPrefs, string][]).map(([key, label]) => (
                 <label key={key} className="flex items-center justify-between gap-3 text-xs text-stone-600">
                   {label}
                   <input
                     type="checkbox"
-                    checked={notifPrefs[key]}
+                    checked={user.notificationPrefs?.[key] ?? false}
                     onChange={() => toggleNotif(key)}
                     className="h-4 w-4 accent-primary-600"
                   />

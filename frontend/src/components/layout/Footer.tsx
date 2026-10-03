@@ -2,10 +2,12 @@ import { Link } from "react-router-dom";
 import { Mail, Phone, MapPin } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 import { FacebookIcon, InstagramIcon, TwitterIcon } from "@/components/common/SocialIcons";
-import { categories } from "@/data/categories";
+import { SOCIAL_LINKS } from "@/config/support";
+import { useCategories } from "@/context/CategoriesContext";
 import { SUPPORT_PHONE, SUPPORT_EMAIL } from "@/config/support";
 
 export function Footer() {
+  const { categories } = useCategories();
   return (
     <footer className="border-t border-stone-200 bg-primary-900 text-primary-50">
       <div className="container-app grid grid-cols-1 gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
@@ -17,15 +19,26 @@ export function Footer() {
             natural food products — the way nature intended.
           </p>
           <div className="mt-5 flex gap-3">
-            {[FacebookIcon, InstagramIcon, TwitterIcon].map((Icon, i) => (
-              <a
-                key={i}
-                href="#"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-800 text-primary-200 transition hover:bg-accent-500 hover:text-white"
-              >
-                <Icon size={16} />
-              </a>
-            ))}
+            {(
+              [
+                [FacebookIcon, "Facebook", SOCIAL_LINKS.facebook],
+                [InstagramIcon, "Instagram", SOCIAL_LINKS.instagram],
+                [TwitterIcon, "X (Twitter)", SOCIAL_LINKS.twitter],
+              ] as const
+            )
+              .filter(([, , url]) => url)
+              .map(([Icon, name, url]) => (
+                <a
+                  key={name}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Mana Oori Santha on ${name}`}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-800 text-primary-200 transition hover:bg-accent-500 hover:text-white"
+                >
+                  <Icon size={16} />
+                </a>
+              ))}
           </div>
         </div>
 

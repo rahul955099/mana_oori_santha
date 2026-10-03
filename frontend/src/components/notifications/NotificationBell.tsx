@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Package, LifeBuoy, Tag, CheckCheck } from "lucide-react";
+import { Bell, Package, LifeBuoy, Tag, CheckCheck, UserCheck } from "lucide-react";
 import { useNotifications } from "@/context/NotificationContext";
 import type { AppNotification, NotificationType } from "@/types";
 
@@ -9,6 +9,7 @@ const TYPE_ICON: Record<NotificationType, typeof Package> = {
   "order-status": Package,
   "support-update": LifeBuoy,
   offer: Tag,
+  account: UserCheck,
 };
 
 function timeAgo(iso: string): string {
@@ -46,7 +47,7 @@ export function NotificationBell() {
   function handleSelect(n: AppNotification) {
     markAsRead(n.id);
     setOpen(false);
-    if (n.orderId) navigate("/my-orders");
+    if (n.link) navigate(n.link);
   }
 
   return (

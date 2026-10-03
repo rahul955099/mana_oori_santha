@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
-import { ImagePlus } from "lucide-react";
 import type { CategorySlug, Product } from "@/types";
-import { categories } from "@/data/categories";
+import { useCategories } from "@/context/CategoriesContext";
 import { buttonClasses } from "@/components/common/Button";
+import { ImageUploader } from "@/components/common/ImageUploader";
 
 export interface ProductFormValues {
   name: string;
@@ -13,6 +13,7 @@ export interface ProductFormValues {
   unit: string;
   stock: number;
   image: string;
+  images: string[];
   isOrganic: boolean;
   isFeatured: boolean;
   benefits: string[];
@@ -20,30 +21,44 @@ export interface ProductFormValues {
 
 interface ProductFormProps {
   initial?: Product;
-  onSubmit: (values: ProductFormValues) => void;
+  onSubmit: (values: ProductFormValues) => void | Promise<void>;
   submitLabel: string;
+  /** Only admins can feature products on the homepage. */
+  canFeature?: boolean;
 }
 
 const inputClass =
   "w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100";
 const labelClass = "mb-1.5 block text-xs font-bold text-stone-600";
 
-export function ProductForm({ initial, onSubmit, submitLabel }: ProductFormProps) {
+export function ProductForm({ initial, onSubmit, submitLabel, canFeature = false }: ProductFormProps) {
+  const { categories } = useCategories();
+  const [submitting, setSubmitting] = useState(false);
   const [name, setName] = useState(initial?.name ?? "");
-  const [category, setCategory] = useState<CategorySlug>(initial?.category ?? "millets");
+  const [chosenCategory, setCategory] = useState<CategorySlug>(initial?.category ?? "");
+  // Until the seller picks one, default to the first category (which may load after the form opens).
+  const category = chosenCategory || categories[0]?.slug || "";
   const [description, setDescription] = useState(initial?.description ?? "");
   const [price, setPrice] = useState(initial?.price ?? 0);
   const [mrp, setMrp] = useState(initial?.mrp ?? 0);
   const [unit, setUnit] = useState(initial?.unit ?? "1 kg");
   const [stock, setStock] = useState(initial?.stock ?? 0);
-  const [image, setImage] = useState(initial?.image ?? "");
+  // The first photo is the main product image; the rest form the gallery.
+  const [photos, setPhotos] = useState<string[]>(() => [initial?.image, ...(initial?.images ?? [])].filter((u): u is string => !!u));
+  const [photoError, setPhotoError] = useState("");
   const [isOrganic, setIsOrganic] = useState(initial?.isOrganic ?? false);
   const [isFeatured, setIsFeatured] = useState(initial?.isFeatured ?? false);
   const [benefitsText, setBenefitsText] = useState(initial?.benefits.join(", ") ?? "");
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    onSubmit({
+    if (photos.length === 0) {
+      setPhotoError("Please add at least one product photo.");
+      return;
+    }
+    setPhotoError("");
+    setSubmitting(true);
+    await onSubmit({
       name,
       category,
       description,
@@ -51,7 +66,8 @@ export function ProductForm({ initial, onSubmit, submitLabel }: ProductFormProps
       mrp: Number(mrp),
       unit,
       stock: Number(stock),
-      image: image || `https://picsum.photos/seed/mos-${Date.now()}/600/600`,
+      image: photos[0],
+      images: photos.slice(1),
       isOrganic,
       isFeatured,
       benefits: benefitsText
@@ -59,6 +75,7 @@ export function ProductForm({ initial, onSubmit, submitLabel }: ProductFormProps
         .map((b) => b.trim())
         .filter(Boolean),
     });
+    setSubmitting(false);
   }
 
   return (
@@ -70,7 +87,8 @@ export function ProductForm({ initial, onSubmit, submitLabel }: ProductFormProps
         </div>
         <div>
           <label className={labelClass}>Category</label>
-          <select value={category} onChange={(e) => setCategory(e.target.value as CategorySlug)} className={inputClass}>
+          <select required value={category} onChange={(e) => setCategory(e.target.value as CategorySlug)} className={inputClass}>
+            <option value="" disabled>Select a category</option>
             {categories.map((c) => (
               <option key={c.id} value={c.slug}>{c.name}</option>
             ))}
@@ -115,22 +133,9 @@ export function ProductForm({ initial, onSubmit, submitLabel }: ProductFormProps
       </div>
 
       <div>
-        <label className={labelClass}>Product Image URL</label>
-        <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-stone-100">
-            {image ? (
-              <img src={image} alt="Preview" className="h-full w-full object-cover" />
-            ) : (
-              <ImagePlus size={22} className="text-stone-400" />
-            )}
-          </div>
-          <input
-            value={image}
-            onChange={(e) => setImage(e.target.value)}
-            className={inputClass}
-            placeholder="https://... (leave blank for placeholder image)"
-          />
-        </div>
+        <label className={labelClass}>Product Photos</label>
+        <ImageUploader value={photos} onChange={setPhotos} purpose="product" max={5} allowUrl />
+        {photoError && <p className="mt-1 text-xs font-medium text-red-600">{photoError}</p>}
       </div>
 
       <div className="flex flex-wrap gap-6">
@@ -138,14 +143,16 @@ export function ProductForm({ initial, onSubmit, submitLabel }: ProductFormProps
           <input type="checkbox" checked={isOrganic} onChange={(e) => setIsOrganic(e.target.checked)} className="h-4 w-4 rounded border-stone-300 text-primary-600" />
           Organic Certified
         </label>
-        <label className="flex items-center gap-2 text-sm font-medium text-stone-600">
-          <input type="checkbox" checked={isFeatured} onChange={(e) => setIsFeatured(e.target.checked)} className="h-4 w-4 rounded border-stone-300 text-primary-600" />
-          Feature on Homepage
-        </label>
+        {canFeature && (
+          <label className="flex items-center gap-2 text-sm font-medium text-stone-600">
+            <input type="checkbox" checked={isFeatured} onChange={(e) => setIsFeatured(e.target.checked)} className="h-4 w-4 rounded border-stone-300 text-primary-600" />
+            Feature on Homepage
+          </label>
+        )}
       </div>
 
-      <button type="submit" className={buttonClasses("primary", "lg")}>
-        {submitLabel}
+      <button type="submit" disabled={submitting} className={buttonClasses("primary", "lg")}>
+        {submitting ? "Saving..." : submitLabel}
       </button>
     </form>
   );

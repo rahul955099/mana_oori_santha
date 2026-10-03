@@ -6,12 +6,31 @@ import rateLimit from "express-rate-limit";
 import { env } from "./config/env";
 import { notFoundHandler, errorHandler } from "./middleware/error.middleware";
 import authRoutes from "./routes/auth.routes";
+import categoryRoutes from "./routes/category.routes";
+import productRoutes from "./routes/product.routes";
+import sellerRoutes from "./routes/seller.routes";
+import orderRoutes from "./routes/order.routes";
+import shoppingRoutes from "./routes/shopping.routes";
+import payoutRoutes from "./routes/payout.routes";
+import uploadRoutes from "./routes/upload.routes";
+import reviewRoutes from "./routes/review.routes";
+import supportRoutes from "./routes/support.routes";
+import adminRoutes from "./routes/admin.routes";
+import notificationRoutes from "./routes/notification.routes";
+import seoRoutes from "./routes/seo.routes";
 
 const app = express();
 
+// Hosting platforms put a proxy in front of the app; trust it so rate limits
+// see each visitor's real address instead of the proxy's.
+if (env.nodeEnv === "production") {
+  app.set("trust proxy", 1);
+}
+
 app.use(helmet());
-app.use(cors({ origin: env.clientUrl, credentials: true }));
-app.use(express.json());
+app.use(cors({ origin: env.corsOrigins, credentials: true }));
+// Images go straight from the browser to Cloudinary, so request bodies stay small.
+app.use(express.json({ limit: "200kb" }));
 if (env.nodeEnv !== "test") {
   app.use(morgan(env.nodeEnv === "production" ? "combined" : "dev"));
 }
@@ -28,9 +47,21 @@ app.get("/api/health", (_req, res) => {
   res.json({ success: true, message: "Mana Oori Santha API is running", data: { env: env.nodeEnv } });
 });
 
+app.use(seoRoutes);
 app.use("/api/auth", authRoutes);
-
-// Further feature routes are mounted here in later phases (products, orders, etc.)
+app.use("/api/categories", categoryRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/sellers", sellerRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/payouts", payoutRoutes);
+app.use("/api/uploads", uploadRoutes);
+app.use("/api/support", supportRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/notifications", notificationRoutes);
+// /api/products/:id/reviews and /api/reviews
+app.use("/api", reviewRoutes);
+// /api/cart, /api/wishlist, /api/addresses, /api/coupons
+app.use("/api", shoppingRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

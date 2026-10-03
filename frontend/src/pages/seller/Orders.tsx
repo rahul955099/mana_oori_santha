@@ -1,21 +1,20 @@
 import { useState } from "react";
 import { useOrders } from "@/context/OrdersContext";
-import { useProducts } from "@/context/ProductsContext";
-import { Badge } from "@/components/common/Badge";
+import { OrderStatusControl } from "@/components/orders/OrderStatusControl";
 import { EmptyState } from "@/components/common/EmptyState";
 import { formatCurrency, formatDate } from "@/utils/format";
-import { CURRENT_SELLER_ID } from "@/data/currentSeller";
+import { useAuth } from "@/context/AuthContext";
 import type { OrderStatus } from "@/types";
-import { ALL_ORDER_STATUSES, ORDER_STATUS_LABELS, ORDER_STATUS_TONE } from "@/utils/orderStatus";
+import { ALL_ORDER_STATUSES, ORDER_STATUS_LABELS } from "@/utils/orderStatus";
 import { ShoppingBag } from "lucide-react";
 
 export default function SellerOrders() {
+  const sellerId = useAuth().user?.sellerId;
   const { orders } = useOrders();
-  const { products } = useProducts();
   const [statusFilter, setStatusFilter] = useState<"all" | OrderStatus>("all");
 
-  const myProductIds = new Set(products.filter((p) => p.sellerId === CURRENT_SELLER_ID).map((p) => p.id));
-  let myOrders = orders.filter((o) => o.items.some((i) => myProductIds.has(i.productId)));
+  // The API returns only orders containing this seller's items, with other sellers' items removed.
+  let myOrders = orders;
   if (statusFilter !== "all") {
     myOrders = myOrders.filter((o) => o.status === statusFilter);
   }
@@ -57,7 +56,7 @@ export default function SellerOrders() {
               </thead>
               <tbody>
                 {myOrders.map((order) => {
-                  const myItems = order.items.filter((i) => myProductIds.has(i.productId));
+                  const myItems = order.items.filter((i) => i.sellerId === sellerId);
                   const amount = myItems.reduce((s, i) => s + i.price * i.quantity, 0);
                   return (
                     <tr key={order.id} className="border-t border-stone-100">
@@ -67,7 +66,7 @@ export default function SellerOrders() {
                       <td className="px-5 py-3 text-stone-500">{myItems.length} item(s)</td>
                       <td className="px-5 py-3 font-semibold text-stone-800">{formatCurrency(amount)}</td>
                       <td className="px-5 py-3">
-                        <Badge tone={ORDER_STATUS_TONE[order.status]}>{ORDER_STATUS_LABELS[order.status]}</Badge>
+                        <OrderStatusControl order={order} />
                       </td>
                     </tr>
                   );

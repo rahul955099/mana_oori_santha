@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { User, Camera } from "lucide-react";
+import { User, Camera, Loader2 } from "lucide-react";
 import { Modal } from "@/components/common/Modal";
 import { buttonClasses } from "@/components/common/Button";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
+import { uploadImage, ACCEPTED_IMAGE_TYPES } from "@/lib/upload";
+import { optimizedImage } from "@/utils/image";
 
 const inputClass =
   "w-full rounded-xl border border-stone-200 px-4 py-3 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100";
@@ -12,6 +14,7 @@ export function EditProfileModal({ isOpen, onClose }: { isOpen: boolean; onClose
   const { user, updateProfile } = useAuth();
   const { showToast } = useToast();
   const [form, setForm] = useState({ name: "", email: "", mobile: "", profilePhoto: "" });
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (isOpen && user) {
@@ -24,19 +27,28 @@ export function EditProfileModal({ isOpen, onClose }: { isOpen: boolean; onClose
     }
   }, [isOpen, user]);
 
-  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setForm((prev) => ({ ...prev, profilePhoto: reader.result as string }));
-    reader.readAsDataURL(file);
+    setUploading(true);
+    try {
+      const url = await uploadImage(file, "profile");
+      setForm((prev) => ({ ...prev, profilePhoto: url }));
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Upload failed.", "error");
+    } finally {
+      setUploading(false);
+    }
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    updateProfile(form);
-    showToast("Profile updated successfully.");
-    onClose();
+    // Only send the photo when it changed (older accounts may hold an inline photo the API no longer accepts).
+    const { profilePhoto, ...rest } = form;
+    const result = await updateProfile(profilePhoto !== (user?.profilePhoto ?? "") ? form : rest);
+    showToast(result.message, result.success ? "success" : "error");
+    if (result.success) onClose();
   }
 
   return (
@@ -44,8 +56,12 @@ export function EditProfileModal({ isOpen, onClose }: { isOpen: boolean; onClose
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex justify-center">
           <label className="relative cursor-pointer">
-            {form.profilePhoto ? (
-              <img src={form.profilePhoto} alt="Profile" className="h-20 w-20 rounded-full object-cover" />
+            {uploading ? (
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-stone-100">
+                <Loader2 size={24} className="animate-spin text-primary-600" />
+              </div>
+            ) : form.profilePhoto ? (
+              <img src={optimizedImage(form.profilePhoto, 160)} alt="Profile" className="h-20 w-20 rounded-full object-cover" />
             ) : (
               <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary-100 text-primary-700">
                 <User size={30} />
@@ -54,7 +70,7 @@ export function EditProfileModal({ isOpen, onClose }: { isOpen: boolean; onClose
             <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-primary-600 text-white shadow-sm">
               <Camera size={13} />
             </span>
-            <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+            <input type="file" accept={ACCEPTED_IMAGE_TYPES.join(",")} onChange={handlePhotoChange} disabled={uploading} className="hidden" />
           </label>
         </div>
 
@@ -73,7 +89,7 @@ export function EditProfileModal({ isOpen, onClose }: { isOpen: boolean; onClose
 
         <div className="flex justify-end gap-3 pt-2">
           <button type="button" onClick={onClose} className={buttonClasses("ghost", "md")}>Cancel</button>
-          <button type="submit" className={buttonClasses("primary", "md")}>Save Changes</button>
+          <button type="submit" disabled={uploading} className={buttonClasses("primary", "md")}>Save Changes</button>
         </div>
       </form>
     </Modal>

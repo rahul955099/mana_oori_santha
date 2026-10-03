@@ -7,24 +7,32 @@ import { RatingStars } from "@/components/common/RatingStars";
 import { Badge } from "@/components/common/Badge";
 import { ProductCard } from "@/components/ProductCard";
 import { EmptyState } from "@/components/common/EmptyState";
+import { Loading } from "@/components/common/Loading";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useToast } from "@/context/ToastContext";
 import { formatCurrency, discountPercent, categoryLabel } from "@/utils/format";
 import { DeliveryInfo } from "@/components/location/DeliveryInfo";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
+import { optimizedImage } from "@/utils/image";
+import { Seo } from "@/components/common/Seo";
 
 export default function ProductDetails() {
   const { slug } = useParams<{ slug: string }>();
-  const { products, getProductBySlug } = useProducts();
+  const { products, getProductBySlug, loading } = useProducts();
   const { sellers } = useSellers();
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
   const { showToast } = useToast();
   const [quantity, setQuantity] = useState(1);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   const product = slug ? getProductBySlug(slug) : undefined;
+
+  if (loading) {
+    return <Loading label="Loading product..." />;
+  }
 
   if (!product) {
     return (
@@ -44,6 +52,8 @@ export default function ProductDetails() {
 
   const seller = sellers.find((s) => s.id === product.sellerId);
   const discount = discountPercent(product.price, product.mrp);
+  const gallery = [product.image, ...(product.images ?? [])].filter(Boolean);
+  const mainPhoto = selectedPhoto && gallery.includes(selectedPhoto) ? selectedPhoto : product.image;
   const related = products.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 4);
   const purchasable = product.priceAvailable !== false && product.stock > 0;
 
@@ -61,6 +71,28 @@ export default function ProductDetails() {
 
   return (
     <div className="container-app py-10">
+      <Seo
+        title={product.name}
+        description={product.description || `${product.name} (${product.unit}) from local farmers.`}
+        image={product.image}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Product",
+          name: product.name,
+          description: product.description,
+          image: gallery,
+          sku: product.id,
+          ...(product.reviewCount > 0
+            ? { aggregateRating: { "@type": "AggregateRating", ratingValue: product.rating, reviewCount: product.reviewCount } }
+            : {}),
+          offers: {
+            "@type": "Offer",
+            priceCurrency: "INR",
+            price: product.price,
+            availability: product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+          },
+        }}
+      />
       <nav className="mb-6 flex items-center gap-2 text-xs text-stone-400">
         <Link to="/" className="hover:text-primary-600">Home</Link> /
         <Link to="/products" className="hover:text-primary-600">Products</Link> /
@@ -71,8 +103,9 @@ export default function ProductDetails() {
       </nav>
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
+        <div>
         <div className="relative overflow-hidden rounded-3xl bg-stone-100">
-          <img src={product.image} alt={product.name} className="aspect-square w-full object-cover" />
+          <img src={optimizedImage(mainPhoto, 900)} alt={product.name} className="aspect-square w-full object-cover" />
           {product.isOrganic && (
             <span className="absolute left-4 top-4 rounded-full bg-primary-600 px-3 py-1.5 text-xs font-bold text-white shadow">
               🌿 Organic Certified
@@ -83,6 +116,24 @@ export default function ProductDetails() {
               {discount}% OFF
             </span>
           )}
+        </div>
+        {gallery.length > 1 && (
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            {gallery.map((url) => (
+              <button
+                key={url}
+                type="button"
+                onClick={() => setSelectedPhoto(url)}
+                aria-label="Show photo"
+                className={`h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 transition ${
+                  url === mainPhoto ? "border-primary-500" : "border-transparent opacity-70 hover:opacity-100"
+                }`}
+              >
+                <img src={optimizedImage(url, 160)} alt="" className="h-full w-full object-cover" />
+              </button>
+            ))}
+          </div>
+        )}
         </div>
 
         <div>
@@ -150,6 +201,7 @@ export default function ProductDetails() {
             <div className="flex items-center rounded-full border border-stone-300">
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                aria-label="Decrease quantity"
                 disabled={!purchasable}
                 className="flex h-11 w-11 items-center justify-center text-stone-500 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
@@ -158,6 +210,7 @@ export default function ProductDetails() {
               <span className="w-10 text-center text-sm font-bold text-stone-800">{quantity}</span>
               <button
                 onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
+                aria-label="Increase quantity"
                 disabled={!purchasable}
                 className="flex h-11 w-11 items-center justify-center text-stone-500 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-40"
               >

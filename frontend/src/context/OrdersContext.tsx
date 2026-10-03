@@ -1,47 +1,108 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Order, OrderStatus } from "@/types";
-import { mockOrders } from "@/data/orders";
+import { useAuth } from "@/context/AuthContext";
+import { api, errorMessage } from "@/lib/api";
+
+export interface ShippingDetails {
+  fullName: string;
+  mobile: string;
+  email: string;
+  address: string;
+  village: string;
+  district: string;
+  state: string;
+  pincode: string;
+}
+
+export interface PlaceOrderInput {
+  items: { productId: string; quantity: number }[];
+  couponCode?: string;
+  shippingAddress: ShippingDetails;
+}
 
 interface OrdersContextValue {
+  /** Orders this user works with: everything for admins, sales for sellers, purchases for customers. */
   orders: Order[];
-  placeOrder: (order: Omit<Order, "id" | "date" | "status">) => Order;
-  updateOrderStatus: (id: string, status: OrderStatus) => void;
+  /** Orders this user placed as a buyer. */
+  myOrders: Order[];
+  loading: boolean;
+  error: string | null;
+  reload: () => Promise<void>;
+  placeOrder: (input: PlaceOrderInput) => Promise<Order>;
+  /** Moves an order to a new status. The server enforces who may do what. */
+  updateOrderStatus: (id: string, status: OrderStatus, note?: string) => Promise<Order>;
 }
 
 const OrdersContext = createContext<OrdersContextValue | undefined>(undefined);
-const STORAGE_KEY = "mos_orders";
+
+type OrdersResponse = { orders: Order[] };
 
 export function OrdersProvider({ children }: { children: ReactNode }) {
-  const [orders, setOrders] = useState<Order[]>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as Order[]) : mockOrders;
-    } catch {
-      return mockOrders;
+  const { user } = useAuth();
+  const role = user?.role;
+  const userId = user?.id ?? null;
+  const [myOrders, setMyOrders] = useState<Order[]>([]);
+  const [managed, setManaged] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    if (!userId) {
+      setMyOrders([]);
+      setManaged([]);
+      return;
     }
-  });
+    setLoading(true);
+    try {
+      const managedPath = role === "admin" ? "/orders" : role === "seller" ? "/orders/seller" : null;
+      const [mine, others] = await Promise.all([
+        api.get<OrdersResponse>("/orders/mine"),
+        managedPath ? api.get<OrdersResponse>(managedPath) : Promise.resolve(null),
+      ]);
+      setMyOrders(mine.orders);
+      setManaged(others?.orders ?? []);
+      setError(null);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [userId, role]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
-  }, [orders]);
+    // Old demo builds kept sample orders in the browser.
+    try {
+      localStorage.removeItem("mos_orders");
+    } catch {
+      // ignore
+    }
+    void reload();
+  }, [reload]);
 
-  function placeOrder(order: Omit<Order, "id" | "date" | "status">): Order {
-    const newOrder: Order = {
-      ...order,
-      id: `MOS-${Math.floor(10000 + Math.random() * 89999)}`,
-      date: new Date().toISOString().slice(0, 10),
-      status: "pending",
-    };
-    setOrders((prev) => [newOrder, ...prev]);
-    return newOrder;
+  function replace(list: Order[], order: Order) {
+    return list.some((o) => o.id === order.id) ? list.map((o) => (o.id === order.id ? order : o)) : list;
   }
 
-  function updateOrderStatus(id: string, status: OrderStatus) {
-    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
+  async function placeOrder(input: PlaceOrderInput) {
+    const { order } = await api.post<{ order: Order }>("/orders", input);
+    setMyOrders((prev) => [order, ...prev]);
+    if (role === "admin") setManaged((prev) => [order, ...prev]);
+    return order;
   }
+
+  async function updateOrderStatus(id: string, status: OrderStatus, note?: string) {
+    const { order } = await api.patch<{ order: Order }>(`/orders/${id}/status`, { status, note });
+    setMyOrders((prev) => replace(prev, order));
+    setManaged((prev) => replace(prev, order));
+    return order;
+  }
+
+  const orders = role === "admin" || role === "seller" ? managed : myOrders;
 
   return (
-    <OrdersContext.Provider value={{ orders, placeOrder, updateOrderStatus }}>{children}</OrdersContext.Provider>
+    <OrdersContext.Provider value={{ orders, myOrders, loading, error, reload, placeOrder, updateOrderStatus }}>
+      {children}
+    </OrdersContext.Provider>
   );
 }
 

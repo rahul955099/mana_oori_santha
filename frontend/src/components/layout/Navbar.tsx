@@ -4,7 +4,7 @@ import { Menu, X, ShoppingCart, User, Search, ChevronDown, LogOut, LayoutDashboa
 import { Logo } from "@/components/common/Logo";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
-import { categories } from "@/data/categories";
+import { useCategories } from "@/context/CategoriesContext";
 import { LocationSelector } from "@/components/location/LocationSelector";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { SearchSuggestions } from "@/components/search/SearchSuggestions";
@@ -16,6 +16,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `text-sm font-semibold transition-colors ${isActive ? "text-primary-700" : "text-stone-600 hover:text-primary-700"}`;
 
 export function Navbar() {
+  const { categories } = useCategories();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);

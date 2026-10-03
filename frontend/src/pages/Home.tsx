@@ -10,7 +10,7 @@ import {
   PackageCheck,
   Sprout,
 } from "lucide-react";
-import { categories } from "@/data/categories";
+import { useCategories } from "@/context/CategoriesContext";
 import { themedImage } from "@/utils/placeholder";
 import { useSellers } from "@/context/SellersContext";
 import { banners } from "@/data/banners";
@@ -20,6 +20,7 @@ import { PromoCarousel } from "@/components/PromoCarousel";
 import { buttonClasses } from "@/components/common/Button";
 
 export default function Home() {
+  const { categories } = useCategories();
   const { sellers } = useSellers();
   return (
     <div>
