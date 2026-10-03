@@ -1,47 +1,60 @@
 import { useState } from "react";
+import { LifeBuoy } from "lucide-react";
 import { useSupport } from "@/context/SupportContext";
 import { useNotifications } from "@/context/NotificationContext";
+import { useToast } from "@/context/ToastContext";
 import { SearchBar } from "@/components/common/SearchBar";
 import { EmptyState } from "@/components/common/EmptyState";
-import { LifeBuoy } from "lucide-react";
+import { Loading } from "@/components/common/Loading";
+import { Badge } from "@/components/common/Badge";
+import { Modal } from "@/components/common/Modal";
+import { TicketThread } from "@/components/support/TicketThread";
+import { errorMessage } from "@/lib/api";
+import { formatDate } from "@/utils/format";
+import { SUPPORT_STATUS } from "@/utils/support";
 import { SUPPORT_CATEGORY_LABELS, type SupportRequestStatus } from "@/types";
 
 const statusOptions: SupportRequestStatus[] = ["open", "in-progress", "resolved"];
 
-const statusStyle: Record<SupportRequestStatus, string> = {
-  open: "bg-red-100 text-red-700",
-  "in-progress": "bg-accent-100 text-accent-800",
-  resolved: "bg-primary-100 text-primary-700",
-};
-
 export default function AdminSupport() {
-  const { requests, updateRequestStatus } = useSupport();
+  const { requests, loading, updateRequestStatus } = useSupport();
   const { notifyUser } = useNotifications();
+  const { showToast } = useToast();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | SupportRequestStatus>("all");
+  const [openId, setOpenId] = useState<string | null>(null);
 
-  function handleStatusChange(requestId: string, userId: string, status: SupportRequestStatus) {
-    updateRequestStatus(requestId, status);
-    notifyUser(userId, {
-      type: "support-update",
-      title: `Support request ${requestId} updated`,
-      message: `Your support request is now "${status.replace("-", " ")}".`,
-    });
+  const selected = requests.find((r) => r.id === openId) ?? null;
+
+  async function handleStatusChange(id: string, userId: string | undefined, status: SupportRequestStatus) {
+    try {
+      await updateRequestStatus(id, status);
+      if (userId) {
+        notifyUser(userId, {
+          type: "support-update",
+          title: `Support request ${id} updated`,
+          message: `Your support request is now "${SUPPORT_STATUS[status].label}".`,
+        });
+      }
+    } catch (err) {
+      showToast(errorMessage(err), "error");
+    }
   }
 
+  const term = search.toLowerCase();
   const filtered = requests.filter((r) => {
     const matchesSearch =
-      r.id.toLowerCase().includes(search.toLowerCase()) ||
-      r.userName.toLowerCase().includes(search.toLowerCase()) ||
-      (r.orderId ?? "").toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "all" || r.status === statusFilter;
-    return matchesSearch && matchesStatus;
+      r.id.toLowerCase().includes(term) ||
+      r.userName.toLowerCase().includes(term) ||
+      r.userEmail.toLowerCase().includes(term) ||
+      (r.orderId ?? "").toLowerCase().includes(term);
+    return matchesSearch && (statusFilter === "all" || r.status === statusFilter);
   });
 
   return (
     <div>
       <h1 className="text-2xl font-extrabold text-stone-900">Customer Support</h1>
-      <p className="mt-1 text-sm text-stone-500">Support requests raised by customers, including order-specific issues.</p>
+      <p className="mt-1 text-sm text-stone-500">Support requests raised by customers. Open one to read and reply.</p>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">
         <SearchBar value={search} onChange={setSearch} className="flex-1" placeholder="Search by request ID, customer or order ID..." suggestions={false} />
@@ -52,12 +65,14 @@ export default function AdminSupport() {
         >
           <option value="all">All Status</option>
           {statusOptions.map((s) => (
-            <option key={s} value={s}>{s.replace("-", " ").toUpperCase()}</option>
+            <option key={s} value={s}>{SUPPORT_STATUS[s].label}</option>
           ))}
         </select>
       </div>
 
-      {filtered.length === 0 ? (
+      {loading && requests.length === 0 ? (
+        <Loading label="Loading requests..." />
+      ) : filtered.length === 0 ? (
         <div className="mt-6">
           <EmptyState icon={LifeBuoy} title="No support requests" description="Customer support requests will appear here as they come in." />
         </div>
@@ -67,9 +82,8 @@ export default function AdminSupport() {
             <table className="w-full text-left text-sm">
               <thead className="bg-stone-50">
                 <tr className="text-xs font-bold uppercase text-stone-400">
-                  <th className="px-5 py-3">Request ID</th>
+                  <th className="px-5 py-3">Request</th>
                   <th className="px-5 py-3">Customer</th>
-                  <th className="px-5 py-3">Order ID</th>
                   <th className="px-5 py-3">Category</th>
                   <th className="px-5 py-3">Message</th>
                   <th className="px-5 py-3">Status</th>
@@ -77,27 +91,25 @@ export default function AdminSupport() {
               </thead>
               <tbody>
                 {filtered.map((r) => (
-                  <tr key={r.id} className="border-t border-stone-100 align-top">
-                    <td className="px-5 py-3 font-semibold text-stone-800">{r.id}</td>
+                  <tr key={r.id} onClick={() => setOpenId(r.id)} className="cursor-pointer border-t border-stone-100 align-top hover:bg-stone-50">
+                    <td className="px-5 py-3">
+                      <p className="font-semibold text-stone-800">{r.id}</p>
+                      <p className="text-xs text-stone-400">{formatDate(r.updatedAt)}</p>
+                    </td>
                     <td className="px-5 py-3 text-stone-600">
                       <p className="font-medium">{r.userName}</p>
                       <p className="text-xs text-stone-400">{r.userEmail}</p>
                     </td>
-                    <td className="px-5 py-3 text-stone-500">{r.orderId ?? "—"}</td>
-                    <td className="px-5 py-3 text-stone-500">{SUPPORT_CATEGORY_LABELS[r.category]}</td>
+                    <td className="px-5 py-3 text-stone-500">
+                      {SUPPORT_CATEGORY_LABELS[r.category]}
+                      {r.orderId && <p className="text-xs text-stone-400">{r.orderId}</p>}
+                    </td>
                     <td className="max-w-xs px-5 py-3 text-stone-500">
                       <p className="line-clamp-2">{r.message}</p>
+                      {r.replies.length > 0 && <p className="mt-1 text-[11px] text-stone-400">{r.replies.length} repl{r.replies.length === 1 ? "y" : "ies"}</p>}
                     </td>
                     <td className="px-5 py-3">
-                      <select
-                        value={r.status}
-                        onChange={(e) => handleStatusChange(r.id, r.userId, e.target.value as SupportRequestStatus)}
-                        className={`rounded-full border-0 px-2.5 py-1 text-xs font-bold outline-none ${statusStyle[r.status]}`}
-                      >
-                        {statusOptions.map((s) => (
-                          <option key={s} value={s}>{s.replace("-", " ").toUpperCase()}</option>
-                        ))}
-                      </select>
+                      <Badge tone={SUPPORT_STATUS[r.status].tone}>{SUPPORT_STATUS[r.status].label}</Badge>
                     </td>
                   </tr>
                 ))}
@@ -106,6 +118,26 @@ export default function AdminSupport() {
           </div>
         </div>
       )}
+
+      <Modal isOpen={!!selected} onClose={() => setOpenId(null)} title={selected ? `${selected.id} · ${selected.userName}` : ""}>
+        {selected && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-stone-500">Status</span>
+              <select
+                value={selected.status}
+                onChange={(e) => handleStatusChange(selected.id, selected.userId, e.target.value as SupportRequestStatus)}
+                className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-bold text-stone-600 outline-none"
+              >
+                {statusOptions.map((s) => (
+                  <option key={s} value={s}>{SUPPORT_STATUS[s].label}</option>
+                ))}
+              </select>
+            </div>
+            <TicketThread ticket={selected} viewer="admin" />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

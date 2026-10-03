@@ -228,7 +228,16 @@ export interface SupportRequest {
   message: string;
   orderId?: string;
   status: SupportRequestStatus;
+  replies: SupportReply[];
   createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupportReply {
+  byRole: UserRole;
+  authorName: string;
+  message: string;
+  at: string;
 }
 
 export interface PromoBanner {
@@ -271,16 +280,24 @@ export interface LocationSuggestion {
   longitude: number;
 }
 
+export type ReviewStatus = "published" | "hidden";
+
 export interface Review {
   id: string;
   productId: string;
-  userId: string;
   userName: string;
   rating: number;
   comment: string;
   createdAt: string;
-  /** True only when this user has a real order containing this product. Never fabricated. */
+  updatedAt?: string;
+  /** True only when this user had a delivered order containing this product. Never fabricated. */
   verifiedPurchase: boolean;
+  /** Present in admin and "my reviews" views. */
+  productName?: string;
+  productSlug?: string;
+  status?: ReviewStatus;
+  /** Admin-only: why a review was hidden. */
+  moderationNote?: string;
 }
 
 export type CouponType = "percent" | "flat";

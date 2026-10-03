@@ -44,3 +44,9 @@ export async function api<T = any>(
   });
   return { status: res.status, body: (await res.json()) as { success: boolean; message: string; data: T; error?: string } };
 }
+
+/** For non-JSON responses such as CSV downloads. */
+export async function rawGet(path: string, token?: string) {
+  const res = await fetch(`${baseUrl}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  return { status: res.status, contentType: res.headers.get("content-type") ?? "", text: await res.text() };
+}

@@ -13,6 +13,9 @@ import orderRoutes from "./routes/order.routes";
 import shoppingRoutes from "./routes/shopping.routes";
 import payoutRoutes from "./routes/payout.routes";
 import uploadRoutes from "./routes/upload.routes";
+import reviewRoutes from "./routes/review.routes";
+import supportRoutes from "./routes/support.routes";
+import adminRoutes from "./routes/admin.routes";
 
 const app = express();
 
@@ -43,6 +46,10 @@ app.use("/api/sellers", sellerRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payouts", payoutRoutes);
 app.use("/api/uploads", uploadRoutes);
+app.use("/api/support", supportRoutes);
+app.use("/api/admin", adminRoutes);
+// /api/products/:id/reviews and /api/reviews
+app.use("/api", reviewRoutes);
 // /api/cart, /api/wishlist, /api/addresses, /api/coupons
 app.use("/api", shoppingRoutes);
 

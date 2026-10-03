@@ -6,6 +6,7 @@ import { buttonClasses } from "@/components/common/Button";
 import { useSupport } from "@/context/SupportContext";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
+import { errorMessage } from "@/lib/api";
 import { SUPPORT_CATEGORY_LABELS, type SupportCategory } from "@/types";
 import { SUPPORT_PHONE, SUPPORT_EMAIL, SUPPORT_PHONE_TEL_HREF, SUPPORT_EMAIL_MAILTO_HREF } from "@/config/support";
 
@@ -28,28 +29,32 @@ export function SupportModal() {
 
   const [category, setCategory] = useState<SupportCategory | null>(null);
   const [message, setMessage] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (isModalOpen) {
       setCategory(prefill?.category ?? null);
       setMessage("");
-      setSubmitted(false);
+      setSubmitted(null);
+      setError("");
     }
   }, [isModalOpen, prefill]);
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!user || !category || !message.trim()) return;
-    submitRequest({
-      userId: user.userId,
-      userName: user.name,
-      userEmail: user.email,
-      category,
-      message: message.trim(),
-      orderId: prefill?.orderId,
-    });
-    setSubmitted(true);
-    showToast("Support request submitted. Our team will reach out soon.");
+    setSending(true);
+    setError("");
+    try {
+      const ticket = await submitRequest({ category, message: message.trim(), orderId: prefill?.orderId });
+      setSubmitted(ticket.id);
+      showToast(`Support request ${ticket.id} submitted. Our team will reach out soon.`);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -57,13 +62,18 @@ export function SupportModal() {
       {submitted ? (
         <div className="flex flex-col items-center gap-3 py-6 text-center">
           <CheckCircle2 size={40} className="text-primary-600" />
-          <p className="text-sm font-bold text-stone-800">Request submitted</p>
+          <p className="text-sm font-bold text-stone-800">Request {submitted} submitted</p>
           <p className="text-sm text-stone-500">
-            Our support team will get back to you at <span className="font-semibold">{user?.email}</span> soon.
+            Our support team will reply soon. You can follow the conversation under Support Requests.
           </p>
-          <button onClick={closeSupport} className={buttonClasses("primary", "md", "mt-2")}>
-            Done
-          </button>
+          <div className="mt-2 flex gap-2">
+            <Link to="/my-support" onClick={closeSupport} className={buttonClasses("ghost", "md")}>
+              View my requests
+            </Link>
+            <button onClick={closeSupport} className={buttonClasses("primary", "md")}>
+              Done
+            </button>
+          </div>
         </div>
       ) : (
         <div className="space-y-5">
@@ -112,11 +122,12 @@ export function SupportModal() {
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={!category || !message.trim()}
+                disabled={!category || message.trim().length < 5 || sending}
                 className={buttonClasses("primary", "md", "mt-3 w-full disabled:opacity-50")}
               >
-                <Send size={15} /> Submit Request
+                <Send size={15} /> {sending ? "Sending..." : "Submit Request"}
               </button>
+              {error && <p className="mt-2 text-xs font-medium text-red-600">{error}</p>}
             </div>
           ) : (
             <p className="rounded-xl bg-stone-50 px-4 py-3 text-center text-sm text-stone-500">

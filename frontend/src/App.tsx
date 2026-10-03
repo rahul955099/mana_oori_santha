@@ -22,6 +22,7 @@ import About from "@/pages/About";
 import Contact from "@/pages/Contact";
 import NotFound from "@/pages/NotFound";
 import Invoice from "@/pages/Invoice";
+import MySupport from "@/pages/MySupport";
 
 import SellerDashboard from "@/pages/seller/Dashboard";
 import SellerMyProducts from "@/pages/seller/MyProducts";
@@ -94,6 +95,14 @@ function App() {
             element={
               <RequireAuth>
                 <Profile />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="my-support"
+            element={
+              <RequireAuth>
+                <MySupport />
               </RequireAuth>
             }
           />

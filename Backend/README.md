@@ -40,6 +40,20 @@ database, seeded with the sample catalog, and prints test logins. Data resets on
 | PATCH / DELETE | `/api/sellers/:id` | admin (verify badge, remove seller) |
 | GET | `/api/payouts/balances` | admin — what each seller is owed |
 | POST | `/api/payouts` | admin — record a payment made to a seller (up to their balance) |
+| GET | `/api/products/:id/reviews` | public — published reviews; logged-in callers also get their own review and whether they may write one |
+| PUT / DELETE | `/api/products/:id/reviews/mine` | logged in — write/edit/delete own review (needs a delivered order) |
+| GET | `/api/reviews/mine` | logged in — own reviews across products |
+| GET | `/api/reviews` | admin — all reviews (`?status=`, `?rating=`, `?search=`) |
+| PATCH / DELETE | `/api/reviews/:reviewId` | admin — hide/publish (with private note) or delete |
+| POST | `/api/support` | logged in — raise a request, optionally about one of your orders |
+| GET | `/api/support/mine` | logged in — own requests with replies |
+| GET | `/api/support` | admin — all requests (`?status=`, `?search=`) |
+| GET | `/api/support/:ticketNumber` | owner or admin |
+| POST | `/api/support/:ticketNumber/replies` | owner or admin |
+| PATCH | `/api/support/:ticketNumber/status` | admin |
+| GET / PATCH | `/api/admin/users`, `/api/admin/users/:id` | admin — customers with orders and spend; block/unblock |
+| GET | `/api/admin/reports/summary` | admin — sales for `?from=&to=` (IST, default last 30 days) plus live counts |
+| GET | `/api/admin/reports/orders.csv` | admin — one row per order item, spreadsheet-safe |
 | POST | `/api/uploads/signature` | logged in — short-lived Cloudinary upload signature (`purpose`: product, seller, profile) |
 | GET / PUT | `/api/cart` | logged in — PUT replaces the whole cart `{ items, couponCode }` |
 | GET / PUT | `/api/wishlist` | logged in — PUT replaces `{ productIds }` |
@@ -68,6 +82,12 @@ Deleting products, sellers or accounts is a soft delete (`isActive: false`), so 
   - A seller can move an order through fulfilment (or cancel it) when every item in it is theirs; mixed-seller orders are handled by an admin.
   - Admins can make any valid move, including approving or rejecting returns.
 - Payment is cash on delivery: marked `paid` on delivery and `refunded` when a return is approved.
+
+## Reviews and ratings
+
+- Only customers with a delivered order of a product can review it, so every review is a verified purchase. One review per customer per product.
+- Product and seller ratings are calculated only from published reviews (recomputed whenever a review changes, and in full at server start). Seed data no longer includes sample ratings.
+- Admins can hide a review (it leaves the store and the rating; the author sees it marked as not shown) or delete it.
 
 ## Sellers, images and payouts
 

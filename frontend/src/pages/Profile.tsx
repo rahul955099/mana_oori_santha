@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   User,
@@ -18,13 +18,12 @@ import {
   Bell,
   LogOut,
   AlertTriangle,
+  LifeBuoy,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useAddresses } from "@/context/AddressContext";
-import { errorMessage } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import { useSupport } from "@/context/SupportContext";
-import { useReviews } from "@/context/ReviewsContext";
-import { useProducts } from "@/context/ProductsContext";
 import { useToast } from "@/context/ToastContext";
 import { Modal } from "@/components/common/Modal";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -32,7 +31,7 @@ import { buttonClasses } from "@/components/common/Button";
 import { EditProfileModal } from "@/components/profile/EditProfileModal";
 import { AddressFormModal } from "@/components/profile/AddressFormModal";
 import { ChangePasswordModal } from "@/components/profile/ChangePasswordModal";
-import type { Address } from "@/types";
+import type { Address, Review } from "@/types";
 
 const NOTIF_KEY = "mos_notification_prefs";
 
@@ -55,17 +54,25 @@ export default function Profile() {
   const { user, logout, deleteAccount } = useAuth();
   const { addresses, deleteAddress, setDefaultAddress } = useAddresses();
   const { openSupport } = useSupport();
-  const { reviews, deleteReview } = useReviews();
-  const { getProductById } = useProducts();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  const myReviews = reviews.filter((r) => r.userId === user?.userId);
+  const [myReviews, setMyReviews] = useState<Review[]>([]);
+  useEffect(() => {
+    api
+      .get<{ reviews: Review[] }>("/reviews/mine")
+      .then((d) => setMyReviews(d.reviews))
+      .catch(() => setMyReviews([]));
+  }, []);
 
-  function handleDeleteReview(reviewId: string) {
-    if (!user) return;
-    deleteReview(reviewId, user.userId);
-    showToast("Review deleted.");
+  async function handleDeleteReview(review: Review) {
+    try {
+      await api.delete(`/products/${review.productId}/reviews/mine`);
+      setMyReviews((prev) => prev.filter((r) => r.id !== review.id));
+      showToast("Review deleted.");
+    } catch (err) {
+      showToast(errorMessage(err), "error");
+    }
   }
 
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -131,6 +138,7 @@ export default function Profile() {
   const shoppingLinks = [
     { to: "/my-orders", label: "My Orders", icon: Package },
     { to: "/wishlist", label: "Wishlist", icon: Heart },
+    { to: "/my-support", label: "Support Requests", icon: LifeBuoy },
     { to: "/cart", label: "My Cart", icon: ShoppingCart },
   ];
 
@@ -253,18 +261,18 @@ export default function Profile() {
         ) : (
           <div className="space-y-3">
             {myReviews.map((review) => {
-              const product = getProductById(review.productId);
               return (
                 <div key={review.id} className="rounded-xl border border-stone-200 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    {product ? (
-                      <Link to={`/products/${product.slug}`} className="text-sm font-bold text-stone-800 hover:text-primary-700">
-                        {product.name}
+                    {review.productSlug ? (
+                      <Link to={`/products/${review.productSlug}`} className="text-sm font-bold text-stone-800 hover:text-primary-700">
+                        {review.productName}
+                        {review.status === "hidden" && <span className="ml-2 text-[11px] font-semibold text-stone-400">(not shown publicly)</span>}
                       </Link>
                     ) : (
                       <p className="text-sm font-bold text-stone-800">Product</p>
                     )}
-                    <button onClick={() => handleDeleteReview(review.id)} className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline">
+                    <button onClick={() => handleDeleteReview(review)} className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline">
                       <Trash2 size={12} /> Delete
                     </button>
                   </div>

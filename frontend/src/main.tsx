@@ -13,7 +13,6 @@ import { ToastProvider } from "@/context/ToastContext";
 import { LocationProvider } from "@/context/LocationContext";
 import { AddressProvider } from "@/context/AddressContext";
 import { SupportProvider } from "@/context/SupportContext";
-import { ReviewsProvider } from "@/context/ReviewsContext";
 import { CouponsProvider } from "@/context/CouponsContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 
@@ -30,13 +29,11 @@ createRoot(document.getElementById("root")!).render(
                     <LocationProvider>
                       <AddressProvider>
                         <SupportProvider>
-                          <ReviewsProvider>
-                            <CouponsProvider>
-                              <NotificationProvider>
-                                <App />
-                              </NotificationProvider>
-                            </CouponsProvider>
-                          </ReviewsProvider>
+                          <CouponsProvider>
+                            <NotificationProvider>
+                              <App />
+                            </NotificationProvider>
+                          </CouponsProvider>
                         </SupportProvider>
                       </AddressProvider>
                     </LocationProvider>
