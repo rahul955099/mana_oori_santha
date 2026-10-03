@@ -39,6 +39,9 @@ export const env = {
     pass: process.env.SMTP_PASS?.trim() ?? "",
     from: process.env.MAIL_FROM?.trim() ?? "",
   },
+  /** Brevo transactional API key ("xkeysib-..."). When set, email goes over HTTPS
+   * instead of SMTP, which works on hosts that block SMTP ports. */
+  brevoApiKey: process.env.BREVO_API_KEY?.trim() ?? "",
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME?.trim() ?? "",
     apiKey: process.env.CLOUDINARY_API_KEY?.trim() ?? "",

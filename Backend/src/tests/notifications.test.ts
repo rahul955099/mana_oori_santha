@@ -2,7 +2,8 @@ import { api, rawGet, startTestServer, stopTestServer } from "./setup";
 import { after, before, beforeEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { seedCatalog } from "../seed/seed";
-import { testOutbox, isReservedTestAddress } from "../services/mail.service";
+import { testOutbox, isReservedTestAddress, parseAddress, mailTransport, brevoPayload } from "../services/mail.service";
+import { env } from "../config/env";
 
 const ADMIN = { email: "admin@test.local", password: "admin-pass-123" };
 const SELLER_PASSWORD = "seller-pass-123";
@@ -190,5 +191,30 @@ describe("misc", () => {
     const robots = await rawGet("/../robots.txt");
     assert.match(robots.text, /Disallow: \/admin/);
     assert.match(robots.text, /Sitemap: .*\/sitemap\.xml/);
+  });
+});
+
+describe("Brevo API email", () => {
+  it("parses sender addresses in either form", () => {
+    assert.deepEqual(parseAddress("Mana Oori Santha <shop@mail.in>"), { name: "Mana Oori Santha", email: "shop@mail.in" });
+    assert.deepEqual(parseAddress("shop@mail.in"), { email: "shop@mail.in" });
+    assert.deepEqual(parseAddress('"Mana Oori Santha" <shop@mail.in>'), { name: "Mana Oori Santha", email: "shop@mail.in" });
+  });
+
+  it("prefers the HTTPS API when a Brevo key is set", () => {
+    const saved = { ...env.smtp, key: env.brevoApiKey };
+    env.smtp.from = "Mana Oori Santha <shop@mail.in>";
+    env.brevoApiKey = "";
+    env.smtp.host = "smtp.example";
+    env.smtp.user = "u";
+    env.smtp.pass = "p";
+    assert.equal(mailTransport(), "smtp");
+    env.brevoApiKey = "xkeysib-test";
+    assert.equal(mailTransport(), "brevo-api");
+    const body = brevoPayload({ to: "a@mail.in", subject: "Hi", html: "<p>Hi</p>", text: "Hi" });
+    assert.deepEqual(body.sender, { name: "Mana Oori Santha", email: "shop@mail.in" });
+    assert.deepEqual(body.to, [{ email: "a@mail.in" }]);
+    Object.assign(env.smtp, { host: saved.host, user: saved.user, pass: saved.pass, from: saved.from });
+    env.brevoApiKey = saved.key;
   });
 });

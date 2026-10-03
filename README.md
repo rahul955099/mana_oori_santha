@@ -61,7 +61,8 @@ paste its values anywhere public** — it holds passwords and keys.
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | Your admin login, created by `npm run seed` |
 | `SEED_SELLER_PASSWORD` | Password for the sample seller accounts |
 | `CLOUDINARY_*` | Image uploads (Cloudinary → Settings → API Keys) |
-| `SMTP_*`, `MAIL_FROM` | Email (Brevo → SMTP & API). Test with `npm run mail:test -- you@example.com` |
+| `BREVO_API_KEY`, `MAIL_FROM` | Email through Brevo's web API (Brevo → SMTP & API → API Keys). **Required on Render**, whose free plan blocks SMTP |
+| `SMTP_*` | Email over SMTP instead (works on your computer). Test with `npm run mail:test -- you@example.com`, or **Admin → Notifications → Email Check** on the live site |
 | `DELIVERY_CHARGE`, `FREE_DELIVERY_ABOVE`, `RETURN_WINDOW_DAYS`, `SERVICEABLE_PINCODE_PREFIXES`, `PLATFORM_COMMISSION_PERCENT` | Shop rules (optional) |
 
 Website settings (`frontend/.env`, see `frontend/.env.example`): `VITE_API_URL` (the API address),
@@ -100,8 +101,9 @@ Push this branch to GitHub first. Then:
 2. **New → Blueprint** → choose this repository. Render reads [`render.yaml`](render.yaml) and creates
    the `mana-oori-santha-api` service (region Singapore, the closest to India).
 3. It asks for the secret settings: `MONGODB_URI`, `CLIENT_URL` (fill in after the website is
-   deployed; use `http://localhost:5173` for now), `CLOUDINARY_*`, `SMTP_USER`, `SMTP_PASS`,
-   `MAIL_FROM` — the same values as your `.env`. `JWT_SECRET` is generated automatically.
+   deployed; use `http://localhost:5173` for now), `CLOUDINARY_*`, `BREVO_API_KEY`, `MAIL_FROM`
+   (and optionally `SMTP_USER`, `SMTP_PASS`) — the same values as your `.env`. `JWT_SECRET` is
+   generated automatically. Render's free plan blocks SMTP, so `BREVO_API_KEY` is what makes email work.
 4. When it's live, open `https://<your-api>.onrender.com/api/health` — it should say the API is running.
 
 The free plan sleeps after 15 minutes without visitors; the next visit then waits about 50 seconds.

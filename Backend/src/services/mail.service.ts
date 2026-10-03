@@ -11,12 +11,55 @@ export interface MailMessage {
 /** Emails "sent" while running tests, so tests can read reset links etc. */
 export const testOutbox: MailMessage[] = [];
 
-let transporter: Transporter | null = null;
+/** How mail leaves the server. Brevo's HTTPS API is preferred when its key is
+ * set, because many hosts (including Render's free plan) block SMTP ports. */
+export function mailTransport(): "brevo-api" | "smtp" | null {
+  if (!env.smtp.from) return null;
+  if (env.brevoApiKey) return "brevo-api";
+  const s = env.smtp;
+  return s.host && s.user && s.pass ? "smtp" : null;
+}
 
 export function mailConfigured(): boolean {
-  const s = env.smtp;
-  return Boolean(s.host && s.user && s.pass && s.from);
+  return mailTransport() !== null;
 }
+
+/** "Mana Oori Santha <shop@x.in>" → { name, email }; a bare address works too. */
+export function parseAddress(value: string): { name?: string; email: string } {
+  const match = value.match(/^\s*"?([^"<]*?)"?\s*<\s*([^>\s]+)\s*>\s*$/);
+  if (match) return match[1] ? { name: match[1].trim(), email: match[2] } : { email: match[2] };
+  return { email: value.trim() };
+}
+
+/** The request body Brevo's transactional email API expects. */
+export function brevoPayload(message: MailMessage) {
+  return {
+    sender: parseAddress(env.smtp.from),
+    to: [{ email: message.to }],
+    subject: message.subject,
+    htmlContent: message.html,
+    textContent: message.text,
+  };
+}
+
+const BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email";
+
+/** Sends via Brevo's API. Throws with Brevo's own error message on failure. */
+async function sendViaBrevo(message: MailMessage): Promise<string> {
+  const res = await fetch(BREVO_SEND_URL, {
+    method: "POST",
+    headers: { "api-key": env.brevoApiKey, "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(brevoPayload(message)),
+    signal: AbortSignal.timeout(15_000),
+  });
+  const body = (await res.json().catch(() => ({}))) as { messageId?: string; message?: string; code?: string };
+  if (!res.ok) {
+    throw new Error(`Brevo API ${res.status}${body.code ? ` ${body.code}` : ""}: ${body.message ?? "request failed"}`);
+  }
+  return `Brevo accepted the message${body.messageId ? ` (${body.messageId})` : ""}`;
+}
+
+let transporter: Transporter | null = null;
 
 function getTransporter(): Transporter {
   transporter ??= nodemailer.createTransport({
@@ -24,8 +67,15 @@ function getTransporter(): Transporter {
     port: env.smtp.port,
     secure: env.smtp.port === 465,
     auth: { user: env.smtp.user, pass: env.smtp.pass },
+    connectionTimeout: 15_000,
   });
   return transporter;
+}
+
+async function deliver(message: MailMessage): Promise<string> {
+  if (mailTransport() === "brevo-api") return sendViaBrevo(message);
+  const info = await getTransporter().sendMail({ from: env.smtp.from, ...message });
+  return String(info.response ?? "sent");
 }
 
 /** Addresses that can never receive mail (RFC 2606 / 6761), such as the
@@ -52,7 +102,7 @@ export async function sendMail(message: MailMessage): Promise<void> {
     return;
   }
   try {
-    await getTransporter().sendMail({ from: env.smtp.from, ...message });
+    await deliver(message);
   } catch (err) {
     console.error(`Email to ${message.to} failed:`, err instanceof Error ? err.message : err);
   }
@@ -63,40 +113,43 @@ export function sendMailInBackground(message: MailMessage): void {
   void sendMail(message);
 }
 
-/** Admin troubleshooting: checks the SMTP login and sends one test message,
- * reporting the provider's actual answer instead of swallowing errors.
- * Never returns the password. */
+/** Admin troubleshooting: sends one test message and reports the provider's
+ * actual answer instead of swallowing errors. Never returns secrets. */
 export async function diagnoseMail(to: string) {
+  const transport = mailTransport();
   const report = {
-    configured: mailConfigured(),
-    host: env.smtp.host || null,
-    port: env.smtp.port,
+    configured: transport !== null,
+    transport,
+    host: transport === "brevo-api" ? "api.brevo.com (HTTPS)" : env.smtp.host || null,
+    port: transport === "brevo-api" ? 443 : env.smtp.port,
     from: env.smtp.from || null,
-    userSet: Boolean(env.smtp.user),
-    passwordSet: Boolean(env.smtp.pass),
+    userSet: transport === "brevo-api" ? true : Boolean(env.smtp.user),
+    passwordSet: transport === "brevo-api" ? Boolean(env.brevoApiKey) : Boolean(env.smtp.pass),
     loginOk: false,
     sent: false,
     providerResponse: null as string | null,
     error: null as string | null,
   };
-  if (!report.configured) {
-    report.error = "Email isn't set up on this server: SMTP_HOST, SMTP_USER, SMTP_PASS and MAIL_FROM must all be set.";
+  if (!transport) {
+    report.error = "Email isn't set up on this server: set MAIL_FROM plus either BREVO_API_KEY or SMTP_HOST, SMTP_USER and SMTP_PASS.";
     return report;
   }
   try {
-    await getTransporter().verify();
+    if (transport === "smtp") await getTransporter().verify();
     report.loginOk = true;
-    const info = await getTransporter().sendMail({
-      from: env.smtp.from,
+    report.providerResponse = await deliver({
       to,
       subject: "Mana Oori Santha: email check",
       text: "This is a test from the admin panel's email check. If you can read this, email works.",
+      html: "<p>This is a test from the admin panel's email check. If you can read this, email works.</p>",
     });
     report.sent = true;
-    report.providerResponse = String(info.response ?? "");
   } catch (err) {
     const e = err as { message?: string; response?: string; code?: string };
     report.error = [e.code, e.response ?? e.message].filter(Boolean).join(": ");
+    if (transport === "smtp" && e.code === "ETIMEDOUT") {
+      report.error += " — this host blocks SMTP. Set BREVO_API_KEY to send through Brevo's web API instead.";
+    }
   }
   return report;
 }
