@@ -21,8 +21,14 @@ import seoRoutes from "./routes/seo.routes";
 
 const app = express();
 
+// Hosting platforms put a proxy in front of the app; trust it so rate limits
+// see each visitor's real address instead of the proxy's.
+if (env.nodeEnv === "production") {
+  app.set("trust proxy", 1);
+}
+
 app.use(helmet());
-app.use(cors({ origin: env.clientUrl, credentials: true }));
+app.use(cors({ origin: env.corsOrigins, credentials: true }));
 // Images go straight from the browser to Cloudinary, so request bodies stay small.
 app.use(express.json({ limit: "200kb" }));
 if (env.nodeEnv !== "test") {

@@ -1,0 +1,44 @@
+# Render Blueprint for the backend API (render.com → New → Blueprint → pick this repo).
+# Secrets marked "sync: false" are typed into the Render dashboard, never committed.
+services:
+  - type: web
+    name: mana-oori-santha-api
+    runtime: node
+    region: singapore # closest Render region to India
+    plan: free # free sleeps after 15 min idle (first visit then takes ~50s); "starter" stays awake
+    rootDir: Backend
+    # TypeScript is a dev dependency, so include dev deps for the build.
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGOMS_DISABLE_POSTINSTALL # skip the test-only MongoDB download during builds
+        value: "1"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: MONGODB_URI
+        sync: false
+      - key: CLIENT_URL # the website address(es), comma-separated, e.g. https://manaoorisantha.vercel.app
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: SMTP_HOST
+        value: smtp-relay.brevo.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: PLATFORM_COMMISSION_PERCENT
+        value: "5"
