@@ -4,7 +4,7 @@
  * email and updated in place.
  *
  *   npm run seed            # create or update sample data
- *   npm run seed -- --reset # first remove all products, sellers, categories
+ *   npm run seed -- --reset # first remove all products, sellers, categories, coupons
  *                           # and the sample seller accounts
  *
  * Requires SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD and SEED_SELLER_PASSWORD in
@@ -19,6 +19,8 @@ import { Category } from "../models/Category";
 import { categories, futureCategories } from "./data/categories";
 import { sellers } from "./data/sellers";
 import { products } from "./data/products";
+import { coupons } from "./data/coupons";
+import { Coupon } from "../models/Coupon";
 
 function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
@@ -35,9 +37,10 @@ export async function seedCatalog(options: { reset: boolean; adminEmail: string;
       Product.deleteMany({}),
       Seller.deleteMany({}),
       Category.deleteMany({}),
+      Coupon.deleteMany({}),
       User.deleteMany({ role: "seller", email: { $in: sellerEmails } }),
     ]);
-    console.log("Reset: removed products, sellers, categories and sample seller accounts");
+    console.log("Reset: removed products, sellers, categories, coupons and sample seller accounts");
   }
 
   const allCategories = [
@@ -135,6 +138,12 @@ export async function seedCatalog(options: { reset: boolean; adminEmail: string;
     );
   }
   console.log(`Products: ${products.length}`);
+
+  // Only create missing coupons, so admin edits to them are never overwritten.
+  for (const c of coupons) {
+    await Coupon.updateOne({ code: c.code }, { $setOnInsert: { ...c, active: true } }, { upsert: true });
+  }
+  console.log(`Coupons: ${coupons.length}`);
 }
 
 async function main() {

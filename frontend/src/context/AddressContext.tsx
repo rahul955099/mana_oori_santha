@@ -1,68 +1,76 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Address } from "@/types";
+import { useAuth } from "@/context/AuthContext";
+import { api } from "@/lib/api";
+
+export type AddressInput = Omit<Address, "id" | "isDefault">;
 
 interface AddressContextValue {
+  /** The logged-in customer's address book (empty for guests). */
   addresses: Address[];
-  addAddress: (address: Omit<Address, "id" | "isDefault">) => void;
-  updateAddress: (id: string, updates: Partial<Omit<Address, "id">>) => void;
-  deleteAddress: (id: string) => void;
-  setDefaultAddress: (id: string) => void;
+  loading: boolean;
+  addAddress: (address: AddressInput) => Promise<void>;
+  updateAddress: (id: string, updates: Partial<AddressInput>) => Promise<void>;
+  deleteAddress: (id: string) => Promise<void>;
+  setDefaultAddress: (id: string) => Promise<void>;
   defaultAddress: Address | undefined;
 }
 
 const AddressContext = createContext<AddressContextValue | undefined>(undefined);
-const STORAGE_KEY = "mos_addresses";
+
+type AddressesResponse = { addresses: Address[] };
 
 export function AddressProvider({ children }: { children: ReactNode }) {
-  const [addresses, setAddresses] = useState<Address[]>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as Address[]) : [];
-    } catch {
-      return [];
-    }
-  });
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(addresses));
-  }, [addresses]);
+    // Old demo builds kept addresses in the browser; the account is the source now.
+    try {
+      localStorage.removeItem("mos_addresses");
+    } catch {
+      // ignore
+    }
+    if (!userId) {
+      setAddresses([]);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    api
+      .get<AddressesResponse>("/addresses")
+      .then((data) => !cancelled && setAddresses(data.addresses))
+      .catch(() => undefined)
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
-  function addAddress(address: Omit<Address, "id" | "isDefault">) {
-    setAddresses((prev) => {
-      const newAddress: Address = {
-        ...address,
-        id: `addr-${Date.now()}`,
-        // The very first saved address automatically becomes the default.
-        isDefault: prev.length === 0,
-      };
-      return [...prev, newAddress];
-    });
+  // Every mutation returns the full, updated address book.
+  async function addAddress(address: AddressInput) {
+    setAddresses((await api.post<AddressesResponse>("/addresses", address)).addresses);
   }
 
-  function updateAddress(id: string, updates: Partial<Omit<Address, "id">>) {
-    setAddresses((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates } : a)));
+  async function updateAddress(id: string, updates: Partial<AddressInput>) {
+    setAddresses((await api.patch<AddressesResponse>(`/addresses/${id}`, updates)).addresses);
   }
 
-  function deleteAddress(id: string) {
-    setAddresses((prev) => {
-      const next = prev.filter((a) => a.id !== id);
-      const removedWasDefault = prev.find((a) => a.id === id)?.isDefault;
-      if (removedWasDefault && next.length > 0) {
-        next[0] = { ...next[0], isDefault: true };
-      }
-      return next;
-    });
+  async function deleteAddress(id: string) {
+    setAddresses((await api.delete<AddressesResponse>(`/addresses/${id}`)).addresses);
   }
 
-  function setDefaultAddress(id: string) {
-    setAddresses((prev) => prev.map((a) => ({ ...a, isDefault: a.id === id })));
+  async function setDefaultAddress(id: string) {
+    setAddresses((await api.post<AddressesResponse>(`/addresses/${id}/default`)).addresses);
   }
 
   const defaultAddress = addresses.find((a) => a.isDefault);
 
   return (
     <AddressContext.Provider
-      value={{ addresses, addAddress, updateAddress, deleteAddress, setDefaultAddress, defaultAddress }}
+      value={{ addresses, loading, addAddress, updateAddress, deleteAddress, setDefaultAddress, defaultAddress }}
     >
       {children}
     </AddressContext.Provider>

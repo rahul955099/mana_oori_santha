@@ -14,7 +14,9 @@ export default function AdminDashboard() {
   const { orders } = useOrders();
   const { requests } = useSupport();
   const { sellers } = useSellers();
-  const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
+  const totalRevenue = orders
+    .filter((o) => o.status !== "cancelled" && o.status !== "returned")
+    .reduce((sum, o) => sum + o.total, 0);
   const pendingOrders = orders.filter((o) => o.status === "pending").length;
   const deliveredOrders = orders.filter((o) => o.status === "delivered").length;
   const openSupportRequests = requests.filter((r) => r.status !== "resolved").length;

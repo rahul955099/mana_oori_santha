@@ -1,28 +1,26 @@
 import { IndianRupee, TrendingUp, Wallet, Clock } from "lucide-react";
 import { StatCard } from "@/components/common/StatCard";
 import { useOrders } from "@/context/OrdersContext";
-import { useProducts } from "@/context/ProductsContext";
 import { formatCurrency, formatDate } from "@/utils/format";
 import { useAuth } from "@/context/AuthContext";
 
 export default function SellerEarnings() {
   const sellerId = useAuth().user?.sellerId;
   const { orders } = useOrders();
-  const { products } = useProducts();
 
-  const myProducts = products.filter((p) => p.sellerId === sellerId);
-  const myProductIds = new Set(myProducts.map((p) => p.id));
 
-  const relevantOrders = orders.filter((o) => o.items.some((i) => myProductIds.has(i.productId)));
+  // Cancelled and returned orders earn nothing. The API returns only this seller's items.
+  const relevantOrders = orders.filter((o) => o.status !== "cancelled" && o.status !== "returned");
+  const isMine = (i: { sellerId: string }) => i.sellerId === sellerId;
 
   const totalEarnings = relevantOrders.reduce(
-    (sum, o) => sum + o.items.filter((i) => myProductIds.has(i.productId)).reduce((s, i) => s + i.price * i.quantity, 0),
+    (sum, o) => sum + o.items.filter(isMine).reduce((s, i) => s + i.price * i.quantity, 0),
     0
   );
 
   const delivered = relevantOrders.filter((o) => o.status === "delivered");
   const settledEarnings = delivered.reduce(
-    (sum, o) => sum + o.items.filter((i) => myProductIds.has(i.productId)).reduce((s, i) => s + i.price * i.quantity, 0),
+    (sum, o) => sum + o.items.filter(isMine).reduce((s, i) => s + i.price * i.quantity, 0),
     0
   );
   const pendingEarnings = totalEarnings - settledEarnings;
@@ -58,7 +56,7 @@ export default function SellerEarnings() {
               <tbody>
                 {relevantOrders.map((order) => {
                   const amount = order.items
-                    .filter((i) => myProductIds.has(i.productId))
+                    .filter(isMine)
                     .reduce((s, i) => s + i.price * i.quantity, 0);
                   return (
                     <tr key={order.id} className="border-b border-stone-50">

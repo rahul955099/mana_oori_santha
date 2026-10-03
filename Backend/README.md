@@ -16,7 +16,7 @@ database, seeded with the sample catalog, and prints test logins. Data resets on
 
 `npm test` runs the API tests against an in-memory database.
 
-## Endpoints (Phase 1)
+## Endpoints
 
 | Method | Path | Who |
 |---|---|---|
@@ -33,5 +33,30 @@ database, seeded with the sample catalog, and prints test logins. Data resets on
 | GET | `/api/sellers`, `/api/sellers/:id` | public |
 | GET / PATCH | `/api/sellers/me` | seller |
 | PATCH / DELETE | `/api/sellers/:id` | admin (verify badge, remove seller) |
+| GET / PUT | `/api/cart` | logged in — PUT replaces the whole cart `{ items, couponCode }` |
+| GET / PUT | `/api/wishlist` | logged in — PUT replaces `{ productIds }` |
+| GET / POST | `/api/addresses` | logged in — address book; first address becomes the default |
+| PATCH / DELETE | `/api/addresses/:id` | logged in |
+| POST | `/api/addresses/:id/default` | logged in |
+| GET | `/api/coupons` | public — active offers (`?all=true` for admins) |
+| POST / PATCH / DELETE | `/api/coupons/:id` | admin |
+| POST | `/api/orders/quote` | public — server price breakdown `{ items, couponCode }` → totals, coupon result, stock problems |
+| POST | `/api/orders` | logged in — places a cash-on-delivery order |
+| GET | `/api/orders/mine` | logged in — orders I placed |
+| GET | `/api/orders/seller` | seller — orders containing my products (other sellers' items hidden) |
+| GET | `/api/orders` | admin — all orders (`?status=`, `?search=`) |
+| GET | `/api/orders/:orderNumber` | buyer, involved seller, or admin |
+| PATCH | `/api/orders/:orderNumber/status` | see order rules below |
 
 Deleting products, sellers or accounts is a soft delete (`isActive: false`), so order history stays intact.
+
+## Order rules
+
+- Prices, discounts and delivery are always calculated on the server; the client only sends product ids and quantities.
+- Stock is reserved atomically when an order is placed, so the last unit can't be sold twice. Cancelling returns the stock.
+- Delivery is ₹40 below ₹500 and free above (configurable in `.env`).
+- Status flow: `pending → confirmed → packed → out-for-delivery → delivered`, plus `cancelled` and `return-requested → returned`.
+  - Customers can cancel while `pending`/`confirmed` and request a return within 7 days of delivery.
+  - A seller can move an order through fulfilment (or cancel it) when every item in it is theirs; mixed-seller orders are handled by an admin.
+  - Admins can make any valid move, including approving or rejecting returns.
+- Payment is cash on delivery: marked `paid` on delivery and `refunded` when a return is approved.

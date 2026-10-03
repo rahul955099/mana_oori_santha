@@ -1,4 +1,4 @@
-import type { OrderStatus } from "@/types";
+import type { Order, OrderStatus, UserRole } from "@/types";
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   pending: "Order Placed",
@@ -51,4 +51,41 @@ export function getTrackingStepIndex(status: OrderStatus): number {
 
 export function isTerminalOffPathStatus(status: OrderStatus): boolean {
   return status === "cancelled" || status === "return-requested" || status === "returned";
+}
+
+/** Allowed next statuses — mirrors the backend's rules in order.service.ts. */
+const FLOW: Record<OrderStatus, OrderStatus[]> = {
+  pending: ["confirmed", "cancelled"],
+  confirmed: ["packed", "cancelled"],
+  packed: ["out-for-delivery", "cancelled"],
+  "out-for-delivery": ["delivered"],
+  delivered: ["return-requested"],
+  "return-requested": ["returned", "delivered"],
+  returned: [],
+  cancelled: [],
+};
+
+/** Statuses an admin or seller can move an order to from the management screens.
+ * Sellers can't approve returns; return requests come from customers. */
+export function managementNextStatuses(order: Order, role: UserRole): OrderStatus[] {
+  const next = FLOW[order.status].filter((s) => s !== "return-requested");
+  if (role === "admin") return next;
+  if (role === "seller" && !order.partial) return next.filter((s) => s !== "returned" && order.status !== "return-requested");
+  return [];
+}
+
+/** Label for moving back from "return-requested" to "delivered". */
+export function transitionLabel(from: OrderStatus, to: OrderStatus): string {
+  if (from === "return-requested" && to === "delivered") return "Reject Return";
+  if (to === "returned") return "Approve Return";
+  if (to === "cancelled") return "Cancel Order";
+  return `Mark ${ORDER_STATUS_LABELS[to]}`;
+}
+
+export function canCustomerCancel(order: Order): boolean {
+  return order.status === "pending" || order.status === "confirmed";
+}
+
+export function canCustomerReturn(order: Order): boolean {
+  return order.status === "delivered" && !!order.returnDeadline && new Date(order.returnDeadline) > new Date();
 }

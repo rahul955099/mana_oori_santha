@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useAddresses } from "@/context/AddressContext";
+import { errorMessage } from "@/lib/api";
 import { useSupport } from "@/context/SupportContext";
 import { useReviews } from "@/context/ReviewsContext";
 import { useProducts } from "@/context/ProductsContext";
@@ -87,11 +88,23 @@ export default function Profile() {
     setAddressModalOpen(true);
   }
 
-  function confirmDeleteAddress() {
-    if (deleteAddressTarget) {
-      deleteAddress(deleteAddressTarget.id);
+  async function confirmDeleteAddress() {
+    if (!deleteAddressTarget) return;
+    try {
+      await deleteAddress(deleteAddressTarget.id);
       showToast("Address removed.");
+    } catch (err) {
+      showToast(errorMessage(err), "error");
+    } finally {
       setDeleteAddressTarget(null);
+    }
+  }
+
+  async function makeDefault(id: string) {
+    try {
+      await setDefaultAddress(id);
+    } catch (err) {
+      showToast(errorMessage(err), "error");
     }
   }
 
@@ -217,7 +230,7 @@ export default function Profile() {
                     Delete
                   </button>
                   {!address.isDefault && (
-                    <button onClick={() => setDefaultAddress(address.id)} className="rounded-full border border-primary-300 px-3 py-1 text-[11px] font-bold text-primary-700 hover:bg-primary-50">
+                    <button onClick={() => makeDefault(address.id)} className="rounded-full border border-primary-300 px-3 py-1 text-[11px] font-bold text-primary-700 hover:bg-primary-50">
                       Set as Default
                     </button>
                   )}

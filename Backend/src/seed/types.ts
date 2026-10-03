@@ -53,3 +53,13 @@ export interface SeedProduct {
   priceAvailable?: boolean;
   priceLabel?: string;
 }
+
+export interface SeedCoupon {
+  code: string;
+  type: "percent" | "flat";
+  value: number;
+  description: string;
+  minOrderValue?: number;
+  categoryOnly?: string;
+  usageLimitPerUser?: number;
+}

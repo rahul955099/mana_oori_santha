@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, Trash } from "lucide-react";
 import { useCart } from "@/context/CartContext";
@@ -6,19 +5,13 @@ import { useProducts } from "@/context/ProductsContext";
 import { EmptyState } from "@/components/common/EmptyState";
 import { buttonClasses } from "@/components/common/Button";
 import { CouponBox } from "@/components/checkout/CouponBox";
+import { OrderTotals } from "@/components/checkout/OrderTotals";
 import { formatCurrency } from "@/utils/format";
 
-const DELIVERY_CHARGE = 40;
-const FREE_DELIVERY_THRESHOLD = 500;
-
 export default function Cart() {
-  const { items, updateQuantity, removeFromCart, clearCart, subtotal, couponCode } = useCart();
+  const { items, updateQuantity, removeFromCart, clearCart, quote } = useCart();
   const { getProductById } = useProducts();
   const navigate = useNavigate();
-  const [discount, setDiscount] = useState(0);
-
-  const deliveryCharge = subtotal >= FREE_DELIVERY_THRESHOLD || subtotal === 0 ? 0 : DELIVERY_CHARGE;
-  const total = Math.max(0, subtotal - discount) + deliveryCharge;
 
   if (items.length === 0) {
     return (
@@ -101,39 +94,14 @@ export default function Cart() {
         </div>
 
         <div className="h-fit space-y-4">
-          <CouponBox onDiscountChange={setDiscount} />
+          <CouponBox />
 
           <div className="rounded-2xl border border-stone-200 bg-white p-6">
             <h2 className="mb-4 text-lg font-bold text-stone-900">Order Summary</h2>
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between text-stone-600">
-                <span>Subtotal</span>
-                <span className="font-semibold text-stone-900">{formatCurrency(subtotal)}</span>
-              </div>
-              {discount > 0 && (
-                <div className="flex justify-between text-primary-700">
-                  <span>Coupon Discount {couponCode ? `(${couponCode})` : ""}</span>
-                  <span className="font-semibold">-{formatCurrency(discount)}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-stone-600">
-                <span>Delivery Charge</span>
-                <span className={`font-semibold ${deliveryCharge === 0 ? "text-primary-600" : "text-stone-900"}`}>
-                  {deliveryCharge === 0 ? "FREE" : formatCurrency(deliveryCharge)}
-                </span>
-              </div>
-              {deliveryCharge > 0 && (
-                <p className="rounded-lg bg-accent-50 px-3 py-2 text-xs text-accent-700">
-                  Add {formatCurrency(FREE_DELIVERY_THRESHOLD - subtotal)} more for free delivery!
-                </p>
-              )}
-              <div className="flex justify-between border-t border-stone-200 pt-3 text-base font-extrabold text-stone-900">
-                <span>Total</span>
-                <span>{formatCurrency(total)}</span>
-              </div>
-            </div>
+            <OrderTotals />
             <button
               onClick={() => navigate("/checkout")}
+              disabled={!!quote?.problems.length}
               className={buttonClasses("primary", "lg", "mt-6 w-full")}
             >
               Proceed to Checkout <ArrowRight size={18} />

@@ -12,13 +12,10 @@ export default function AdminReports() {
   const { orders } = useOrders();
 
   const revenueByCategory = categories.map((cat) => {
-    const revenue = orders.reduce((sum, order) => {
+    const revenue = orders.filter((o) => o.status !== "cancelled" && o.status !== "returned").reduce((sum, order) => {
       return (
         sum +
-        order.items.reduce((s, item) => {
-          const product = products.find((p) => p.id === item.productId);
-          return product?.category === cat.slug ? s + item.price * item.quantity : s;
-        }, 0)
+        order.items.reduce((s, item) => (item.category === cat.slug ? s + item.price * item.quantity : s), 0)
       );
     }, 0);
     return { ...cat, revenue };

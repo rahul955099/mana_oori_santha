@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { Plus, Pencil, Trash2, Tag } from "lucide-react";
-import { useCoupons } from "@/context/CouponsContext";
+import { useCoupons, type CouponInput } from "@/context/CouponsContext";
+import { useToast } from "@/context/ToastContext";
+import { errorMessage } from "@/lib/api";
 import { useCategories } from "@/context/CategoriesContext";
 import { Badge } from "@/components/common/Badge";
 import { Modal } from "@/components/common/Modal";
@@ -19,11 +21,13 @@ const emptyForm = {
   active: true,
   minOrderValue: "" as number | "",
   categoryOnly: "" as string,
+  usageLimitPerUser: "" as number | "",
 };
 
 export default function AdminCoupons() {
   const { categories } = useCategories();
   const { coupons, addCoupon, updateCoupon, deleteCoupon } = useCoupons();
+  const { showToast } = useToast();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Coupon | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Coupon | null>(null);
@@ -45,32 +49,46 @@ export default function AdminCoupons() {
       active: coupon.active,
       minOrderValue: coupon.minOrderValue ?? "",
       categoryOnly: coupon.categoryOnly ?? "",
+      usageLimitPerUser: coupon.usageLimitPerUser ?? "",
     });
     setFormOpen(true);
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    // null clears an optional rule on the server when editing.
     const payload = {
       code: form.code.trim().toUpperCase(),
       type: form.type,
       value: Number(form.value),
       description: form.description.trim(),
       active: form.active,
-      minOrderValue: form.minOrderValue === "" ? undefined : Number(form.minOrderValue),
-      categoryOnly: (form.categoryOnly || undefined) as Coupon["categoryOnly"],
+      minOrderValue: form.minOrderValue === "" ? null : Number(form.minOrderValue),
+      categoryOnly: form.categoryOnly || null,
+      usageLimitPerUser: form.usageLimitPerUser === "" ? null : Number(form.usageLimitPerUser),
     };
-    if (editing) {
-      updateCoupon(editing.id, payload);
-    } else {
-      addCoupon(payload);
+    try {
+      if (editing) {
+        await updateCoupon(editing.id, payload as Partial<CouponInput>);
+        showToast(`Coupon ${payload.code} updated`);
+      } else {
+        await addCoupon(payload as CouponInput);
+        showToast(`Coupon ${payload.code} created`);
+      }
+      setFormOpen(false);
+    } catch (err) {
+      showToast(errorMessage(err), "error");
     }
-    setFormOpen(false);
   }
 
-  function confirmDelete() {
-    if (deleteTarget) {
-      deleteCoupon(deleteTarget.id);
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    try {
+      await deleteCoupon(deleteTarget.id);
+      showToast(`Coupon ${deleteTarget.code} deleted`);
+    } catch (err) {
+      showToast(errorMessage(err), "error");
+    } finally {
       setDeleteTarget(null);
     }
   }
@@ -112,7 +130,8 @@ export default function AdminCoupons() {
                     <td className="px-5 py-3 text-stone-500">
                       {c.minOrderValue ? `Min ₹${c.minOrderValue}` : ""}
                       {c.categoryOnly ? ` · ${c.categoryOnly} only` : ""}
-                      {!c.minOrderValue && !c.categoryOnly && "—"}
+                      {c.usageLimitPerUser ? ` · ${c.usageLimitPerUser}× per customer` : ""}
+                      {!c.minOrderValue && !c.categoryOnly && !c.usageLimitPerUser && "—"}
                     </td>
                     <td className="px-5 py-3">
                       <Badge tone={c.active ? "green" : "gray"}>{c.active ? "Active" : "Inactive"}</Badge>
@@ -155,6 +174,7 @@ export default function AdminCoupons() {
               ))}
             </select>
           </div>
+          <input type="number" min={1} placeholder="Uses per customer (optional, e.g. 1 for first order)" value={form.usageLimitPerUser} onChange={(e) => setForm({ ...form, usageLimitPerUser: e.target.value === "" ? "" : Number(e.target.value) })} className={inputClass} />
           <label className="flex items-center gap-2 text-sm font-semibold text-stone-700">
             <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} className="h-4 w-4 accent-primary-600" />
             Active (usable at checkout)

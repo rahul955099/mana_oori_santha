@@ -80,24 +80,47 @@ export type OrderStatus =
 
 export interface OrderItem {
   productId: string;
+  sellerId: string;
+  category: string;
   name: string;
   image: string;
+  /** Price per unit at the time of purchase. */
   price: number;
   unit: string;
   quantity: number;
 }
 
+export type PaymentStatus = "pending" | "paid" | "refunded";
+
+export interface OrderStatusChange {
+  status: OrderStatus;
+  at: string;
+  byRole: UserRole;
+  note?: string;
+}
+
 export interface Order {
+  /** Order number, e.g. "MOS-100001". */
   id: string;
   date: string;
+  createdAt: string;
   items: OrderItem[];
+  subtotal: number;
+  deliveryCharge: number;
   total: number;
   /** Discount applied via a coupon code at checkout, if any. */
-  discount?: number;
+  discount: number;
   couponCode?: string;
   status: OrderStatus;
-  paymentMethod: "cod" | "online";
-  /** Links the order back to the AuthUser who placed it, when logged in at checkout. Absent for legacy/demo orders. */
+  paymentMethod: "cod";
+  paymentStatus: PaymentStatus;
+  statusHistory: OrderStatusChange[];
+  deliveredAt?: string;
+  /** Last moment a return can be requested (set once delivered). */
+  returnDeadline?: string;
+  /** True in a seller's view of a mixed-seller order: other sellers' items are hidden. */
+  partial?: boolean;
+  /** The buyer's AuthUser.userId (e.g. "MOS-10245"). */
   userId?: string;
   customer: {
     fullName: string;
@@ -138,6 +161,7 @@ export interface Address {
   houseNo: string;
   street: string;
   city: string;
+  district?: string;
   state: string;
   pincode: string;
   landmark?: string;
@@ -241,6 +265,11 @@ export interface Coupon {
   minOrderValue?: number;
   /** Restrict the discount to items from this category only, e.g. "millets". */
   categoryOnly?: CategorySlug;
+  /** Upper limit on a percentage discount, in rupees. */
+  maxDiscount?: number;
+  /** Orders per customer, e.g. 1 for a first-order coupon. */
+  usageLimitPerUser?: number;
+  expiresAt?: string;
 }
 
 export type NotificationType =
@@ -259,4 +288,22 @@ export interface AppNotification {
   read: boolean;
   createdAt: string;
   orderId?: string;
+}
+
+/** Why a cart line can't be bought right now (from the server's quote). */
+export interface CartProblem {
+  productId: string;
+  name?: string;
+  reason: "unavailable" | "out-of-stock" | "insufficient-stock" | "no-price";
+  available?: number;
+}
+
+/** Server-calculated price breakdown for the cart. */
+export interface CartQuote {
+  subtotal: number;
+  discount: number;
+  deliveryCharge: number;
+  total: number;
+  problems: CartProblem[];
+  coupon: { code: string; valid: boolean; message: string; discount: number } | null;
 }

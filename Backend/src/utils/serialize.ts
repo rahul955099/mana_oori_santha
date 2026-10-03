@@ -1,4 +1,8 @@
-import type { UserDocument } from "../models/User";
+import type { Types } from "mongoose";
+import type { SavedAddress, UserDocument } from "../models/User";
+import type { OrderDocument } from "../models/Order";
+import type { CouponDocument } from "../models/Coupon";
+import { deliveryRules } from "../config/delivery";
 import type { SellerDocument } from "../models/Seller";
 import type { ProductDocument } from "../models/Product";
 import type { CategoryDocument } from "../models/Category";
@@ -86,5 +90,80 @@ export function toProduct(product: ProductDocument) {
     priceLabel: product.priceLabel,
     isActive: product.isActive,
     createdAt: product.createdAt.toISOString().slice(0, 10),
+  };
+}
+
+/** `order.user` may be populated with userCode; sellers pass their own
+ * seller id so they only see their items of a mixed-seller order. */
+export function toOrder(order: OrderDocument, options: { onlySellerId?: Types.ObjectId } = {}) {
+  const user = order.user as unknown as { _id?: Types.ObjectId; userCode?: string };
+  const items = options.onlySellerId
+    ? order.items.filter((i) => i.seller.equals(options.onlySellerId!))
+    : order.items;
+  const returnDeadline = order.deliveredAt
+    ? new Date(order.deliveredAt.getTime() + deliveryRules.returnWindowDays * 24 * 60 * 60 * 1000)
+    : undefined;
+  return {
+    id: order.orderNumber,
+    date: order.createdAt.toISOString().slice(0, 10),
+    createdAt: order.createdAt,
+    items: items.map((i) => ({
+      productId: i.product.toString(),
+      sellerId: i.seller.toString(),
+      name: i.name,
+      image: i.image,
+      unit: i.unit,
+      category: i.category,
+      price: i.price,
+      quantity: i.quantity,
+    })),
+    subtotal: order.subtotal,
+    discount: order.discount,
+    deliveryCharge: order.deliveryCharge,
+    total: order.total,
+    couponCode: order.couponCode,
+    status: order.status,
+    paymentMethod: order.paymentMethod,
+    paymentStatus: order.paymentStatus,
+    userId: user?.userCode,
+    customer: order.shippingAddress,
+    statusHistory: order.statusHistory.map((h) => ({ status: h.status, at: h.at, byRole: h.byRole, note: h.note })),
+    deliveredAt: order.deliveredAt,
+    returnDeadline,
+    /** True when the seller view hides other sellers' items. */
+    partial: items.length !== order.items.length,
+  };
+}
+
+export function toCoupon(coupon: CouponDocument) {
+  return {
+    id: coupon._id.toString(),
+    code: coupon.code,
+    type: coupon.type,
+    value: coupon.value,
+    description: coupon.description,
+    active: coupon.active,
+    minOrderValue: coupon.minOrderValue,
+    maxDiscount: coupon.maxDiscount,
+    categoryOnly: coupon.categoryOnly,
+    usageLimitPerUser: coupon.usageLimitPerUser,
+    expiresAt: coupon.expiresAt,
+  };
+}
+
+export function toAddress(a: SavedAddress) {
+  return {
+    id: a._id.toString(),
+    type: a.type,
+    fullName: a.fullName,
+    phone: a.phone,
+    houseNo: a.houseNo,
+    street: a.street,
+    city: a.city,
+    district: a.district,
+    state: a.state,
+    pincode: a.pincode,
+    landmark: a.landmark,
+    isDefault: a.isDefault,
   };
 }

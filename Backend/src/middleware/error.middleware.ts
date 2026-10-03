@@ -8,7 +8,17 @@ export function notFoundHandler(req: Request, res: Response) {
 
 export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
   if (err instanceof AppError) {
-    return res.status(err.statusCode).json({ success: false, message: err.message, error: err.code });
+    return res.status(err.statusCode).json({
+      success: false,
+      message: err.message,
+      error: err.code,
+      ...(err.details !== undefined ? { details: err.details } : {}),
+    });
+  }
+
+  // Body larger than express.json's limit.
+  if ((err as { type?: string }).type === "entity.too.large") {
+    return res.status(413).json({ success: false, message: "The request is too large.", error: "PAYLOAD_TOO_LARGE" });
   }
 
   const message = err instanceof Error ? err.message : "Unexpected error";

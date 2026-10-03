@@ -14,10 +14,12 @@ export default function SellerDashboard() {
   const { orders } = useOrders();
 
   const myProducts = products.filter((p) => p.sellerId === sellerId);
-  const myProductIds = new Set(myProducts.map((p) => p.id));
-  const myOrders = orders.filter((o) => o.items.some((i) => myProductIds.has(i.productId)));
-  const totalSales = myOrders.reduce(
-    (sum, o) => sum + o.items.filter((i) => myProductIds.has(i.productId)).reduce((s, i) => s + i.price * i.quantity, 0),
+  // Orders from the API already contain only this seller's items.
+  const myOrders = orders;
+  const totalSales = myOrders
+    .filter((o) => o.status !== "cancelled" && o.status !== "returned")
+    .reduce(
+    (sum, o) => sum + o.items.filter((i) => i.sellerId === sellerId).reduce((s, i) => s + i.price * i.quantity, 0),
     0
   );
   const pendingOrders = myOrders.filter((o) => o.status === "pending" || o.status === "confirmed").length;

@@ -21,6 +21,7 @@ import HelpCenter from "@/pages/HelpCenter";
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
 import NotFound from "@/pages/NotFound";
+import Invoice from "@/pages/Invoice";
 
 import SellerDashboard from "@/pages/seller/Dashboard";
 import SellerMyProducts from "@/pages/seller/MyProducts";
@@ -69,7 +70,14 @@ function App() {
               </RequireAuth>
             }
           />
-          <Route path="checkout" element={<Checkout />} />
+          <Route
+            path="checkout"
+            element={
+              <RequireAuth>
+                <Checkout />
+              </RequireAuth>
+            }
+          />
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
           <Route
@@ -130,6 +138,16 @@ function App() {
           <Route path="notifications" element={<AdminNotifications />} />
           <Route path="reports" element={<AdminReports />} />
         </Route>
+
+        {/* Standalone (no header/footer) so it prints cleanly. */}
+        <Route
+          path="orders/:id/invoice"
+          element={
+            <RequireAuth>
+              <Invoice />
+            </RequireAuth>
+          }
+        />
 
         <Route path="*" element={<NotFound />} />
       </Routes>

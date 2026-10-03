@@ -21,7 +21,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
 
 export function ProductReviews({ productId }: { productId: string }) {
   const { user } = useAuth();
-  const { orders } = useOrders();
+  const { myOrders } = useOrders();
   const { getReviewsForProduct, getAverageRating, getUserReviewForProduct, submitReview, deleteReview } = useReviews();
   const { showToast } = useToast();
 
@@ -29,9 +29,8 @@ export function ProductReviews({ productId }: { productId: string }) {
   const { average, count } = getAverageRating(productId);
   const myReview = user ? getUserReviewForProduct(productId, user.userId) : undefined;
   const hasPurchased = user
-    ? orders.some(
+    ? myOrders.some(
         (o) =>
-          o.userId === user.userId &&
           o.status !== "cancelled" &&
           o.status !== "returned" &&
           o.items.some((i) => i.productId === productId),

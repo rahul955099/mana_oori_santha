@@ -11,6 +11,22 @@ export interface UserAddress {
   pincode?: string;
 }
 
+/** A saved delivery address in the customer's address book. */
+export interface SavedAddress {
+  _id: Types.ObjectId;
+  type: "home" | "work" | "other";
+  fullName: string;
+  phone: string;
+  houseNo: string;
+  street: string;
+  city: string;
+  district?: string;
+  state: string;
+  pincode: string;
+  landmark?: string;
+  isDefault: boolean;
+}
+
 export interface UserDocument extends Document {
   _id: Types.ObjectId;
   /** Human-facing account ID shown in the UI, e.g. "MOS-10245". */
@@ -21,6 +37,8 @@ export interface UserDocument extends Document {
   password: string;
   role: UserRole;
   address?: UserAddress;
+  addresses: Types.DocumentArray<SavedAddress>;
+  wishlist: Types.ObjectId[];
   profileImage?: string;
   isActive: boolean;
   createdAt: Date;
@@ -38,6 +56,20 @@ const addressSchema = new Schema<UserAddress>(
   { _id: false }
 );
 
+const savedAddressSchema = new Schema<SavedAddress>({
+  type: { type: String, enum: ["home", "work", "other"], default: "home" },
+  fullName: { type: String, required: true, trim: true },
+  phone: { type: String, required: true, trim: true },
+  houseNo: { type: String, required: true, trim: true },
+  street: { type: String, required: true, trim: true },
+  city: { type: String, required: true, trim: true },
+  district: { type: String, trim: true },
+  state: { type: String, required: true, trim: true },
+  pincode: { type: String, required: true, trim: true },
+  landmark: { type: String, trim: true },
+  isDefault: { type: Boolean, default: false },
+});
+
 const userSchema = new Schema<UserDocument>(
   {
     userCode: { type: String, unique: true },
@@ -47,6 +79,8 @@ const userSchema = new Schema<UserDocument>(
     password: { type: String, required: true, select: false },
     role: { type: String, enum: ["customer", "seller", "admin"], default: "customer" },
     address: { type: addressSchema, default: undefined },
+    addresses: { type: [savedAddressSchema], default: [] },
+    wishlist: { type: [{ type: Schema.Types.ObjectId, ref: "Product" }], default: [] },
     profileImage: { type: String },
     isActive: { type: Boolean, default: true },
   },

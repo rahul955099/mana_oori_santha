@@ -9,6 +9,8 @@ import authRoutes from "./routes/auth.routes";
 import categoryRoutes from "./routes/category.routes";
 import productRoutes from "./routes/product.routes";
 import sellerRoutes from "./routes/seller.routes";
+import orderRoutes from "./routes/order.routes";
+import shoppingRoutes from "./routes/shopping.routes";
 
 const app = express();
 
@@ -36,8 +38,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/sellers", sellerRoutes);
-
-// Further feature routes are mounted here in later phases (cart, orders, etc.)
+app.use("/api/orders", orderRoutes);
+// /api/cart, /api/wishlist, /api/addresses, /api/coupons
+app.use("/api", shoppingRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
