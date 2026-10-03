@@ -7,17 +7,21 @@ import { Logo } from "@/components/common/Logo";
 import { buttonClasses } from "@/components/common/Button";
 
 export default function Login() {
-  const [identifier, setIdentifier] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const { login } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const result = login(identifier, password);
+    setError("");
+    setSubmitting(true);
+    const result = await login(email, password);
+    setSubmitting(false);
     if (result.success) {
       showToast(result.message);
       const from = (location.state as { from?: Location } | null)?.from;
@@ -39,13 +43,15 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <div>
-            <label className="mb-1.5 block text-xs font-bold text-stone-600">Mobile Number or Email</label>
+            <label className="mb-1.5 block text-xs font-bold text-stone-600">Email</label>
             <div className="relative">
               <Mail size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" />
               <input
                 required
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 className="w-full rounded-xl border border-stone-200 py-3 pl-11 pr-4 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
               />
@@ -58,6 +64,7 @@ export default function Login() {
               <input
                 required
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -68,20 +75,10 @@ export default function Login() {
 
           {error && <p className="text-sm font-medium text-red-600">{error}</p>}
 
-          <div className="flex justify-end">
-            <button type="button" className="text-xs font-semibold text-primary-700 hover:underline">
-              Forgot password?
-            </button>
-          </div>
-
-          <button type="submit" className={buttonClasses("primary", "lg", "w-full")}>
-            <LogIn size={18} /> Login
+          <button type="submit" disabled={submitting} className={buttonClasses("primary", "lg", "w-full")}>
+            <LogIn size={18} /> {submitting ? "Logging in..." : "Login"}
           </button>
         </form>
-
-        <p className="mt-3 rounded-lg bg-stone-50 px-3 py-2 text-center text-[11px] text-stone-400">
-          Demo tip: include "seller" or "admin" in your email to preview those dashboards.
-        </p>
 
         <p className="mt-6 text-center text-sm text-stone-500">
           Don't have an account?{" "}

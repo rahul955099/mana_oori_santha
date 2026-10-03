@@ -2,23 +2,22 @@ import { useNavigate } from "react-router-dom";
 import { ProductForm, type ProductFormValues } from "@/components/ProductForm";
 import { useProducts } from "@/context/ProductsContext";
 import { useToast } from "@/context/ToastContext";
-import { CURRENT_SELLER_ID } from "@/data/currentSeller";
+import { errorMessage } from "@/lib/api";
 
 export default function SellerAddProduct() {
   const { addProduct } = useProducts();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  function handleSubmit(values: ProductFormValues) {
-    addProduct({
-      ...values,
-      slug: `${values.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`,
-      sellerId: CURRENT_SELLER_ID,
-      rating: 0,
-      reviewCount: 0,
-    });
-    showToast("Product added successfully!");
-    navigate("/seller/products");
+  async function handleSubmit(values: ProductFormValues) {
+    try {
+      // The API assigns the product to the logged-in seller.
+      await addProduct(values);
+      showToast("Product added successfully!");
+      navigate("/seller/products");
+    } catch (err) {
+      showToast(errorMessage(err), "error");
+    }
   }
 
   return (

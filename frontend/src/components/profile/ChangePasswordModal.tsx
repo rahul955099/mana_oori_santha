@@ -22,13 +22,13 @@ export function ChangePasswordModal({ isOpen, onClose }: { isOpen: boolean; onCl
     setError("");
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (next !== confirm) {
       setError("New password and confirmation do not match.");
       return;
     }
-    const result = changePassword(current, next);
+    const result = await changePassword(current, next);
     if (!result.success) {
       setError(result.message);
       return;

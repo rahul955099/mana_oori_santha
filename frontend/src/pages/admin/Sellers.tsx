@@ -2,6 +2,9 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Eye, Trash2, BadgeCheck, ShieldCheck, ShieldX } from "lucide-react";
 import { useSellers } from "@/context/SellersContext";
+import { useProducts } from "@/context/ProductsContext";
+import { useToast } from "@/context/ToastContext";
+import { errorMessage } from "@/lib/api";
 import { SearchBar } from "@/components/common/SearchBar";
 import { Badge } from "@/components/common/Badge";
 import { Modal } from "@/components/common/Modal";
@@ -10,6 +13,8 @@ import type { Seller } from "@/types";
 
 export default function AdminSellers() {
   const { sellers, updateSeller, deleteSeller } = useSellers();
+  const { reload: reloadProducts } = useProducts();
+  const { showToast } = useToast();
   const [search, setSearch] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Seller | null>(null);
 
@@ -19,10 +24,26 @@ export default function AdminSellers() {
       s.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  function confirmDelete() {
-    if (deleteTarget) {
-      deleteSeller(deleteTarget.id);
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    try {
+      await deleteSeller(deleteTarget.id);
+      // The seller's listings were hidden too, so refresh the catalog.
+      await reloadProducts();
+      showToast(`${deleteTarget.farmName} removed`);
+    } catch (err) {
+      showToast(errorMessage(err), "error");
+    } finally {
       setDeleteTarget(null);
+    }
+  }
+
+  async function setVerified(seller: Seller, verified: boolean) {
+    try {
+      await updateSeller(seller.id, { verified });
+      showToast(verified ? `${seller.farmName} verified` : `Verification removed for ${seller.farmName}`);
+    } catch (err) {
+      showToast(errorMessage(err), "error");
     }
   }
 
@@ -75,7 +96,7 @@ export default function AdminSellers() {
                       </Link>
                       {seller.verified ? (
                         <button
-                          onClick={() => updateSeller(seller.id, { verified: false })}
+                          onClick={() => setVerified(seller, false)}
                           title="Reject / revoke verification"
                           className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-amber-50 hover:text-amber-600"
                         >
@@ -83,7 +104,7 @@ export default function AdminSellers() {
                         </button>
                       ) : (
                         <button
-                          onClick={() => updateSeller(seller.id, { verified: true })}
+                          onClick={() => setVerified(seller, true)}
                           title="Verify farmer"
                           className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-green-50 hover:text-green-600"
                         >

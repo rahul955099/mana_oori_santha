@@ -1,12 +1,13 @@
 import { useProducts } from "@/context/ProductsContext";
 import { useOrders } from "@/context/OrdersContext";
-import { categories } from "@/data/categories";
+import { useCategories } from "@/context/CategoriesContext";
 import { formatCurrency } from "@/utils/format";
 import { ALL_ORDER_STATUSES, ORDER_STATUS_LABELS } from "@/utils/orderStatus";
 
 const statusOptions = ALL_ORDER_STATUSES;
 
 export default function AdminReports() {
+  const { categories } = useCategories();
   const { products } = useProducts();
   const { orders } = useOrders();
 

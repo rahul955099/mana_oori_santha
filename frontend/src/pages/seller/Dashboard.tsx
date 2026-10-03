@@ -5,14 +5,15 @@ import { Badge } from "@/components/common/Badge";
 import { useProducts } from "@/context/ProductsContext";
 import { useOrders } from "@/context/OrdersContext";
 import { formatCurrency, formatDate } from "@/utils/format";
-import { CURRENT_SELLER_ID } from "@/data/currentSeller";
+import { useAuth } from "@/context/AuthContext";
 import { ORDER_STATUS_LABELS, ORDER_STATUS_TONE } from "@/utils/orderStatus";
 
 export default function SellerDashboard() {
+  const sellerId = useAuth().user?.sellerId;
   const { products } = useProducts();
   const { orders } = useOrders();
 
-  const myProducts = products.filter((p) => p.sellerId === CURRENT_SELLER_ID);
+  const myProducts = products.filter((p) => p.sellerId === sellerId);
   const myProductIds = new Set(myProducts.map((p) => p.id));
   const myOrders = orders.filter((o) => o.items.some((i) => myProductIds.has(i.productId)));
   const totalSales = myOrders.reduce(

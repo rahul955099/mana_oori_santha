@@ -5,6 +5,9 @@ import { buttonClasses } from "@/components/common/Button";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 
+// Photos are stored inline until image uploads move to Cloudinary; the API accepts up to 2 MB per request.
+const MAX_PHOTO_BYTES = 1024 * 1024;
+
 const inputClass =
   "w-full rounded-xl border border-stone-200 px-4 py-3 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100";
 
@@ -27,16 +30,21 @@ export function EditProfileModal({ isOpen, onClose }: { isOpen: boolean; onClose
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_PHOTO_BYTES) {
+      showToast("Please choose a photo smaller than 1 MB.", "error");
+      e.target.value = "";
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => setForm((prev) => ({ ...prev, profilePhoto: reader.result as string }));
     reader.readAsDataURL(file);
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    updateProfile(form);
-    showToast("Profile updated successfully.");
-    onClose();
+    const result = await updateProfile(form);
+    showToast(result.message, result.success ? "success" : "error");
+    if (result.success) onClose();
   }
 
   return (

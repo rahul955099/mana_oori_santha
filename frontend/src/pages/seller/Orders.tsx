@@ -4,17 +4,18 @@ import { useProducts } from "@/context/ProductsContext";
 import { Badge } from "@/components/common/Badge";
 import { EmptyState } from "@/components/common/EmptyState";
 import { formatCurrency, formatDate } from "@/utils/format";
-import { CURRENT_SELLER_ID } from "@/data/currentSeller";
+import { useAuth } from "@/context/AuthContext";
 import type { OrderStatus } from "@/types";
 import { ALL_ORDER_STATUSES, ORDER_STATUS_LABELS, ORDER_STATUS_TONE } from "@/utils/orderStatus";
 import { ShoppingBag } from "lucide-react";
 
 export default function SellerOrders() {
+  const sellerId = useAuth().user?.sellerId;
   const { orders } = useOrders();
   const { products } = useProducts();
   const [statusFilter, setStatusFilter] = useState<"all" | OrderStatus>("all");
 
-  const myProductIds = new Set(products.filter((p) => p.sellerId === CURRENT_SELLER_ID).map((p) => p.id));
+  const myProductIds = new Set(products.filter((p) => p.sellerId === sellerId).map((p) => p.id));
   let myOrders = orders.filter((o) => o.items.some((i) => myProductIds.has(i.productId)));
   if (statusFilter !== "all") {
     myOrders = myOrders.filter((o) => o.status === statusFilter);

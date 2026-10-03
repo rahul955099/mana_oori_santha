@@ -1,5 +1,5 @@
-import type { Seller } from "@/types";
-import { themedImage } from "@/utils/placeholder";
+import type { SeedSeller as Seller } from "../types";
+import { themedImage } from "../placeholder";
 
 export const sellers: Seller[] = [
   {

@@ -105,9 +105,13 @@ export default function Profile() {
     }
   }
 
-  function confirmDeleteAccount() {
-    deleteAccount();
-    showToast("Your account has been deleted.", "info");
+  async function confirmDeleteAccount() {
+    const result = await deleteAccount();
+    if (!result.success) {
+      showToast(result.message, "error");
+      return;
+    }
+    showToast(result.message, "info");
     navigate("/");
   }
 

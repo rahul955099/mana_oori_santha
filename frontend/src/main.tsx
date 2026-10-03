@@ -5,6 +5,7 @@ import App from "./App.tsx";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
+import { CategoriesProvider } from "@/context/CategoriesContext";
 import { ProductsProvider } from "@/context/ProductsContext";
 import { SellersProvider } from "@/context/SellersContext";
 import { OrdersProvider } from "@/context/OrdersContext";
@@ -19,31 +20,33 @@ import { NotificationProvider } from "@/context/NotificationContext";
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <AuthProvider>
-      <ProductsProvider>
-        <SellersProvider>
-          <OrdersProvider>
-            <CartProvider>
-              <WishlistProvider>
-                <ToastProvider>
-                  <LocationProvider>
-                    <AddressProvider>
-                      <SupportProvider>
-                        <ReviewsProvider>
-                          <CouponsProvider>
-                            <NotificationProvider>
-                              <App />
-                            </NotificationProvider>
-                          </CouponsProvider>
-                        </ReviewsProvider>
-                      </SupportProvider>
-                    </AddressProvider>
-                  </LocationProvider>
-                </ToastProvider>
-              </WishlistProvider>
-            </CartProvider>
-          </OrdersProvider>
-        </SellersProvider>
-      </ProductsProvider>
+      <CategoriesProvider>
+        <ProductsProvider>
+          <SellersProvider>
+            <OrdersProvider>
+              <CartProvider>
+                <WishlistProvider>
+                  <ToastProvider>
+                    <LocationProvider>
+                      <AddressProvider>
+                        <SupportProvider>
+                          <ReviewsProvider>
+                            <CouponsProvider>
+                              <NotificationProvider>
+                                <App />
+                              </NotificationProvider>
+                            </CouponsProvider>
+                          </ReviewsProvider>
+                        </SupportProvider>
+                      </AddressProvider>
+                    </LocationProvider>
+                  </ToastProvider>
+                </WishlistProvider>
+              </CartProvider>
+            </OrdersProvider>
+          </SellersProvider>
+        </ProductsProvider>
+      </CategoriesProvider>
     </AuthProvider>
   </StrictMode>
 );

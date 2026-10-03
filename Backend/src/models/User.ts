@@ -13,6 +13,8 @@ export interface UserAddress {
 
 export interface UserDocument extends Document {
   _id: Types.ObjectId;
+  /** Human-facing account ID shown in the UI, e.g. "MOS-10245". */
+  userCode: string;
   name: string;
   email: string;
   phone: string;
@@ -38,6 +40,7 @@ const addressSchema = new Schema<UserAddress>(
 
 const userSchema = new Schema<UserDocument>(
   {
+    userCode: { type: String, unique: true },
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     phone: { type: String, required: true, trim: true },
@@ -49,6 +52,23 @@ const userSchema = new Schema<UserDocument>(
   },
   { timestamps: true }
 );
+
+function randomUserCode(): string {
+  return `MOS-${Math.floor(10000 + Math.random() * 90000)}`;
+}
+
+userSchema.pre("validate", async function () {
+  if (this.userCode) return;
+  // Five digits gives 90k codes; retry on the rare collision.
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const code = randomUserCode();
+    if (!(await User.exists({ userCode: code }))) {
+      this.userCode = code;
+      return;
+    }
+  }
+  throw new Error("Could not generate a unique user code");
+});
 
 userSchema.pre("save", async function () {
   if (!this.isModified("password")) return;

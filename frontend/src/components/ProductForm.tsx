@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { ImagePlus } from "lucide-react";
 import type { CategorySlug, Product } from "@/types";
-import { categories } from "@/data/categories";
+import { useCategories } from "@/context/CategoriesContext";
 import { buttonClasses } from "@/components/common/Button";
 
 export interface ProductFormValues {
@@ -20,17 +20,21 @@ export interface ProductFormValues {
 
 interface ProductFormProps {
   initial?: Product;
-  onSubmit: (values: ProductFormValues) => void;
+  onSubmit: (values: ProductFormValues) => void | Promise<void>;
   submitLabel: string;
+  /** Only admins can feature products on the homepage. */
+  canFeature?: boolean;
 }
 
 const inputClass =
   "w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100";
 const labelClass = "mb-1.5 block text-xs font-bold text-stone-600";
 
-export function ProductForm({ initial, onSubmit, submitLabel }: ProductFormProps) {
+export function ProductForm({ initial, onSubmit, submitLabel, canFeature = false }: ProductFormProps) {
+  const { categories } = useCategories();
+  const [submitting, setSubmitting] = useState(false);
   const [name, setName] = useState(initial?.name ?? "");
-  const [category, setCategory] = useState<CategorySlug>(initial?.category ?? "millets");
+  const [category, setCategory] = useState<CategorySlug>(initial?.category ?? categories[0]?.slug ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [price, setPrice] = useState(initial?.price ?? 0);
   const [mrp, setMrp] = useState(initial?.mrp ?? 0);
@@ -41,9 +45,10 @@ export function ProductForm({ initial, onSubmit, submitLabel }: ProductFormProps
   const [isFeatured, setIsFeatured] = useState(initial?.isFeatured ?? false);
   const [benefitsText, setBenefitsText] = useState(initial?.benefits.join(", ") ?? "");
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    onSubmit({
+    setSubmitting(true);
+    await onSubmit({
       name,
       category,
       description,
@@ -59,6 +64,7 @@ export function ProductForm({ initial, onSubmit, submitLabel }: ProductFormProps
         .map((b) => b.trim())
         .filter(Boolean),
     });
+    setSubmitting(false);
   }
 
   return (
@@ -70,7 +76,8 @@ export function ProductForm({ initial, onSubmit, submitLabel }: ProductFormProps
         </div>
         <div>
           <label className={labelClass}>Category</label>
-          <select value={category} onChange={(e) => setCategory(e.target.value as CategorySlug)} className={inputClass}>
+          <select required value={category} onChange={(e) => setCategory(e.target.value as CategorySlug)} className={inputClass}>
+            <option value="" disabled>Select a category</option>
             {categories.map((c) => (
               <option key={c.id} value={c.slug}>{c.name}</option>
             ))}
@@ -138,14 +145,16 @@ export function ProductForm({ initial, onSubmit, submitLabel }: ProductFormProps
           <input type="checkbox" checked={isOrganic} onChange={(e) => setIsOrganic(e.target.checked)} className="h-4 w-4 rounded border-stone-300 text-primary-600" />
           Organic Certified
         </label>
-        <label className="flex items-center gap-2 text-sm font-medium text-stone-600">
-          <input type="checkbox" checked={isFeatured} onChange={(e) => setIsFeatured(e.target.checked)} className="h-4 w-4 rounded border-stone-300 text-primary-600" />
-          Feature on Homepage
-        </label>
+        {canFeature && (
+          <label className="flex items-center gap-2 text-sm font-medium text-stone-600">
+            <input type="checkbox" checked={isFeatured} onChange={(e) => setIsFeatured(e.target.checked)} className="h-4 w-4 rounded border-stone-300 text-primary-600" />
+            Feature on Homepage
+          </label>
+        )}
       </div>
 
-      <button type="submit" className={buttonClasses("primary", "lg")}>
-        {submitLabel}
+      <button type="submit" disabled={submitting} className={buttonClasses("primary", "lg")}>
+        {submitting ? "Saving..." : submitLabel}
       </button>
     </form>
   );

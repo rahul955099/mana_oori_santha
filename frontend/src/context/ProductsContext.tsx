@@ -1,47 +1,70 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Product } from "@/types";
-import { products as initialProducts } from "@/data/products";
+import { api, errorMessage } from "@/lib/api";
+
+/** Fields a seller/admin sends when creating or editing a product. */
+export type ProductInput = Pick<
+  Product,
+  "name" | "category" | "description" | "price" | "mrp" | "unit" | "stock" | "image" | "isOrganic" | "isFeatured" | "benefits"
+> & { sellerId?: string };
 
 interface ProductsContextValue {
+  /** The whole active catalog. It is small, so the storefront loads it once and filters locally. */
   products: Product[];
-  addProduct: (product: Omit<Product, "id" | "createdAt">) => void;
-  updateProduct: (id: string, updates: Partial<Product>) => void;
-  deleteProduct: (id: string) => void;
+  loading: boolean;
+  error: string | null;
+  reload: () => Promise<void>;
+  addProduct: (product: ProductInput) => Promise<Product>;
+  updateProduct: (id: string, updates: Partial<ProductInput>) => Promise<Product>;
+  deleteProduct: (id: string) => Promise<void>;
   getProductById: (id: string) => Product | undefined;
   getProductBySlug: (slug: string) => Product | undefined;
 }
 
 const ProductsContext = createContext<ProductsContextValue | undefined>(undefined);
-const STORAGE_KEY = "mos_products";
+const CATALOG_LIMIT = 500;
 
 export function ProductsProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts] = useState<Product[]>(() => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as Product[]) : initialProducts;
-    } catch {
-      return initialProducts;
+      const data = await api.get<{ products: Product[] }>("/products", { limit: CATALOG_LIMIT });
+      setProducts(data.products);
+      setError(null);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setLoading(false);
     }
-  });
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
-  }, [products]);
+    // Old demo builds cached a copy of the catalog here; the API is the source now.
+    try {
+      localStorage.removeItem("mos_products");
+    } catch {
+      // ignore
+    }
+    void reload();
+  }, [reload]);
 
-  function addProduct(product: Omit<Product, "id" | "createdAt">) {
-    const newProduct: Product = {
-      ...product,
-      id: `p-custom-${Date.now()}`,
-      createdAt: new Date().toISOString().slice(0, 10),
-    };
-    setProducts((prev) => [newProduct, ...prev]);
+  async function addProduct(input: ProductInput) {
+    const { product } = await api.post<{ product: Product }>("/products", input);
+    setProducts((prev) => [product, ...prev]);
+    return product;
   }
 
-  function updateProduct(id: string, updates: Partial<Product>) {
-    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
+  async function updateProduct(id: string, updates: Partial<ProductInput>) {
+    const { product } = await api.patch<{ product: Product }>(`/products/${id}`, updates);
+    setProducts((prev) => prev.map((p) => (p.id === id ? product : p)));
+    return product;
   }
 
-  function deleteProduct(id: string) {
+  async function deleteProduct(id: string) {
+    await api.delete(`/products/${id}`);
     setProducts((prev) => prev.filter((p) => p.id !== id));
   }
 
@@ -55,7 +78,17 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
 
   return (
     <ProductsContext.Provider
-      value={{ products, addProduct, updateProduct, deleteProduct, getProductById, getProductBySlug }}
+      value={{
+        products,
+        loading,
+        error,
+        reload,
+        addProduct,
+        updateProduct,
+        deleteProduct,
+        getProductById,
+        getProductBySlug,
+      }}
     >
       {children}
     </ProductsContext.Provider>

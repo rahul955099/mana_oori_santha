@@ -2,10 +2,11 @@ import { Link } from "react-router-dom";
 import { Mail, Phone, MapPin } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 import { FacebookIcon, InstagramIcon, TwitterIcon } from "@/components/common/SocialIcons";
-import { categories } from "@/data/categories";
+import { useCategories } from "@/context/CategoriesContext";
 import { SUPPORT_PHONE, SUPPORT_EMAIL } from "@/config/support";
 
 export function Footer() {
+  const { categories } = useCategories();
   return (
     <footer className="border-t border-stone-200 bg-primary-900 text-primary-50">
       <div className="container-app grid grid-cols-1 gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">

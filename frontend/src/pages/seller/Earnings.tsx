@@ -3,13 +3,14 @@ import { StatCard } from "@/components/common/StatCard";
 import { useOrders } from "@/context/OrdersContext";
 import { useProducts } from "@/context/ProductsContext";
 import { formatCurrency, formatDate } from "@/utils/format";
-import { CURRENT_SELLER_ID } from "@/data/currentSeller";
+import { useAuth } from "@/context/AuthContext";
 
 export default function SellerEarnings() {
+  const sellerId = useAuth().user?.sellerId;
   const { orders } = useOrders();
   const { products } = useProducts();
 
-  const myProducts = products.filter((p) => p.sellerId === CURRENT_SELLER_ID);
+  const myProducts = products.filter((p) => p.sellerId === sellerId);
   const myProductIds = new Set(myProducts.map((p) => p.id));
 
   const relevantOrders = orders.filter((o) => o.items.some((i) => myProductIds.has(i.productId)));

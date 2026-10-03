@@ -5,14 +5,19 @@ import { useProducts } from "@/context/ProductsContext";
 import { RatingStars } from "@/components/common/RatingStars";
 import { ProductCard } from "@/components/ProductCard";
 import { EmptyState } from "@/components/common/EmptyState";
+import { Loading } from "@/components/common/Loading";
 import { buttonClasses } from "@/components/common/Button";
 
 export default function SellerDetails() {
   const { id } = useParams<{ id: string }>();
   const { products } = useProducts();
-  const { sellers } = useSellers();
+  const { sellers, loading } = useSellers();
   const seller = sellers.find((s) => s.id === id);
   const sellerProducts = products.filter((p) => p.sellerId === id);
+
+  if (loading) {
+    return <Loading label="Loading farmer profile..." />;
+  }
 
   if (!seller) {
     return (

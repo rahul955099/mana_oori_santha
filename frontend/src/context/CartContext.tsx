@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { CartItem } from "@/types";
-import { products } from "@/data/products";
+import { useProducts } from "@/context/ProductsContext";
 
 interface CartContextValue {
   items: CartItem[];
@@ -20,6 +20,7 @@ const STORAGE_KEY = "mos_cart";
 const COUPON_STORAGE_KEY = "mos_cart_coupon";
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const { products, loading: productsLoading, error: productsError } = useProducts();
   const [items, setItems] = useState<CartItem[]>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -39,6 +40,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   }, [items]);
+
+  // Drop items whose product no longer exists (deleted, or left over from the
+  // old demo catalog). Only once the catalog has loaded successfully, so a
+  // network failure never empties someone's cart.
+  useEffect(() => {
+    if (productsLoading || productsError) return;
+    const known = new Set(products.map((p) => p.id));
+    setItems((prev) => (prev.every((i) => known.has(i.productId)) ? prev : prev.filter((i) => known.has(i.productId))));
+  }, [products, productsLoading, productsError]);
 
   useEffect(() => {
     try {
@@ -96,7 +106,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const product = products.find((p) => p.id === i.productId);
       return sum + (product ? product.price * i.quantity : 0);
     }, 0);
-  }, [items]);
+  }, [items, products]);
 
   const value: CartContextValue = {
     items,

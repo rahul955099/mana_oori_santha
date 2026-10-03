@@ -1,19 +1,27 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ProductForm, type ProductFormValues } from "@/components/ProductForm";
 import { useProducts } from "@/context/ProductsContext";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { EmptyState } from "@/components/common/EmptyState";
+import { Loading } from "@/components/common/Loading";
 import { buttonClasses } from "@/components/common/Button";
+import { errorMessage } from "@/lib/api";
 
 export default function SellerEditProduct() {
   const { id } = useParams<{ id: string }>();
-  const { getProductById, updateProduct } = useProducts();
+  const { getProductById, updateProduct, loading } = useProducts();
+  const sellerId = useAuth().user?.sellerId;
   const { showToast } = useToast();
   const navigate = useNavigate();
 
   const product = id ? getProductById(id) : undefined;
 
-  if (!product) {
+  if (loading) {
+    return <Loading label="Loading product..." />;
+  }
+
+  if (!product || product.sellerId !== sellerId) {
     return (
       <EmptyState
         title="Product not found"
@@ -27,11 +35,15 @@ export default function SellerEditProduct() {
     );
   }
 
-  function handleSubmit(values: ProductFormValues) {
+  async function handleSubmit(values: ProductFormValues) {
     if (!product) return;
-    updateProduct(product.id, values);
-    showToast("Product updated successfully!");
-    navigate("/seller/products");
+    try {
+      await updateProduct(product.id, values);
+      showToast("Product updated successfully!");
+      navigate("/seller/products");
+    } catch (err) {
+      showToast(errorMessage(err), "error");
+    }
   }
 
   return (

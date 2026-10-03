@@ -1,14 +1,16 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useProducts } from "@/context/ProductsContext";
-import { categories } from "@/data/categories";
+import { useCategories } from "@/context/CategoriesContext";
 import { ProductCard } from "@/components/ProductCard";
 import { SearchBar } from "@/components/common/SearchBar";
 import { EmptyState } from "@/components/common/EmptyState";
+import { Loading } from "@/components/common/Loading";
 
 type SortOption = "relevance" | "price-low" | "price-high" | "rating";
 
 export default function Category() {
+  const { categories, loading } = useCategories();
   const { slug } = useParams<{ slug: string }>();
   const { products } = useProducts();
   const [search, setSearch] = useState("");
@@ -32,6 +34,10 @@ export default function Category() {
     }
     return list;
   }, [products, slug, search, sort]);
+
+  if (loading) {
+    return <Loading />;
+  }
 
   if (!category) {
     return (

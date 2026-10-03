@@ -7,6 +7,7 @@ import { RatingStars } from "@/components/common/RatingStars";
 import { Badge } from "@/components/common/Badge";
 import { ProductCard } from "@/components/ProductCard";
 import { EmptyState } from "@/components/common/EmptyState";
+import { Loading } from "@/components/common/Loading";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useToast } from "@/context/ToastContext";
@@ -16,7 +17,7 @@ import { ProductReviews } from "@/components/reviews/ProductReviews";
 
 export default function ProductDetails() {
   const { slug } = useParams<{ slug: string }>();
-  const { products, getProductBySlug } = useProducts();
+  const { products, getProductBySlug, loading } = useProducts();
   const { sellers } = useSellers();
   const navigate = useNavigate();
   const { addToCart } = useCart();
@@ -25,6 +26,10 @@ export default function ProductDetails() {
   const [quantity, setQuantity] = useState(1);
 
   const product = slug ? getProductBySlug(slug) : undefined;
+
+  if (loading) {
+    return <Loading label="Loading product..." />;
+  }
 
   if (!product) {
     return (

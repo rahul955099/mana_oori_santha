@@ -1,5 +1,5 @@
-import type { Product } from "@/types";
-import { themedImage } from "@/utils/placeholder";
+import type { SeedProduct as Product } from "../types";
+import { themedImage } from "../placeholder";
 
 export const products: Product[] = [
   // ---------------- MILLETS ----------------

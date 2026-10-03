@@ -1,36 +1,87 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Seller } from "@/types";
-import { sellers as initialSellers } from "@/data/sellers";
+import { api, errorMessage } from "@/lib/api";
+
+/** Seller fields that can be edited. `verified` is honoured for admins only. */
+export type SellerUpdate = Partial<
+  Pick<
+    Seller,
+    | "name"
+    | "email"
+    | "phone"
+    | "farmName"
+    | "location"
+    | "district"
+    | "state"
+    | "about"
+    | "image"
+    | "farmingType"
+    | "experienceYears"
+    | "mainProducts"
+    | "photos"
+    | "verified"
+  >
+>;
 
 interface SellersContextValue {
   sellers: Seller[];
-  updateSeller: (id: string, updates: Partial<Seller>) => void;
-  deleteSeller: (id: string) => void;
+  loading: boolean;
+  error: string | null;
+  reload: () => Promise<void>;
+  /** Admin: edit any seller (including the verified badge). */
+  updateSeller: (id: string, updates: SellerUpdate) => Promise<Seller>;
+  /** Seller: edit their own shop profile. */
+  updateMySeller: (updates: Omit<SellerUpdate, "verified">) => Promise<Seller>;
+  /** Admin: remove a seller and hide their listings. */
+  deleteSeller: (id: string) => Promise<void>;
   getSellerById: (id: string) => Seller | undefined;
 }
 
 const SellersContext = createContext<SellersContextValue | undefined>(undefined);
-const STORAGE_KEY = "mos_sellers";
 
 export function SellersProvider({ children }: { children: ReactNode }) {
-  const [sellers, setSellers] = useState<Seller[]>(() => {
+  const [sellers, setSellers] = useState<Seller[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as Seller[]) : initialSellers;
-    } catch {
-      return initialSellers;
+      const data = await api.get<{ sellers: Seller[] }>("/sellers");
+      setSellers(data.sellers);
+      setError(null);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setLoading(false);
     }
-  });
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sellers));
-  }, [sellers]);
+    try {
+      localStorage.removeItem("mos_sellers");
+    } catch {
+      // ignore
+    }
+    void reload();
+  }, [reload]);
 
-  function updateSeller(id: string, updates: Partial<Seller>) {
-    setSellers((prev) => prev.map((s) => (s.id === id ? { ...s, ...updates } : s)));
+  function replace(seller: Seller) {
+    setSellers((prev) => prev.map((s) => (s.id === seller.id ? seller : s)));
+    return seller;
   }
 
-  function deleteSeller(id: string) {
+  async function updateSeller(id: string, updates: SellerUpdate) {
+    const { seller } = await api.patch<{ seller: Seller }>(`/sellers/${id}`, updates);
+    return replace(seller);
+  }
+
+  async function updateMySeller(updates: Omit<SellerUpdate, "verified">) {
+    const { seller } = await api.patch<{ seller: Seller }>("/sellers/me", updates);
+    return replace(seller);
+  }
+
+  async function deleteSeller(id: string) {
+    await api.delete(`/sellers/${id}`);
     setSellers((prev) => prev.filter((s) => s.id !== id));
   }
 
@@ -39,7 +90,9 @@ export function SellersProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <SellersContext.Provider value={{ sellers, updateSeller, deleteSeller, getSellerById }}>
+    <SellersContext.Provider
+      value={{ sellers, loading, error, reload, updateSeller, updateMySeller, deleteSeller, getSellerById }}
+    >
       {children}
     </SellersContext.Provider>
   );

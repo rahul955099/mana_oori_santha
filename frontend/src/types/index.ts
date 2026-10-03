@@ -1,15 +1,5 @@
-export type CategorySlug =
-  | "millets"
-  | "dry-fruits"
-  | "pulses"
-  | "seeds"
-  | "rice"
-  | "oil"
-  | "powders"
-  | "spices"
-  | "traditional-foods"
-  | "flours"
-  | "dairy";
+/** Categories are managed by admins in the database, so any slug is possible. */
+export type CategorySlug = string;
 
 export interface Category {
   id: string;
@@ -18,6 +8,9 @@ export interface Category {
   description: string;
   image: string;
   productCount: number;
+  sortOrder?: number;
+  /** False for categories hidden from the storefront (only admins see these). */
+  isActive?: boolean;
 }
 
 export interface Seller {
@@ -128,6 +121,8 @@ export interface AuthUser {
   email: string;
   mobile: string;
   role: UserRole;
+  /** The seller profile id, for seller accounts. */
+  sellerId?: string;
   shopName?: string;
   location?: string;
   profilePhoto?: string;

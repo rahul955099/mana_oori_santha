@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Plus, Pencil, Trash2, Tag } from "lucide-react";
 import { useCoupons } from "@/context/CouponsContext";
-import { categories } from "@/data/categories";
+import { useCategories } from "@/context/CategoriesContext";
 import { Badge } from "@/components/common/Badge";
 import { Modal } from "@/components/common/Modal";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -22,6 +22,7 @@ const emptyForm = {
 };
 
 export default function AdminCoupons() {
+  const { categories } = useCategories();
   const { coupons, addCoupon, updateCoupon, deleteCoupon } = useCoupons();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Coupon | null>(null);

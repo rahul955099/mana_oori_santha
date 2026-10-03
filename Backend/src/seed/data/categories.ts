@@ -1,5 +1,5 @@
-import type { Category } from "@/types";
-import { themedImage } from "@/utils/placeholder";
+import type { SeedCategory as Category } from "../types";
+import { themedImage } from "../placeholder";
 
 export const categories: Category[] = [
   {

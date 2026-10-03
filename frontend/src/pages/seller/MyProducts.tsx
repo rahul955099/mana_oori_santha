@@ -8,20 +8,26 @@ import { Badge } from "@/components/common/Badge";
 import { Modal } from "@/components/common/Modal";
 import { buttonClasses } from "@/components/common/Button";
 import { formatCurrency, categoryLabel } from "@/utils/format";
-import { CURRENT_SELLER_ID } from "@/data/currentSeller";
+import { useAuth } from "@/context/AuthContext";
+import { errorMessage } from "@/lib/api";
 
 export default function SellerMyProducts() {
+  const sellerId = useAuth().user?.sellerId;
   const { products, deleteProduct } = useProducts();
   const { showToast } = useToast();
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  const myProducts = products.filter((p) => p.sellerId === CURRENT_SELLER_ID);
+  const myProducts = products.filter((p) => p.sellerId === sellerId);
 
-  function confirmDelete() {
-    if (deleteTarget) {
-      const product = products.find((p) => p.id === deleteTarget);
-      deleteProduct(deleteTarget);
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    const product = products.find((p) => p.id === deleteTarget);
+    try {
+      await deleteProduct(deleteTarget);
       showToast(`${product?.name ?? "Product"} deleted`);
+    } catch (err) {
+      showToast(errorMessage(err), "error");
+    } finally {
       setDeleteTarget(null);
     }
   }
