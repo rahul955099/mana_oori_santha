@@ -9,7 +9,7 @@ import { createOneTimeToken, hashToken } from "../utils/tokens";
 import { toSafeUser } from "../utils/serialize";
 import { sendMailInBackground } from "../services/mail.service";
 import { notifyUser } from "../services/notification.service";
-import { adminInviteEmail, adminPromotedEmail, adminRemovedEmail, siteLink } from "../services/emailTemplates";
+import { adminInviteEmail, adminRemovedEmail, siteLink } from "../services/emailTemplates";
 import type { AuthRequest } from "../middleware/auth.middleware";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -34,7 +34,8 @@ async function sendInvite(req: AuthRequest, email: string) {
     invitedBy: req.userId,
   });
   const actor = await actorOf(req);
-  sendMailInBackground({ to: email, ...adminInviteEmail(actor.name, siteLink(`/accept-invite?token=${raw}`)) });
+  const hasAccount = !!(await User.exists({ email }));
+  sendMailInBackground({ to: email, ...adminInviteEmail(actor.name, siteLink(`/accept-invite?token=${raw}`), hasAccount) });
   return invite;
 }
 
@@ -75,8 +76,8 @@ export async function getTeam(req: AuthRequest, res: Response) {
   });
 }
 
-/** Adds an admin by email: upgrades an existing customer account, or invites
- * someone who doesn't have an account yet. */
+/** Invites someone to be an admin. Nobody gets admin access until they accept:
+ * existing customers log in and accept, new people set up an account. */
 export async function addAdmin(req: AuthRequest, res: Response) {
   const email = String(req.body.email);
   const user = await User.findOne({ email });
@@ -95,24 +96,22 @@ export async function addAdmin(req: AuthRequest, res: Response) {
         "SELLER_ACCOUNT"
       );
     }
-    user.role = "admin";
-    await user.save();
-    await record(req, "admin.added", email);
-
-    const actor = await actorOf(req);
-    await notifyUser(
-      user._id,
-      { type: "account", title: "You're now an admin", message: `${actor.name} gave your account admin access.`, link: "/admin/dashboard" },
-      { content: adminPromotedEmail(user.name, actor.name) }
-    );
-    return success(res, `${user.name} is now an admin.`, { added: true, invited: false }, 201);
   }
 
+  // Everyone, including people who already have an account, must accept before
+  // getting admin access, so a mistyped email can't hand it to a stranger.
   if (await AdminInvite.exists({ email, ...openInviteFilter() })) {
     throw new AppError("An invitation to this email is already waiting. Use Resend if they can't find it.", 409, "INVITE_PENDING");
   }
   await sendInvite(req, email);
   await record(req, "admin.invited", email);
+  if (user) {
+    await notifyUser(user._id, {
+      type: "account",
+      title: "You've been invited to be an admin",
+      message: "Open the invitation email to accept.",
+    });
+  }
   success(res, `Invitation sent to ${email}.`, { added: false, invited: true }, 201);
 }
 
@@ -209,4 +208,29 @@ export async function acceptInvite(req: Request, res: Response) {
 
   const token = signToken({ userId: user._id.toString(), role: user.role });
   success(res, "Welcome to the team!", { token, user: toSafeUser(user) }, 201);
+}
+
+/** Logged in: the invited person accepts with the account they already have. */
+export async function acceptInviteAsExisting(req: AuthRequest, res: Response) {
+  const invite = await findValidInvite(req.body.token);
+  const user = await User.findById(req.userId);
+  if (!user || user.email !== invite.email) {
+    throw new AppError(`This invitation is for ${invite.email}. Log in with that account to accept it.`, 403, "WRONG_ACCOUNT");
+  }
+  if (user.role === "seller") {
+    throw new AppError("Seller shop accounts can't become admins. Ask for an invitation to a different email.", 400, "SELLER_ACCOUNT");
+  }
+  if (user.role !== "admin") {
+    user.role = "admin";
+    await user.save();
+  }
+  invite.acceptedAt = new Date();
+  await invite.save();
+  await AdminActivity.create({
+    action: "admin.invite-accepted",
+    actorName: user.name,
+    actorEmail: user.email,
+    targetEmail: user.email,
+  });
+  success(res, "You're now an admin. Welcome to the team!", { user: toSafeUser(user) });
 }

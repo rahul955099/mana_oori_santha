@@ -13,7 +13,7 @@ import {
   forgotPassword,
   resetPassword,
 } from "../controllers/auth.controller";
-import { acceptInvite, previewInvite } from "../controllers/team.controller";
+import { acceptInvite, acceptInviteAsExisting, previewInvite } from "../controllers/team.controller";
 import rateLimit from "express-rate-limit";
 import { env } from "../config/env";
 import { requireAuth } from "../middleware/auth.middleware";
@@ -107,6 +107,7 @@ router.post(
   validate([tokenRule, name(), phone(), newPassword("password")]),
   acceptInvite
 );
+router.post("/admin-invite/accept-existing", requireAuth, validate([tokenRule]), acceptInviteAsExisting);
 router.post("/reset-password", sensitive, validate([tokenRule, newPassword("password")]), resetPassword);
 
 export default router;

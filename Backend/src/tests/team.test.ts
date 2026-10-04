@@ -34,16 +34,33 @@ describe("admin team", () => {
     assert.equal(team.admins[0].isYou, true);
   });
 
-  it("upgrades an existing customer immediately and tells them", async () => {
+  it("makes an existing customer an admin only after they accept", async () => {
     testOutbox.length = 0;
     const res = await api("POST", "/admin/team", { token: admin, body: { email: "PRIYA@mail.in" } });
     assert.equal(res.status, 201);
-    assert.equal(res.body.data.added, true);
+    assert.equal(res.body.data.invited, true);
     await settle();
-    assert.match(testOutbox.find((m) => m.to === "priya@mail.in")!.subject, /now an admin/);
-    // Her existing session gains admin access straight away.
+    const mail = testOutbox.find((m) => m.to === "priya@mail.in")!;
+    assert.match(mail.text, /Log in with your existing account/);
+    const token = linkToken(mail.text);
+
+    // Nothing changes until she accepts.
+    assert.equal((await api("GET", "/admin/team", { token: customer })).status, 403);
+    assert.equal((await api("GET", `/auth/admin-invite?token=${token}`)).body.data.hasAccount, true);
+    assert.equal((await api("POST", "/admin/team", { token: admin, body: { email: "priya@mail.in" } })).status, 409, "one invite at a time");
+
+    // Only the invited account can accept it.
+    const other = (await api("POST", "/auth/register", { body: { name: "Other", email: "other@mail.in", phone: "9876543210", password: "secret12" } })).body.data.token;
+    const wrong = await api("POST", "/auth/admin-invite/accept-existing", { token: other, body: { token } });
+    assert.equal(wrong.status, 403);
+    assert.equal(wrong.body.error, "WRONG_ACCOUNT");
+
+    const accepted = await api("POST", "/auth/admin-invite/accept-existing", { token: customer, body: { token } });
+    assert.equal(accepted.status, 200);
+    assert.equal(accepted.body.data.user.role, "admin");
     assert.equal((await api("GET", "/admin/team", { token: customer })).status, 200);
-    assert.equal((await api("POST", "/admin/team", { token: admin, body: { email: "priya@mail.in" } })).status, 409);
+    assert.equal((await api("POST", "/auth/admin-invite/accept-existing", { token: customer, body: { token } })).status, 400, "single use");
+    assert.equal((await api("POST", "/admin/team", { token: admin, body: { email: "priya@mail.in" } })).status, 409, "already admin");
   });
 
   it("won't turn a seller's shop account into an admin", async () => {
@@ -113,7 +130,7 @@ describe("admin team", () => {
   it("keeps a history of who changed what", async () => {
     const activity = (await api("GET", "/admin/team", { token: admin })).body.data.activity;
     const actions = activity.map((a: { action: string }) => a.action);
-    for (const a of ["admin.added", "admin.invited", "admin.invite-resent", "admin.invite-accepted", "admin.invite-cancelled", "admin.removed"]) {
+    for (const a of ["admin.invited", "admin.invite-resent", "admin.invite-accepted", "admin.invite-cancelled", "admin.removed"]) {
       assert.ok(actions.includes(a), `missing ${a}`);
     }
   });

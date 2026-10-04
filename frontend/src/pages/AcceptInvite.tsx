@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AuthCard, authInputClass } from "@/components/auth/AuthCard";
 import { buttonClasses } from "@/components/common/Button";
@@ -12,7 +12,8 @@ import { api, errorMessage } from "@/lib/api";
 export default function AcceptInvite() {
   const [params] = useSearchParams();
   const token = params.get("token") ?? "";
-  const { acceptAdminInvite } = useAuth();
+  const { user, initializing, logout, refreshUser, acceptAdminInvite } = useAuth();
+  const location = useLocation();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [invite, setInvite] = useState<{ email: string; hasAccount: boolean } | null>(null);
@@ -50,6 +51,20 @@ export default function AcceptInvite() {
     navigate("/admin/dashboard", { replace: true });
   }
 
+  async function acceptWithAccount() {
+    setError("");
+    setSubmitting(true);
+    try {
+      await api.post("/auth/admin-invite/accept-existing", { token });
+      await refreshUser();
+      showToast("You're now an admin. Welcome to the team!");
+      navigate("/admin/dashboard", { replace: true });
+    } catch (err) {
+      setError(errorMessage(err));
+      setSubmitting(false);
+    }
+  }
+
   if (loadError) {
     return (
       <AuthCard title="Invitation not valid" subtitle={loadError}>
@@ -73,12 +88,42 @@ export default function AcceptInvite() {
   }
 
   if (invite.hasAccount) {
+    const signedInAsInvitee = user?.email === invite.email;
     return (
-      <AuthCard title="You already have an account" subtitle={`An account already exists for ${invite.email}.`}>
+      <AuthCard title="Join the admin team" subtitle={`You've been invited to be an admin with ${invite.email}.`}>
         <Seo title="Admin invitation" noIndex />
-        <p className="text-center text-sm text-stone-600">
-          Ask the admin who invited you to add this email from the Team page — your existing account will get admin access.
-        </p>
+        {initializing ? (
+          <div className="flex justify-center py-4">
+            <Loader2 size={28} className="animate-spin text-primary-600" />
+          </div>
+        ) : signedInAsInvitee ? (
+          <div className="space-y-4">
+            <p className="text-center text-sm text-stone-600">
+              Accepting gives your account access to the admin panel: orders, sellers, products and customers.
+            </p>
+            {error && <p className="text-center text-sm font-medium text-red-600">{error}</p>}
+            <button onClick={acceptWithAccount} disabled={submitting} className={buttonClasses("primary", "lg", "w-full")}>
+              {submitting ? "Accepting..." : "Accept Invitation"}
+            </button>
+          </div>
+        ) : user ? (
+          <div className="space-y-4 text-center">
+            <p className="text-sm text-stone-600">
+              You're logged in as <span className="font-semibold">{user.email}</span>, but this invitation is for{" "}
+              <span className="font-semibold">{invite.email}</span>.
+            </p>
+            <button onClick={logout} className={buttonClasses("primary", "lg", "w-full")}>
+              Log Out and Switch Account
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4 text-center">
+            <p className="text-sm text-stone-600">Log in with your existing account to accept.</p>
+            <Link to="/login" state={{ from: location }} className={buttonClasses("primary", "lg", "w-full")}>
+              Log In to Accept
+            </Link>
+          </div>
+        )}
       </AuthCard>
     );
   }

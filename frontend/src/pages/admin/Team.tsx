@@ -85,8 +85,8 @@ export default function AdminTeam() {
     e.preventDefault();
     setAdding(true);
     try {
-      const res = await api.post<{ added: boolean; invited: boolean }>("/admin/team", { email: email.trim() });
-      showToast(res.added ? `${email.trim()} is now an admin.` : `Invitation sent to ${email.trim()}.`);
+      await api.post("/admin/team", { email: email.trim() });
+      showToast(`Invitation sent to ${email.trim()}. They'll become an admin once they accept.`);
       setEmail("");
       await load();
     } catch (err) {
@@ -134,8 +134,8 @@ export default function AdminTeam() {
     <div>
       <h1 className="text-2xl font-extrabold text-stone-900">Admin Team</h1>
       <p className="mt-1 text-sm text-stone-500">
-        People who can run the whole site. Add someone by email: an existing customer account becomes an admin straight
-        away, and anyone else gets an email invitation to set up their account.
+        People who can run the whole site. Invite someone by email: they become an admin only after they accept. If they
+        already have an account they log in to accept; otherwise they set up a new one.
       </p>
 
       <form onSubmit={handleAdd} className="mt-6 flex max-w-xl flex-col gap-3 rounded-2xl border border-stone-200 bg-white p-5 sm:flex-row">
@@ -152,7 +152,7 @@ export default function AdminTeam() {
           className="min-w-0 flex-1 rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
         />
         <button type="submit" disabled={adding} className={buttonClasses("primary", "md")}>
-          <UserPlus size={16} /> {adding ? "Adding..." : "Add Admin"}
+          <UserPlus size={16} /> {adding ? "Sending..." : "Send Invitation"}
         </button>
       </form>
       <p className="mt-2 max-w-xl text-xs text-stone-400">
