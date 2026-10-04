@@ -46,7 +46,7 @@ function openInviteFilter() {
 /** Admins, pending invitations and recent changes, for the Team page. */
 export async function getTeam(req: AuthRequest, res: Response) {
   const [admins, invites, activity] = await Promise.all([
-    User.find({ role: "admin", isActive: true }).sort({ createdAt: 1 }).select("name email userCode createdAt"),
+    User.find({ role: "admin", isActive: true }).sort({ createdAt: 1 }).select("name email userCode createdAt isOwner"),
     AdminInvite.find(openInviteFilter()).sort({ createdAt: -1 }).populate("invitedBy", "name"),
     AdminActivity.find().sort({ createdAt: -1 }).limit(50),
   ]);
@@ -58,6 +58,7 @@ export async function getTeam(req: AuthRequest, res: Response) {
       userCode: a.userCode,
       since: a.createdAt,
       isYou: a._id.equals(req.userId!),
+      isOwner: a.isOwner === true,
     })),
     invites: invites.map((i) => ({
       id: i._id.toString(),
@@ -121,6 +122,9 @@ export async function removeAdmin(req: AuthRequest, res: Response) {
   if (!user) {
     throw new AppError("Admin not found", 404, "NOT_FOUND");
   }
+  if (user.isOwner) {
+    throw new AppError("The site owner can't be removed. Hand ownership to another admin first.", 400, "OWNER");
+  }
   const others = await User.countDocuments({ role: "admin", isActive: true, _id: { $ne: user._id } });
   if (others === 0) {
     throw new AppError("You can't remove the last admin. Add another admin first.", 400, "LAST_ADMIN");
@@ -134,6 +138,26 @@ export async function removeAdmin(req: AuthRequest, res: Response) {
   success(res, user._id.equals(req.userId!) ? "You're no longer an admin." : `${user.name} is no longer an admin.`, {
     removedSelf: user._id.equals(req.userId!),
   });
+}
+
+/** Owner only: hands ownership to another active admin. The old owner stays an admin. */
+export async function transferOwnership(req: AuthRequest, res: Response) {
+  const target = await User.findOne({ _id: req.body.userId, role: "admin", isActive: true });
+  if (!target) {
+    throw new AppError("Choose an active admin to hand ownership to.", 404, "NOT_FOUND");
+  }
+  if (target._id.equals(req.userId!)) {
+    throw new AppError("You're already the owner.", 400, "ALREADY_OWNER");
+  }
+  await User.updateMany({ isOwner: true }, { isOwner: false });
+  await User.updateOne({ _id: target._id }, { isOwner: true });
+  await record(req, "owner.transferred", target.email);
+  await notifyUser(target._id, {
+    type: "account",
+    title: "You're now the site owner",
+    message: "You can now manage the admin team, see sellers' bank details and record payouts.",
+  });
+  success(res, `${target.name} is now the site owner.`);
 }
 
 export async function resendInvite(req: AuthRequest, res: Response) {

@@ -16,6 +16,7 @@ import {
 import { requireAuth } from "../middleware/auth.middleware";
 import { optionalAuth } from "../middleware/optionalAuth.middleware";
 import { requireRole } from "../middleware/role.middleware";
+import { requireOwner } from "../middleware/owner.middleware";
 import { validate } from "../middleware/validate.middleware";
 import { GSTIN_PATTERN, IFSC_PATTERN, PAN_PATTERN, UPI_PATTERN, isImageUrl } from "../utils/validators";
 
@@ -78,8 +79,9 @@ router.put("/me/kyc", requireAuth, requireRole("seller"), validate(kycFields), s
 router.get("/me/earnings", requireAuth, requireRole("seller"), getMyEarnings);
 
 router.get("/:id", optionalAuth, validate([idParam]), getSeller);
-router.get("/:id/kyc", ...admin, validate([idParam]), adminGetSellerKyc);
-router.get("/:id/earnings", ...admin, validate([idParam]), adminGetSellerEarnings);
+// Full bank/PAN details and money are for the site owner only.
+router.get("/:id/kyc", ...admin, requireOwner, validate([idParam]), adminGetSellerKyc);
+router.get("/:id/earnings", ...admin, requireOwner, validate([idParam]), adminGetSellerEarnings);
 router.patch(
   "/:id",
   ...admin,

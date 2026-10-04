@@ -2,6 +2,7 @@ import type { Types } from "mongoose";
 import { Seller } from "../models/Seller";
 import { Product } from "../models/Product";
 import { Review } from "../models/Review";
+import { User } from "../models/User";
 
 /** Small, idempotent data fixes run at startup. */
 export async function runMigrations() {
@@ -12,6 +13,18 @@ export async function runMigrations() {
   }
 
   await recalculateAllRatings();
+  await ensureOwner();
+}
+
+/** The site always has an owner: if none exists (e.g. data from before owners
+ * existed), the longest-serving active admin becomes the owner. */
+export async function ensureOwner() {
+  if (await User.exists({ role: "admin", isActive: true, isOwner: true })) return;
+  const first = await User.findOne({ role: "admin", isActive: true }).sort({ createdAt: 1 });
+  if (first) {
+    await User.updateOne({ _id: first._id }, { isOwner: true });
+    console.log(`Migration: ${first.email} is now the site owner`);
+  }
 }
 
 async function averagesBy(field: "$product" | "$seller") {

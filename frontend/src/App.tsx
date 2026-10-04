@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Loading } from "@/components/common/Loading";
 import { MainLayout } from "@/layouts/MainLayout";
 import { SellerLayout } from "@/layouts/SellerLayout";
-import { AdminLayout } from "@/layouts/AdminLayout";
+import { AdminLayout, OwnerOnly } from "@/layouts/AdminLayout";
 import { RequireAuth } from "@/components/RequireAuth";
 
 import Home from "@/pages/Home";
@@ -149,8 +149,10 @@ function App() {
             <Route path="sellers" element={<AdminSellers />} />
             <Route path="customers" element={<AdminCustomers />} />
             <Route path="orders" element={<AdminOrders />} />
-            <Route path="payouts" element={<AdminPayouts />} />
-            <Route path="team" element={<AdminTeam />} />
+            <Route element={<OwnerOnly />}>
+              <Route path="payouts" element={<AdminPayouts />} />
+              <Route path="team" element={<AdminTeam />} />
+            </Route>
             <Route path="categories" element={<AdminCategories />} />
             <Route path="support" element={<AdminSupport />} />
             <Route path="reviews" element={<AdminReviews />} />

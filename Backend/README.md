@@ -37,11 +37,13 @@ database, seeded with the sample catalog, and prints test logins. Data resets on
 | GET / PATCH | `/api/sellers/me` | seller — own shop with status and masked KYC |
 | PUT | `/api/sellers/me/kyc` | seller — submit PAN and UPI / bank payout details |
 | GET | `/api/sellers/me/earnings` | seller — sales, commission, payable balance, payouts |
-| GET | `/api/sellers/:id/kyc`, `/api/sellers/:id/earnings` | admin — full KYC for review; seller's earnings |
+| GET | `/api/sellers/:id/kyc`, `/api/sellers/:id/earnings` | owner — full KYC for review; seller's earnings |
 | PATCH | `/api/sellers/:id/status` | admin — approve / reject / suspend (reason required to reject or suspend) |
 | PATCH / DELETE | `/api/sellers/:id` | admin (verify badge, remove seller) |
-| GET | `/api/payouts/balances` | admin — what each seller is owed |
-| POST | `/api/payouts` | admin — record a payment made to a seller (up to their balance) |
+| GET | `/api/payouts/balances` | owner — what each seller is owed |
+| POST | `/api/payouts` | owner — record a payment made to a seller (up to their balance) |
+| GET/POST/DELETE | `/api/admin/team`, `/api/admin/team/:userId`, `/api/admin/team/invites/:id` | owner — admin team and invitations |
+| POST | `/api/admin/team/transfer-ownership` | owner — make another admin the owner |
 | GET | `/api/products/:id/reviews` | public — published reviews; logged-in callers also get their own review and whether they may write one |
 | PUT / DELETE | `/api/products/:id/reviews/mine` | logged in — write/edit/delete own review (needs a delivered order) |
 | GET | `/api/reviews/mine` | logged in — own reviews across products |

@@ -62,6 +62,9 @@ export interface UserDocument extends Document {
   isActive: boolean;
   /** Set when the account was deleted and its personal details erased. */
   deletedAt?: Date;
+  /** The one admin who owns the site: manages the admin team, sees sellers'
+   * bank details and handles payouts. Exactly one active admin has this. */
+  isOwner: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -122,6 +125,7 @@ const userSchema = new Schema<UserDocument>(
     passwordChangedAt: { type: Date },
     isActive: { type: Boolean, default: true },
     deletedAt: { type: Date },
+    isOwner: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

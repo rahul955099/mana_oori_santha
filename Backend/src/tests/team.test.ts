@@ -3,6 +3,8 @@ import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { seedCatalog } from "../seed/seed";
 import { testOutbox } from "../services/mail.service";
+import { User } from "../models/User";
+import { ensureOwner } from "../config/migrations";
 
 const ADMIN = { email: "admin@test.local", password: "admin-pass-123" };
 const SELLER_PASSWORD = "seller-pass-123";
@@ -10,6 +12,7 @@ const SELLER_PASSWORD = "seller-pass-123";
 let admin = "";
 let customer = "";
 let customerId = "";
+let kiranToken = "";
 
 const settle = () => new Promise((r) => setTimeout(r, 200));
 const linkToken = (text: string) => text.match(/token=([a-f0-9]{64})/)?.[1] ?? "";
@@ -58,7 +61,7 @@ describe("admin team", () => {
     const accepted = await api("POST", "/auth/admin-invite/accept-existing", { token: customer, body: { token } });
     assert.equal(accepted.status, 200);
     assert.equal(accepted.body.data.user.role, "admin");
-    assert.equal((await api("GET", "/admin/team", { token: customer })).status, 200);
+    assert.equal((await api("GET", "/admin/users", { token: customer })).status, 200);
     assert.equal((await api("POST", "/auth/admin-invite/accept-existing", { token: customer, body: { token } })).status, 400, "single use");
     assert.equal((await api("POST", "/admin/team", { token: admin, body: { email: "priya@mail.in" } })).status, 409, "already admin");
   });
@@ -95,7 +98,8 @@ describe("admin team", () => {
     assert.equal(accepted.status, 201);
     assert.equal(accepted.body.data.user.role, "admin");
     assert.equal(accepted.body.data.user.emailVerified, true);
-    assert.equal((await api("GET", "/admin/team", { token: accepted.body.data.token })).status, 200);
+    assert.equal((await api("GET", "/admin/users", { token: accepted.body.data.token })).status, 200);
+    kiranToken = accepted.body.data.token;
     assert.equal(
       (await api("POST", "/auth/admin-invite/accept", { body: { token, name: "Kiran", phone: "9123456789", password: "kiranpass1" } })).status,
       400,
@@ -111,6 +115,53 @@ describe("admin team", () => {
     assert.ok(!after.some((i: { email: string }) => i.email === "temp@mail.in"));
   });
 
+  it("keeps the team, bank details and payouts for the owner only", async () => {
+    assert.equal((await api("GET", "/auth/me", { token: admin })).body.data.user.isOwner, true);
+    assert.equal((await api("GET", "/auth/me", { token: customer })).body.data.user.isOwner, false);
+    const sellerId = (await api("GET", "/sellers")).body.data.sellers[0].id;
+    for (const path of ["/admin/team", "/payouts/balances", `/sellers/${sellerId}/kyc`, `/sellers/${sellerId}/earnings`]) {
+      const res = await api("GET", path, { token: customer });
+      assert.equal(res.status, 403, path);
+      assert.equal(res.body.error, "OWNER_ONLY", path);
+      assert.equal((await api("GET", path, { token: admin })).status, 200, path);
+    }
+    assert.equal((await api("POST", "/admin/team", { token: customer, body: { email: "x@mail.in" } })).status, 403);
+    assert.equal((await api("POST", "/payouts", { token: customer, body: {} })).status, 403);
+    const team = (await api("GET", "/admin/team", { token: admin })).body.data;
+    assert.deepEqual(team.admins.filter((a: { isOwner: boolean }) => a.isOwner).map((a: { isYou: boolean }) => a.isYou), [true]);
+  });
+
+  it("never removes or deletes the owner, who can hand ownership over", async () => {
+    const team = (await api("GET", "/admin/team", { token: admin })).body.data;
+    const me = team.admins.find((a: { isYou: boolean }) => a.isYou);
+    const kiran = team.admins.find((a: { email: string }) => a.email === "kiran@mail.in");
+    const removeOwner = await api("DELETE", `/admin/team/${me.id}`, { token: admin });
+    assert.equal(removeOwner.status, 400);
+    assert.equal(removeOwner.body.error, "OWNER");
+    assert.equal((await api("DELETE", "/auth/me", { token: admin })).body.error, "OWNER");
+
+    assert.equal((await api("POST", "/admin/team/transfer-ownership", { token: customer, body: { userId: kiran.id } })).status, 403);
+    assert.equal((await api("POST", "/admin/team/transfer-ownership", { token: admin, body: { userId: "0".repeat(24) } })).status, 404);
+    const res = await api("POST", "/admin/team/transfer-ownership", { token: admin, body: { userId: kiran.id } });
+    assert.equal(res.status, 200);
+    assert.equal((await api("GET", "/payouts/balances", { token: admin })).status, 403, "old owner loses owner rights");
+    assert.equal((await api("GET", "/admin/users", { token: admin })).status, 200, "but stays an admin");
+    assert.equal((await api("GET", "/payouts/balances", { token: kiranToken })).status, 200);
+    const activity = (await api("GET", "/admin/team", { token: kiranToken })).body.data.activity;
+    assert.equal(activity[0].action, "owner.transferred");
+
+    // Hand it back for the rest of the tests.
+    assert.equal((await api("POST", "/admin/team/transfer-ownership", { token: kiranToken, body: { userId: me.id } })).status, 200);
+    assert.equal(await User.countDocuments({ isOwner: true }), 1);
+  });
+
+  it("picks the earliest admin as owner when nobody is", async () => {
+    await User.updateMany({}, { isOwner: false });
+    await ensureOwner();
+    assert.equal((await api("GET", "/auth/me", { token: admin })).body.data.user.isOwner, true);
+    assert.equal(await User.countDocuments({ isOwner: true }), 1);
+  });
+
   it("removes admin access immediately but never the last admin", async () => {
     const res = await api("DELETE", `/admin/team/${customerId}`, { token: admin });
     assert.equal(res.status, 200);
@@ -124,7 +175,7 @@ describe("admin team", () => {
     const me = team.admins.find((a: { isYou: boolean }) => a.isYou);
     const last = await api("DELETE", `/admin/team/${me.id}`, { token: admin });
     assert.equal(last.status, 400);
-    assert.equal(last.body.error, "LAST_ADMIN");
+    assert.equal(last.body.error, "OWNER", "the last admin is the owner");
   });
 
   it("keeps a history of who changed what", async () => {

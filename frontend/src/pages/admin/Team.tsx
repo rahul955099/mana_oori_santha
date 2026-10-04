@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { UserPlus, ShieldCheck, Mail, RotateCw, X, Trash2, History } from "lucide-react";
+import { UserPlus, ShieldCheck, Mail, RotateCw, X, Trash2, History, Crown } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { Loading } from "@/components/common/Loading";
@@ -17,6 +17,7 @@ interface TeamAdmin {
   userCode: string;
   since: string;
   isYou: boolean;
+  isOwner: boolean;
 }
 
 interface TeamInvite {
@@ -49,6 +50,7 @@ const ACTION_TEXT: Record<string, string> = {
   "admin.invite-accepted": "accepted the invitation and joined",
   "admin.removed": "removed admin access from {target}",
   "customer.deleted": "deleted the customer account {target}",
+  "owner.transferred": "made {target} the site owner",
 };
 
 function describe(a: TeamActivity) {
@@ -59,7 +61,7 @@ function when(iso: string) {
   return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
-/** Admin: who can run the site. Add people by email, remove access, see history. */
+/** Owner only: who can run the site. Add people by email, remove access, hand over ownership, see history. */
 export default function AdminTeam() {
   const { refreshUser } = useAuth();
   const { showToast } = useToast();
@@ -68,6 +70,7 @@ export default function AdminTeam() {
   const [email, setEmail] = useState("");
   const [adding, setAdding] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<TeamAdmin | null>(null);
+  const [ownerTarget, setOwnerTarget] = useState<TeamAdmin | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -115,6 +118,20 @@ export default function AdminTeam() {
     }
   }
 
+  async function confirmTransfer() {
+    if (!ownerTarget) return;
+    const target = ownerTarget;
+    setOwnerTarget(null);
+    try {
+      await api.post("/admin/team/transfer-ownership", { userId: target.id });
+      showToast(`${target.name} is now the site owner.`);
+      await refreshUser();
+      navigate("/admin/dashboard", { replace: true });
+    } catch (err) {
+      showToast(errorMessage(err), "error");
+    }
+  }
+
   async function inviteAction(invite: TeamInvite, action: "resend" | "cancel") {
     try {
       if (action === "resend") await api.post(`/admin/team/invites/${invite.id}/resend`);
@@ -128,14 +145,13 @@ export default function AdminTeam() {
 
   if (!team) return <Loading label="Loading team..." />;
 
-  const onlyOneAdmin = team.admins.length === 1;
 
   return (
     <div>
       <h1 className="text-2xl font-extrabold text-stone-900">Admin Team</h1>
       <p className="mt-1 text-sm text-stone-500">
-        People who can run the whole site. Invite someone by email: they become an admin only after they accept. If they
-        already have an account they log in to accept; otherwise they set up a new one.
+        People who can run the site. You are the owner: only you can change this team, see sellers' full bank details and
+        record payouts. Other admins handle orders, products, sellers and customers. Invite someone by email: they become an admin only after they accept.
       </p>
 
       <form onSubmit={handleAdd} className="mt-6 flex max-w-xl flex-col gap-3 rounded-2xl border border-stone-200 bg-white p-5 sm:flex-row">
@@ -156,7 +172,7 @@ export default function AdminTeam() {
         </button>
       </form>
       <p className="mt-2 max-w-xl text-xs text-stone-400">
-        Admins can see every order, customer and seller's payout details. Only add people you trust.
+        Admins can see every order and customer. Only add people you trust.
       </p>
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -169,25 +185,36 @@ export default function AdminTeam() {
               <li key={a.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 font-semibold text-stone-800">
-                    {a.name} {a.isYou && <Badge tone="green">You</Badge>}
+                    {a.name} {a.isOwner && <Badge tone="gold">Owner</Badge>} {a.isYou && <Badge tone="green">You</Badge>}
                   </p>
                   <p className="truncate text-xs text-stone-400">
                     {a.email} · {a.userCode}
                   </p>
                 </div>
-                <button
-                  onClick={() => setRemoveTarget(a)}
-                  disabled={onlyOneAdmin}
-                  title={onlyOneAdmin ? "The site needs at least one admin" : "Remove admin access"}
-                  aria-label={`Remove admin access from ${a.name}`}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-stone-500 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
-                >
-                  <Trash2 size={15} />
-                </button>
+                {!a.isOwner && (
+                  <div className="flex shrink-0 gap-1">
+                    <button
+                      onClick={() => setOwnerTarget(a)}
+                      title="Make site owner"
+                      aria-label={`Make ${a.name} the site owner`}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-amber-50 hover:text-amber-600"
+                    >
+                      <Crown size={15} />
+                    </button>
+                    <button
+                      onClick={() => setRemoveTarget(a)}
+                      title="Remove admin access"
+                      aria-label={`Remove admin access from ${a.name}`}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
-          {onlyOneAdmin && <p className="mt-2 text-xs text-stone-400">Add a second admin before removing anyone.</p>}
+          <p className="mt-2 text-xs text-stone-400">The owner can't be removed. To step down, make another admin the owner first.</p>
         </section>
 
         <section className="rounded-2xl border border-stone-200 bg-white p-6">
@@ -253,9 +280,8 @@ export default function AdminTeam() {
 
       <Modal isOpen={!!removeTarget} onClose={() => setRemoveTarget(null)} title="Remove Admin Access">
         <p className="text-sm text-stone-600">
-          {removeTarget?.isYou
-            ? "Remove your own admin access? You'll leave the admin panel straight away and need another admin to add you back."
-            : `Remove admin access from ${removeTarget?.name}? Their account stays as a normal customer account, and they lose access to the admin panel immediately.`}
+          Remove admin access from {removeTarget?.name}? Their account stays as a normal customer account, and they lose access to the
+          admin panel immediately.
         </p>
         <div className="mt-5 flex justify-end gap-3">
           <button onClick={() => setRemoveTarget(null)} className={buttonClasses("ghost", "sm")}>
@@ -263,6 +289,21 @@ export default function AdminTeam() {
           </button>
           <button onClick={confirmRemove} className={buttonClasses("danger", "sm")}>
             Remove Access
+          </button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={!!ownerTarget} onClose={() => setOwnerTarget(null)} title="Hand Over Ownership">
+        <p className="text-sm text-stone-600">
+          Make {ownerTarget?.name} the site owner? They will manage the admin team, see sellers' full bank details and record
+          payouts. You stay an admin but lose those owner rights, and only {ownerTarget?.name} can give them back.
+        </p>
+        <div className="mt-5 flex justify-end gap-3">
+          <button onClick={() => setOwnerTarget(null)} className={buttonClasses("ghost", "sm")}>
+            Cancel
+          </button>
+          <button onClick={confirmTransfer} className={buttonClasses("primary", "sm")}>
+            Make Owner
           </button>
         </div>
       </Modal>

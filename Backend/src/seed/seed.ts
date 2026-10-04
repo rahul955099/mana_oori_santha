@@ -65,6 +65,8 @@ export async function seedCatalog(options: { reset: boolean; adminEmail: string;
       phone: "9000000000",
       password: options.adminPassword,
       role: "admin",
+      // The first admin owns the site.
+      isOwner: !(await User.exists({ role: "admin", isOwner: true })),
     });
     console.log(`Admin created: ${adminEmail}`);
   } else {

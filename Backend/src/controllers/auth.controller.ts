@@ -227,6 +227,9 @@ export async function deleteMe(req: AuthRequest, res: Response) {
   if (user.role === "admin" && (await User.countDocuments({ role: "admin", isActive: true, _id: { $ne: user._id } })) === 0) {
     throw new AppError("You're the only admin. Add another admin before deleting your account.", 400, "LAST_ADMIN");
   }
+  if (user.role === "admin" && user.isOwner) {
+    throw new AppError("You own this site. Hand ownership to another admin from the Admin Team page before deleting your account.", 400, "OWNER");
+  }
 
   // Sellers' accounts are switched off rather than erased: their payout and
   // KYC records are financial records.

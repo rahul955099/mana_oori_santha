@@ -8,6 +8,7 @@ export const ADMIN_ACTIONS = [
   "admin.invite-accepted",
   "admin.removed",
   "customer.deleted",
+  "owner.transferred",
 ] as const;
 export type AdminAction = (typeof ADMIN_ACTIONS)[number];
 

@@ -18,6 +18,7 @@ export function toSafeUser(user: UserDocument, seller?: SellerDocument | null) {
     email: user.email,
     phone: user.phone,
     role: user.role,
+    isOwner: user.role === "admin" && user.isOwner === true,
     address: user.address,
     profileImage: user.profileImage,
     emailVerified: user.emailVerified,

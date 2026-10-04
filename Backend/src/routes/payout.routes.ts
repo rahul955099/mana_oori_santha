@@ -3,11 +3,13 @@ import { body } from "express-validator";
 import { listBalances, recordPayout } from "../controllers/payout.controller";
 import { requireAuth } from "../middleware/auth.middleware";
 import { requireRole } from "../middleware/role.middleware";
+import { requireOwner } from "../middleware/owner.middleware";
 import { validate } from "../middleware/validate.middleware";
 
 const router = Router();
 
-router.use(requireAuth, requireRole("admin"));
+// Paying sellers is for the site owner only.
+router.use(requireAuth, requireRole("admin"), requireOwner);
 
 router.get("/balances", listBalances);
 router.post(

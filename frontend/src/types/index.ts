@@ -181,6 +181,8 @@ export interface AuthUser {
   profilePhoto?: string;
   emailVerified: boolean;
   notificationPrefs: NotificationPrefs;
+  /** The admin who owns the site: runs the admin team, sees bank details, pays sellers. */
+  isOwner: boolean;
 }
 
 export type AddressType = "home" | "work" | "other";

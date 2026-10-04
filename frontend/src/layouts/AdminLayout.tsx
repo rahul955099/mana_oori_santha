@@ -1,6 +1,11 @@
 import { LayoutDashboard, Package, Store, Users, ShoppingBag, LayoutGrid, BarChart3, LifeBuoy, Star, Tag, Bell, Wallet, ShieldCheck } from "lucide-react";
+import { Navigate, Outlet } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import type { SidebarLink } from "@/components/layout/DashboardSidebar";
+
+/** Pages only the site owner sees. */
+const OWNER_ONLY = new Set(["/admin/payouts", "/admin/team"]);
 
 const links: SidebarLink[] = [
   { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -19,5 +24,13 @@ const links: SidebarLink[] = [
 ];
 
 export function AdminLayout() {
-  return <DashboardLayout title="Admin Panel" subtitle="Mana Oori Santha" links={links} />;
+  const { user } = useAuth();
+  const visible = user?.isOwner ? links : links.filter((l) => !OWNER_ONLY.has(l.to));
+  return <DashboardLayout title="Admin Panel" subtitle="Mana Oori Santha" links={visible} />;
+}
+
+/** Wraps owner-only admin pages; other admins go back to the dashboard. */
+export function OwnerOnly() {
+  const { user } = useAuth();
+  return user?.isOwner ? <Outlet /> : <Navigate to="/admin/dashboard" replace />;
 }

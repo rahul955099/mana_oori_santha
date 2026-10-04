@@ -4,6 +4,7 @@ import { Eye, Trash2, BadgeCheck, ShieldCheck, ShieldX, FileSearch } from "lucid
 import { useSellers } from "@/context/SellersContext";
 import { useProducts } from "@/context/ProductsContext";
 import { useToast } from "@/context/ToastContext";
+import { useAuth } from "@/context/AuthContext";
 import { SearchBar } from "@/components/common/SearchBar";
 import { Badge } from "@/components/common/Badge";
 import { Modal } from "@/components/common/Modal";
@@ -27,6 +28,7 @@ export default function AdminSellers() {
   const { reload: reloadPublicSellers } = useSellers();
   const { reload: reloadProducts } = useProducts();
   const { showToast } = useToast();
+  const isOwner = useAuth().user?.isOwner === true;
   const [sellers, setSellers] = useState<SellerAccount[] | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | SellerStatus>("all");
@@ -57,8 +59,12 @@ export default function AdminSellers() {
   }
 
   async function openReview(seller: SellerAccount) {
+    // The list shows masked numbers; only the owner sees them in full.
+    if (!isOwner) {
+      setReview(seller);
+      return;
+    }
     try {
-      // The list shows masked numbers; the review shows them in full.
       setReview((await api.get<{ seller: SellerAccount }>(`/sellers/${seller.id}/kyc`)).seller);
     } catch (err) {
       showToast(errorMessage(err), "error");
@@ -255,6 +261,9 @@ export default function AdminSellers() {
                 </>
               )}
             </dl>
+            {!isOwner && (review.kyc || review.payout) && (
+              <p className="text-xs text-stone-400">PAN and bank numbers are partly hidden. Only the site owner sees them in full.</p>
+            )}
             <div className="flex flex-wrap justify-end gap-2">
               {review.status !== "approved" && (
                 <button

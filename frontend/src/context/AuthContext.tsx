@@ -46,6 +46,7 @@ interface ApiUser {
   profileImage?: string;
   emailVerified: boolean;
   notificationPrefs: NotificationPrefs;
+  isOwner?: boolean;
   sellerId?: string;
   shopName?: string;
   location?: string;
@@ -62,6 +63,7 @@ function toAuthUser(u: ApiUser): AuthUser {
     profilePhoto: u.profileImage,
     emailVerified: u.emailVerified,
     notificationPrefs: u.notificationPrefs,
+    isOwner: u.isOwner === true,
     sellerId: u.sellerId,
     shopName: u.shopName,
     location: u.location,
