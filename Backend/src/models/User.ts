@@ -60,6 +60,8 @@ export interface UserDocument extends Document {
   /** Tokens issued before this moment are rejected (set when the password changes). */
   passwordChangedAt?: Date;
   isActive: boolean;
+  /** Set when the account was deleted and its personal details erased. */
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -119,6 +121,7 @@ const userSchema = new Schema<UserDocument>(
     passwordResetExpires: { type: Date, select: false },
     passwordChangedAt: { type: Date },
     isActive: { type: Boolean, default: true },
+    deletedAt: { type: Date },
   },
   { timestamps: true }
 );

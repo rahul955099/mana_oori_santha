@@ -12,6 +12,7 @@ import type { UserDocument } from "../models/User";
 import { createOneTimeToken, hashToken } from "../utils/tokens";
 import { sendMailInBackground } from "../services/mail.service";
 import { notifyAdmins } from "../services/notification.service";
+import { deleteCustomerAccount } from "../services/accountDeletion.service";
 import { passwordReset, siteLink, verifyEmail } from "../services/emailTemplates";
 
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
@@ -219,6 +220,16 @@ export async function deleteMe(req: AuthRequest, res: Response) {
     throw new AppError("User not found", 404, "NOT_FOUND");
   }
 
+  if (user.role === "customer") {
+    await deleteCustomerAccount(user._id);
+    return success(res, "Account deleted");
+  }
+  if (user.role === "admin" && (await User.countDocuments({ role: "admin", isActive: true, _id: { $ne: user._id } })) === 0) {
+    throw new AppError("You're the only admin. Add another admin before deleting your account.", 400, "LAST_ADMIN");
+  }
+
+  // Sellers' accounts are switched off rather than erased: their payout and
+  // KYC records are financial records.
   user.isActive = false;
   await user.save();
 

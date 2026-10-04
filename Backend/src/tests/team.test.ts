@@ -118,3 +118,64 @@ describe("admin team", () => {
     }
   });
 });
+
+describe("deleting customers", () => {
+  const shippingAddress = {
+    fullName: "Lakshmi",
+    mobile: "9876543210",
+    email: "lakshmi@mail.in",
+    address: "1 Main Rd",
+    village: "Tirupati",
+    state: "AP",
+    pincode: "517501",
+  };
+
+  async function newCustomer(email: string) {
+    const res = await api("POST", "/auth/register", { body: { name: "Lakshmi", email, phone: "9876543210", password: "secret12" } });
+    return { token: res.body.data.token as string, id: res.body.data.user.id as string };
+  }
+
+  it("removes a customer with no history completely, freeing the email", async () => {
+    const c = await newCustomer("nohistory@mail.in");
+    assert.equal((await api("DELETE", `/admin/users/${c.id}`, { token: customer })).status, 403, "admins only");
+    const res = await api("DELETE", `/admin/users/${c.id}`, { token: admin });
+    assert.equal(res.body.data.mode, "removed");
+    assert.equal((await api("GET", "/auth/me", { token: c.token })).status, 401);
+    const list = (await api("GET", "/admin/users?search=nohistory", { token: admin })).body.data.customers;
+    assert.equal(list.length, 0);
+    assert.equal((await newCustomer("nohistory@mail.in")).id.length, 24, "can sign up again");
+  });
+
+  it("erases personal details but keeps the orders of a customer with history", async () => {
+    const c = await newCustomer("lakshmi@mail.in");
+    const product = (await api("GET", "/products/foxtail-millet")).body.data.product;
+    const order = (await api("POST", "/orders", { token: c.token, body: { items: [{ productId: product.id, quantity: 1 }], shippingAddress } })).body.data.order;
+
+    const res = await api("DELETE", `/admin/users/${c.id}`, { token: admin });
+    assert.equal(res.body.data.mode, "anonymized");
+    assert.equal((await api("POST", "/auth/login", { body: { email: "lakshmi@mail.in", password: "secret12" } })).status, 401);
+    assert.equal((await api("GET", `/orders/${order.id}`, { token: admin })).status, 200, "order kept for records");
+    assert.equal((await api("GET", "/admin/users?search=lakshmi@mail.in", { token: admin })).body.data.customers.length, 0);
+    assert.equal((await newCustomer("lakshmi@mail.in")).id.length, 24, "email is free again");
+
+    const activity = (await api("GET", "/admin/team", { token: admin })).body.data.activity;
+    assert.ok(activity.some((a: { action: string; targetEmail: string }) => a.action === "customer.deleted" && a.targetEmail === "lakshmi@mail.in"));
+  });
+
+  it("only deletes customer accounts from here", async () => {
+    const team = (await api("GET", "/admin/team", { token: admin })).body.data;
+    assert.equal((await api("DELETE", `/admin/users/${team.admins[0].id}`, { token: admin })).status, 404);
+  });
+
+  it("uses the same deletion when customers delete their own account", async () => {
+    const c = await newCustomer("selfdelete@mail.in");
+    assert.equal((await api("DELETE", "/auth/me", { token: c.token })).status, 200);
+    assert.equal((await newCustomer("selfdelete@mail.in")).id.length, 24, "email is free again");
+  });
+
+  it("stops the only admin deleting their own account", async () => {
+    const res = await api("DELETE", "/auth/me", { token: admin });
+    assert.equal(res.status, 400);
+    assert.equal(res.body.error, "LAST_ADMIN");
+  });
+});

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Ban, CheckCircle2, Users } from "lucide-react";
+import { Ban, CheckCircle2, Trash2, Users } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
 import { SearchBar } from "@/components/common/SearchBar";
 import { Badge } from "@/components/common/Badge";
@@ -29,6 +29,8 @@ export default function AdminCustomers() {
   const [customers, setCustomers] = useState<CustomerRow[] | null>(null);
   const [search, setSearch] = useState("");
   const [blockTarget, setBlockTarget] = useState<CustomerRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CustomerRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -50,6 +52,24 @@ export default function AdminCustomers() {
       showToast(isActive ? `${customer.name} unblocked` : `${customer.name} blocked`);
     } catch (err) {
       showToast(errorMessage(err), "error");
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    const target = deleteTarget;
+    setDeleting(true);
+    try {
+      const { mode } = await api.delete<{ mode: "removed" | "anonymized" }>(`/admin/users/${target.id}`);
+      setCustomers((prev) => prev?.filter((c) => c.id !== target.id) ?? prev);
+      showToast(
+        mode === "removed" ? `${target.name} deleted.` : `${target.name} deleted. Past orders were kept without personal details.`
+      );
+    } catch (err) {
+      showToast(errorMessage(err), "error");
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
     }
   }
 
@@ -112,11 +132,12 @@ export default function AdminCustomers() {
                       <Badge tone={c.isActive ? "green" : "red"}>{c.isActive ? "Active" : "Blocked"}</Badge>
                     </td>
                     <td className="px-5 py-3">
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-1">
                         {c.isActive ? (
                           <button
                             onClick={() => setBlockTarget(c)}
                             title="Block customer"
+                            aria-label={`Block ${c.name}`}
                             className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-red-50 hover:text-red-600"
                           >
                             <Ban size={15} />
@@ -125,11 +146,20 @@ export default function AdminCustomers() {
                           <button
                             onClick={() => setActive(c, true)}
                             title="Unblock customer"
+                            aria-label={`Unblock ${c.name}`}
                             className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-primary-50 hover:text-primary-700"
                           >
                             <CheckCircle2 size={15} />
                           </button>
                         )}
+                        <button
+                          onClick={() => setDeleteTarget(c)}
+                          title="Delete customer"
+                          aria-label={`Delete ${c.name}`}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-red-50 hover:text-red-600"
+                        >
+                          <Trash2 size={15} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -139,6 +169,32 @@ export default function AdminCustomers() {
           </div>
         </div>
       )}
+
+      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Customer">
+        <p className="text-sm text-stone-600">
+          Permanently delete <span className="font-semibold">{deleteTarget?.name}</span> ({deleteTarget?.email})?
+        </p>
+        <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-stone-500">
+          <li>Their name, email, phone, saved addresses, cart and wishlist are erased. This can't be undone.</li>
+          {deleteTarget && deleteTarget.orders > 0 ? (
+            <li>
+              {deleteTarget.orders === 1 ? "Their past order stays" : `Their ${deleteTarget.orders} past orders stay`} for your
+              records and seller payouts, and their reviews show as "Former customer".
+            </li>
+          ) : (
+            <li>They have no orders, so the account is removed completely.</li>
+          )}
+          <li>The email becomes free, so they could sign up again. To stop someone using the site, block them instead.</li>
+        </ul>
+        <div className="mt-5 flex justify-end gap-3">
+          <button onClick={() => setDeleteTarget(null)} className={buttonClasses("ghost", "sm")}>
+            Cancel
+          </button>
+          <button onClick={confirmDelete} disabled={deleting} className={buttonClasses("danger", "sm")}>
+            {deleting ? "Deleting..." : "Delete Customer"}
+          </button>
+        </div>
+      </Modal>
 
       <Modal isOpen={!!blockTarget} onClose={() => setBlockTarget(null)} title="Block Customer">
         <p className="text-sm text-stone-600">

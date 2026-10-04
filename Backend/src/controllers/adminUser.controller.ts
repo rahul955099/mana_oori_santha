@@ -3,6 +3,8 @@ import type { Types } from "mongoose";
 import { User } from "../models/User";
 import { Order } from "../models/Order";
 import { AppError } from "../utils/AppError";
+import { AdminActivity } from "../models/AdminActivity";
+import { deleteCustomerAccount } from "../services/accountDeletion.service";
 import { success } from "../utils/response";
 import { escapeRegex } from "../utils/slugify";
 import type { AuthRequest } from "../middleware/auth.middleware";
@@ -10,7 +12,7 @@ import type { AuthRequest } from "../middleware/auth.middleware";
 /** Admin: customers with their order count and lifetime spend. */
 export async function listCustomers(req: AuthRequest, res: Response) {
   const search = (req.query.search as string | undefined)?.trim();
-  const filter: Record<string, unknown> = { role: "customer" };
+  const filter: Record<string, unknown> = { role: "customer", deletedAt: { $exists: false } };
   if (search) {
     const pattern = new RegExp(escapeRegex(search), "i");
     filter.$or = [{ name: pattern }, { email: pattern }, { phone: pattern }, { userCode: pattern }];
@@ -60,5 +62,27 @@ export async function setCustomerActive(req: AuthRequest, res: Response) {
   user.isActive = req.body.isActive;
   await user.save();
   success(res, user.isActive ? "Customer unblocked" : "Customer blocked", { id: user._id.toString(), isActive: user.isActive });
+}
+
+/** Admin: deletes a customer (fully, or by erasing their details if they have history). */
+export async function deleteCustomer(req: AuthRequest, res: Response) {
+  const target = await User.findById(req.params.id).select("email role deletedAt");
+  if (!target || target.role !== "customer" || target.deletedAt) {
+    throw new AppError("Customer not found", 404, "NOT_FOUND");
+  }
+  const email = target.email;
+  const mode = await deleteCustomerAccount(target._id);
+  const actor = await User.findById(req.userId).select("name email");
+  await AdminActivity.create({
+    action: "customer.deleted",
+    actorName: actor?.name ?? "An admin",
+    actorEmail: actor?.email ?? "",
+    targetEmail: email,
+  });
+  success(
+    res,
+    mode === "removed" ? `${email} was deleted.` : `${email} was deleted. Their past orders are kept without personal details.`,
+    { mode }
+  );
 }
 

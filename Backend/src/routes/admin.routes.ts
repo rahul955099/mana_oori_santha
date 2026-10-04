@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { body, param, query } from "express-validator";
-import { listCustomers, setCustomerActive } from "../controllers/adminUser.controller";
+import { deleteCustomer, listCustomers, setCustomerActive } from "../controllers/adminUser.controller";
 import { downloadOrdersCsv, getSummary } from "../controllers/report.controller";
 import { emailCheck } from "../controllers/adminMail.controller";
 import { addAdmin, cancelInvite, getTeam, removeAdmin, resendInvite } from "../controllers/team.controller";
@@ -23,6 +23,7 @@ router.patch(
   validate([param("id").isMongoId().withMessage("Invalid user id"), body("isActive").isBoolean().toBoolean()]),
   setCustomerActive
 );
+router.delete("/users/:id", validate([param("id").isMongoId().withMessage("Invalid user id")]), deleteCustomer);
 router.get("/reports/summary", validate(dateRange), getSummary);
 router.get("/reports/orders.csv", validate(dateRange), downloadOrdersCsv);
 router.post("/email-check", emailCheck);

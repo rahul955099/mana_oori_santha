@@ -48,6 +48,7 @@ const ACTION_TEXT: Record<string, string> = {
   "admin.invite-cancelled": "cancelled the invitation to {target}",
   "admin.invite-accepted": "accepted the invitation and joined",
   "admin.removed": "removed admin access from {target}",
+  "customer.deleted": "deleted the customer account {target}",
 };
 
 function describe(a: TeamActivity) {
