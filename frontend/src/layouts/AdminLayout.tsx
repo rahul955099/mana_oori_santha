@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, Store, Users, ShoppingBag, LayoutGrid, BarChart3, LifeBuoy, Star, Tag, Bell, Wallet } from "lucide-react";
+import { LayoutDashboard, Package, Store, Users, ShoppingBag, LayoutGrid, BarChart3, LifeBuoy, Star, Tag, Bell, Wallet, ShieldCheck } from "lucide-react";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import type { SidebarLink } from "@/components/layout/DashboardSidebar";
 
@@ -15,6 +15,7 @@ const links: SidebarLink[] = [
   { to: "/admin/support", label: "Customer Support", icon: LifeBuoy },
   { to: "/admin/notifications", label: "Notifications", icon: Bell },
   { to: "/admin/reports", label: "Reports", icon: BarChart3 },
+  { to: "/admin/team", label: "Admin Team", icon: ShieldCheck },
 ];
 
 export function AdminLayout() {

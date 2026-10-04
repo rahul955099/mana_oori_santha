@@ -31,6 +31,8 @@ interface AuthContextValue {
   resendVerification: () => Promise<Result>;
   /** Completes a password reset from an emailed link and logs the user in. */
   resetPassword: (token: string, password: string) => Promise<Result>;
+  /** Creates the account from an admin invitation and logs it in. */
+  acceptAdminInvite: (token: string, details: { name: string; phone: string; password: string }) => Promise<Result>;
 }
 
 /** The user as the API returns it. */
@@ -214,6 +216,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function acceptAdminInvite(token: string, details: { name: string; phone: string; password: string }) {
+    try {
+      startSession(await api.post("/auth/admin-invite/accept", { token, ...details }));
+      return { success: true, message: "Welcome to the team!" };
+    } catch (err) {
+      return failure(err);
+    }
+  }
+
   async function deleteAccount() {
     try {
       await api.delete("/auth/me");
@@ -240,6 +251,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateNotificationPrefs,
         resendVerification,
         resetPassword,
+        acceptAdminInvite,
       }}
     >
       {children}

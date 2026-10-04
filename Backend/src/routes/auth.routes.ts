@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { body } from "express-validator";
+import { body, query } from "express-validator";
 import {
   register,
   registerSeller,
@@ -13,6 +13,7 @@ import {
   forgotPassword,
   resetPassword,
 } from "../controllers/auth.controller";
+import { acceptInvite, previewInvite } from "../controllers/team.controller";
 import rateLimit from "express-rate-limit";
 import { env } from "../config/env";
 import { requireAuth } from "../middleware/auth.middleware";
@@ -99,6 +100,13 @@ const tokenRule = body("token").isString().isLength({ min: 64, max: 64 }).withMe
 router.post("/verify-email", validate([tokenRule]), confirmEmail);
 router.post("/verify-email/resend", requireAuth, sensitive, resendVerification);
 router.post("/forgot-password", sensitive, validate([email()]), forgotPassword);
+router.get("/admin-invite", validate([query("token").isString().isLength({ min: 64, max: 64 }).withMessage("This link is invalid")]), previewInvite);
+router.post(
+  "/admin-invite/accept",
+  sensitive,
+  validate([tokenRule, name(), phone(), newPassword("password")]),
+  acceptInvite
+);
 router.post("/reset-password", sensitive, validate([tokenRule, newPassword("password")]), resetPassword);
 
 export default router;

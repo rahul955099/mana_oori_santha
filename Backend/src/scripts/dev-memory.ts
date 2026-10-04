@@ -5,8 +5,8 @@
  *
  *   npm run dev:memory
  *
- * Logins are printed on startup. Passwords come from SEED_ADMIN_PASSWORD /
- * SEED_SELLER_PASSWORD when set, otherwise local-only defaults are used.
+ * Fixed demo logins are printed on startup. Your real SEED_* credentials in
+ * .env are deliberately ignored, so they are never printed or reused here.
  */
 process.env.MONGODB_URI = process.env.MONGODB_URI || "mongodb://in-memory";
 process.env.JWT_SECRET = process.env.JWT_SECRET || "local-in-memory-dev-only-secret";
@@ -25,9 +25,9 @@ async function main() {
   const mongo = await MongoMemoryServer.create();
   await mongoose.connect(mongo.getUri());
 
-  const adminEmail = process.env.SEED_ADMIN_EMAIL || "admin@manaoorisantha.local";
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD || "admin12345";
-  const sellerPassword = process.env.SEED_SELLER_PASSWORD || "seller12345";
+  const adminEmail = "admin@manaoorisantha.local";
+  const adminPassword = "admin12345";
+  const sellerPassword = "seller12345";
   await seedCatalog({ reset: true, adminEmail, adminPassword, sellerPassword });
 
   app.listen(env.port, () => {

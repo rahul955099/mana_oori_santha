@@ -174,3 +174,40 @@ export function offerEmail(name: string, title: string, message: string): Email 
     text: `Hi ${name},\n\n${title}\n\n${message}\n\nShop: ${siteLink("/products")}\n\nTurn off offer emails in your profile.`,
   };
 }
+
+export function adminInviteEmail(inviterName: string, url: string): Email {
+  return {
+    subject: `You're invited to help run ${BRAND}`,
+    html: layout({
+      heading: "You've been invited as an admin",
+      intro: `${esc(inviterName)} has invited you to help manage ${BRAND} — orders, sellers, products and customers.`,
+      button: { label: "Accept invitation", url },
+      footnote: "This invitation expires in 7 days. If you weren't expecting it, you can ignore this email.",
+    }),
+    text: `${inviterName} has invited you to be an admin of ${BRAND}.\n\nAccept: ${url}\n\nThis invitation expires in 7 days. If you weren't expecting it, ignore this email.`,
+  };
+}
+
+export function adminPromotedEmail(name: string, inviterName: string): Email {
+  return {
+    subject: `You're now an admin of ${BRAND}`,
+    html: layout({
+      heading: "You're now an admin",
+      intro: `Hi ${esc(name)}, ${esc(inviterName)} has given your account admin access. Log in as usual and open the admin panel from your profile menu.`,
+      button: { label: "Open admin panel", url: siteLink("/admin/dashboard") },
+      footnote: "If you weren't expecting this, please let the team know.",
+    }),
+    text: `Hi ${name},\n\n${inviterName} has given your account admin access.\n\nAdmin panel: ${siteLink("/admin/dashboard")}`,
+  };
+}
+
+export function adminRemovedEmail(name: string): Email {
+  return {
+    subject: `Your admin access to ${BRAND} has been removed`,
+    html: layout({
+      heading: "Admin access removed",
+      intro: `Hi ${esc(name)}, your account no longer has admin access. You can still log in and shop as a customer.`,
+    }),
+    text: `Hi ${name},\n\nYour account no longer has admin access. You can still log in and shop as a customer.`,
+  };
+}

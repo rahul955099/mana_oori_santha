@@ -30,6 +30,7 @@ const MySupport = lazy(() => import("@/pages/MySupport"));
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
+const AcceptInvite = lazy(() => import("@/pages/AcceptInvite"));
 
 const SellerDashboard = lazy(() => import("@/pages/seller/Dashboard"));
 const SellerMyProducts = lazy(() => import("@/pages/seller/MyProducts"));
@@ -51,6 +52,7 @@ const AdminReviews = lazy(() => import("@/pages/admin/Reviews"));
 const AdminCoupons = lazy(() => import("@/pages/admin/Coupons"));
 const AdminNotifications = lazy(() => import("@/pages/admin/Notifications"));
 const AdminPayouts = lazy(() => import("@/pages/admin/Payouts"));
+const AdminTeam = lazy(() => import("@/pages/admin/Team"));
 
 function App() {
   return (
@@ -87,6 +89,7 @@ function App() {
             <Route path="forgot-password" element={<ForgotPassword />} />
             <Route path="reset-password" element={<ResetPassword />} />
             <Route path="verify-email" element={<VerifyEmail />} />
+            <Route path="accept-invite" element={<AcceptInvite />} />
             <Route
               path="my-orders"
               element={
@@ -147,6 +150,7 @@ function App() {
             <Route path="customers" element={<AdminCustomers />} />
             <Route path="orders" element={<AdminOrders />} />
             <Route path="payouts" element={<AdminPayouts />} />
+            <Route path="team" element={<AdminTeam />} />
             <Route path="categories" element={<AdminCategories />} />
             <Route path="support" element={<AdminSupport />} />
             <Route path="reviews" element={<AdminReviews />} />

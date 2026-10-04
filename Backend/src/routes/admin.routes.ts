@@ -3,6 +3,7 @@ import { body, param, query } from "express-validator";
 import { listCustomers, setCustomerActive } from "../controllers/adminUser.controller";
 import { downloadOrdersCsv, getSummary } from "../controllers/report.controller";
 import { emailCheck } from "../controllers/adminMail.controller";
+import { addAdmin, cancelInvite, getTeam, removeAdmin, resendInvite } from "../controllers/team.controller";
 import { requireAuth } from "../middleware/auth.middleware";
 import { requireRole } from "../middleware/role.middleware";
 import { validate } from "../middleware/validate.middleware";
@@ -25,5 +26,16 @@ router.patch(
 router.get("/reports/summary", validate(dateRange), getSummary);
 router.get("/reports/orders.csv", validate(dateRange), downloadOrdersCsv);
 router.post("/email-check", emailCheck);
+
+router.get("/team", getTeam);
+router.post(
+  "/team",
+  validate([body("email").isString().trim().toLowerCase().isEmail().withMessage("Enter a valid email address")]),
+  addAdmin
+);
+router.delete("/team/:userId", validate([param("userId").isMongoId().withMessage("Invalid user id")]), removeAdmin);
+const inviteId = param("inviteId").isMongoId().withMessage("Invalid invitation id");
+router.post("/team/invites/:inviteId/resend", validate([inviteId]), resendInvite);
+router.delete("/team/invites/:inviteId", validate([inviteId]), cancelInvite);
 
 export default router;
