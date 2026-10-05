@@ -19,16 +19,7 @@ const CUSTOM_STEPS = [
   { icon: PackageCheck, title: "Delivered to you", text: "Pay cash on delivery when it arrives." },
 ];
 
-function Wordmark({ large = false }: { large?: boolean }) {
-  return (
-    <span className="inline-flex flex-col items-center leading-none">
-      <span className={`font-serif font-bold tracking-[0.12em] text-maad-700 ${large ? "text-5xl sm:text-6xl" : "text-2xl"}`}>MAAD</span>
-      <span className={`mt-1 font-semibold uppercase text-stone-500 ${large ? "text-xs tracking-[0.5em]" : "text-[9px] tracking-[0.45em]"}`}>
-        Fashions
-      </span>
-    </span>
-  );
-}
+const LOGO = "/assets/maad-fashions-logo.png";
 
 /** MAAD Fashions: a boutique-style page for dresses, sarees and custom stitching. */
 export default function Fashion() {
@@ -41,7 +32,7 @@ export default function Fashion() {
       {/* Boutique bar */}
       <div className="border-b border-maad-100 bg-white">
         <div className="container-app flex flex-col items-center gap-3 py-4 sm:flex-row sm:justify-between">
-          <Wordmark />
+          <img src={LOGO} alt="MAAD Luxury Fashion Store" className="h-20 w-auto" width={422} height={332} />
           <nav className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-sm font-medium text-stone-600">
             <a href="#top" className="hover:text-maad-700">Home</a>
             {SECTIONS.map((s) => (
@@ -78,8 +69,8 @@ export default function Fashion() {
 
           <div className="mx-auto w-full max-w-sm">
             <div className="rounded-t-full bg-white p-4 shadow-2xl shadow-maad-300/30">
-              <div className="flex aspect-[4/5] items-center justify-center rounded-t-full bg-gradient-to-b from-maad-300 via-maad-200 to-maad-100">
-                <Wordmark large />
+              <div className="flex aspect-[4/5] items-center justify-center rounded-t-full bg-gradient-to-b from-maad-100 via-white to-maad-50">
+                <img src={LOGO} alt="" className="w-4/5 drop-shadow-sm" width={422} height={332} />
               </div>
             </div>
           </div>
