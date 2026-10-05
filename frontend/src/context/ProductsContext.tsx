@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 export type ProductInput = Pick<
   Product,
   "name" | "category" | "description" | "price" | "mrp" | "unit" | "stock" | "image" | "isOrganic" | "isFeatured" | "benefits"
-> & { images?: string[]; sellerId?: string };
+> & { images?: string[]; sellerId?: string; sizes?: string[] };
 
 interface ProductsContextValue {
   /** The whole active catalog. It is small, so the storefront loads it once and filters locally. */

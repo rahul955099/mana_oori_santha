@@ -24,6 +24,8 @@ export default function ProductDetails() {
   const { addToCart } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
   const [quantity, setQuantity] = useState(1);
+  const [size, setSize] = useState("");
+  const [sizeError, setSizeError] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   const product = slug ? getProductBySlug(slug) : undefined;
@@ -55,14 +57,23 @@ export default function ProductDetails() {
   const related = products.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 4);
   const purchasable = product.priceAvailable !== false && product.stock > 0;
 
+  const sizes = product.sizes ?? [];
+
+  /** Sized products need a size before they can go in the cart. */
+  function sizeChosen() {
+    if (sizes.length === 0 || size) return true;
+    setSizeError(true);
+    return false;
+  }
+
   function handleAddToCart() {
-    if (!product || !purchasable) return;
-    addToCart(product.id, quantity);
+    if (!product || !purchasable || !sizeChosen()) return;
+    addToCart(product.id, quantity, { size: size || undefined });
   }
 
   function handleBuyNow() {
-    if (!product || !purchasable) return;
-    addToCart(product.id, quantity, { silent: true });
+    if (!product || !purchasable || !sizeChosen()) return;
+    addToCart(product.id, quantity, { silent: true, size: size || undefined });
     navigate("/cart");
   }
 
@@ -172,6 +183,35 @@ export default function ProductDetails() {
 
           <p className="mt-5 text-sm leading-relaxed text-stone-600">{product.description}</p>
 
+          {sizes.length > 0 && (
+            <div className="mt-5">
+              <h3 className="mb-2 text-sm font-bold text-stone-800">
+                Size{size && <span className="font-medium text-stone-500">: {size}</span>}
+              </h3>
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Choose a size">
+                {sizes.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    role="radio"
+                    aria-checked={size === s}
+                    onClick={() => {
+                      setSize(s);
+                      setSizeError(false);
+                    }}
+                    className={`min-w-12 rounded-lg border-2 px-3.5 py-2 text-sm font-bold transition ${
+                      size === s ? "border-primary-600 bg-primary-600 text-white" : "border-stone-200 text-stone-700 hover:border-primary-400"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+              {sizeError && <p className="mt-2 text-sm font-medium text-red-600">Please choose a size.</p>}
+            </div>
+          )}
+
+          {product.benefits.length > 0 && (
           <div className="mt-5">
             <h3 className="mb-2 text-sm font-bold text-stone-800">Benefits</h3>
             <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -182,6 +222,7 @@ export default function ProductDetails() {
               ))}
             </ul>
           </div>
+          )}
 
           <p className="mt-5 text-sm font-medium text-stone-500">
             Availability:{" "}

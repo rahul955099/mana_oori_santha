@@ -108,7 +108,7 @@ export default function Invoice() {
               <tr key={item.productId} className="border-b border-stone-100">
                 <td className="py-2.5">
                   <p className="font-semibold text-stone-800">{item.name}</p>
-                  <p className="text-xs text-stone-400">{item.unit}</p>
+                  <p className="text-xs text-stone-400">{item.size ? `Size ${item.size} · ${item.unit}` : item.unit}</p>
                 </td>
                 <td className="py-2.5 text-right text-stone-600">{formatCurrency(item.price)}</td>
                 <td className="py-2.5 text-right text-stone-600">{item.quantity}</td>

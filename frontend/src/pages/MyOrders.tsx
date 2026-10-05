@@ -118,7 +118,7 @@ export default function MyOrders() {
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold text-stone-800">{item.name}</p>
                           <p className="text-xs text-stone-400">
-                            {item.quantity} × {formatCurrency(item.price)} ({item.unit})
+                            {item.quantity} × {formatCurrency(item.price)} ({item.size ? `Size ${item.size}, ` : ""}{item.unit})
                           </p>
                         </div>
                         <p className="text-sm font-bold text-stone-800">{formatCurrency(item.price * item.quantity)}</p>

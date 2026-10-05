@@ -63,7 +63,16 @@ export default function SellerOrders() {
                       <td className="px-5 py-3 font-semibold text-stone-800">{order.id}</td>
                       <td className="px-5 py-3 text-stone-500">{formatDate(order.date)}</td>
                       <td className="px-5 py-3 text-stone-600">{order.customer.fullName}</td>
-                      <td className="px-5 py-3 text-stone-500">{myItems.length} item(s)</td>
+                      <td className="px-5 py-3 text-stone-500">
+                        <ul className="space-y-0.5 text-xs">
+                          {myItems.map((i, n) => (
+                            <li key={n}>
+                              <span className="font-medium text-stone-700">{i.name}</span>
+                              {i.size && <span className="font-semibold text-primary-700"> · Size {i.size}</span>} × {i.quantity}
+                            </li>
+                          ))}
+                        </ul>
+                      </td>
                       <td className="px-5 py-3 font-semibold text-stone-800">{formatCurrency(amount)}</td>
                       <td className="px-5 py-3">
                         <OrderStatusControl order={order} />

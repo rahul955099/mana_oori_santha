@@ -49,7 +49,7 @@ export default function Cart() {
             if (!product) return null;
             return (
               <div
-                key={item.productId}
+                key={`${item.productId}|${item.size ?? ""}`}
                 className="flex flex-col gap-4 rounded-2xl border border-stone-200 bg-white p-4 sm:flex-row sm:items-center"
               >
                 <Link to={`/products/${product.slug}`} className="shrink-0">
@@ -59,13 +59,13 @@ export default function Cart() {
                   <Link to={`/products/${product.slug}`} className="font-bold text-stone-800 hover:text-primary-700">
                     {product.name}
                   </Link>
-                  <p className="text-xs text-stone-400">{product.unit}</p>
+                  <p className="text-xs text-stone-400">{item.size ? `Size ${item.size} · ${product.unit}` : product.unit}</p>
                   <p className="mt-1 text-sm font-bold text-stone-900">{formatCurrency(product.price)}</p>
                 </div>
                 <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end">
                   <div className="flex items-center rounded-full border border-stone-300">
                     <button
-                      onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                      onClick={() => updateQuantity(item.productId, item.quantity - 1, item.size)}
                       aria-label={`Decrease quantity of ${product.name}`}
                       className="flex h-9 w-9 items-center justify-center text-stone-500 hover:text-primary-700"
                     >
@@ -73,7 +73,7 @@ export default function Cart() {
                     </button>
                     <span className="w-8 text-center text-sm font-bold">{item.quantity}</span>
                     <button
-                      onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                      onClick={() => updateQuantity(item.productId, item.quantity + 1, item.size)}
                       aria-label={`Increase quantity of ${product.name}`}
                       className="flex h-9 w-9 items-center justify-center text-stone-500 hover:text-primary-700"
                     >
@@ -81,7 +81,7 @@ export default function Cart() {
                     </button>
                   </div>
                   <button
-                    onClick={() => removeFromCart(item.productId)}
+                    onClick={() => removeFromCart(item.productId, item.size)}
                     className="flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-700"
                   >
                     <Trash2 size={14} /> Remove

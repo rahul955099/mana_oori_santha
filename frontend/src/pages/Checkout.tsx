@@ -79,7 +79,7 @@ export default function Checkout() {
     setSubmitting(true);
     try {
       const order = await placeOrder({
-        items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+        items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, ...(i.size ? { size: i.size } : {}) })),
         // Only send a coupon the server has accepted for this cart.
         couponCode: quote?.coupon?.valid ? (couponCode ?? undefined) : undefined,
         shippingAddress: form,
@@ -210,11 +210,13 @@ export default function Checkout() {
               const product = getProductById(item.productId);
               if (!product) return null;
               return (
-                <div key={item.productId} className="flex items-center gap-3">
+                <div key={`${item.productId}|${item.size ?? ""}`} className="flex items-center gap-3">
                   <img src={product.image} alt={product.name} className="h-12 w-12 rounded-lg object-cover" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-semibold text-stone-800">{product.name}</p>
-                    <p className="text-[11px] text-stone-400">Qty: {item.quantity}</p>
+                    <p className="text-[11px] text-stone-400">
+                      {item.size && `Size ${item.size} · `}Qty: {item.quantity}
+                    </p>
                   </div>
                   <p className="text-xs font-bold text-stone-800">{formatCurrency(product.price * item.quantity)}</p>
                 </div>

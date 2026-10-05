@@ -8,18 +8,20 @@ import { api } from "@/lib/api";
 export interface AddedToCart {
   productId: string;
   quantity: number;
+  size?: string;
   /** Changes on every add, so adding the same product again re-opens the popup. */
   key: number;
 }
 
 interface CartContextValue {
   items: CartItem[];
-  /** `silent` skips the popup, e.g. for Buy Now, which goes straight to the cart. */
-  addToCart: (productId: string, quantity?: number, options?: { silent?: boolean }) => void;
+  /** `silent` skips the popup, e.g. for Buy Now, which goes straight to the cart.
+   * `size` is needed for products that come in sizes; each size is its own cart line. */
+  addToCart: (productId: string, quantity?: number, options?: { silent?: boolean; size?: string }) => void;
   lastAdded: AddedToCart | null;
   dismissAdded: () => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  removeFromCart: (productId: string, size?: string) => void;
+  updateQuantity: (productId: string, quantity: number, size?: string) => void;
   clearCart: () => void;
   totalItems: number;
   /** Instant estimate from the loaded catalog; `quote` is the authoritative total. */
@@ -47,13 +49,20 @@ function readStorage<T>(key: string, fallback: T): T {
   }
 }
 
-/** Combines a guest cart with the account's saved cart, keeping the larger quantity of each product. */
+/** True when a cart line is this product in this size. */
+function sameLine(item: CartItem, productId: string, size?: string) {
+  return item.productId === productId && (item.size ?? "") === (size ?? "");
+}
+
+/** Combines a guest cart with the account's saved cart, keeping the larger quantity of each line. */
 function mergeCarts(a: CartItem[], b: CartItem[]): CartItem[] {
-  const merged = new Map<string, number>();
+  const merged: CartItem[] = [];
   for (const item of [...a, ...b]) {
-    merged.set(item.productId, Math.max(merged.get(item.productId) ?? 0, item.quantity));
+    const existing = merged.find((m) => sameLine(m, item.productId, item.size));
+    if (existing) existing.quantity = Math.max(existing.quantity, item.quantity);
+    else merged.push({ ...item });
   }
-  return [...merged].map(([productId, quantity]) => ({ productId, quantity }));
+  return merged;
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -153,29 +162,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [lastAdded, setLastAdded] = useState<AddedToCart | null>(null);
   const dismissAdded = useCallback(() => setLastAdded(null), []);
 
-  function addToCart(productId: string, quantity = 1, options: { silent?: boolean } = {}) {
-    if (!options.silent) setLastAdded({ productId, quantity, key: Date.now() });
+  function addToCart(productId: string, quantity = 1, options: { silent?: boolean; size?: string } = {}) {
+    const { size } = options;
+    if (!options.silent) setLastAdded({ productId, quantity, size, key: Date.now() });
     setItems((prev) => {
-      const existing = prev.find((i) => i.productId === productId);
+      const existing = prev.find((i) => sameLine(i, productId, size));
       if (existing) {
         const next = Math.min(existing.quantity + quantity, maxFor(productId));
-        return prev.map((i) => (i.productId === productId ? { ...i, quantity: next } : i));
+        return prev.map((i) => (sameLine(i, productId, size) ? { ...i, quantity: next } : i));
       }
-      return [...prev, { productId, quantity: Math.min(quantity, maxFor(productId)) }];
+      return [...prev, { productId, quantity: Math.min(quantity, maxFor(productId)), ...(size ? { size } : {}) }];
     });
   }
 
-  function removeFromCart(productId: string) {
-    setItems((prev) => prev.filter((i) => i.productId !== productId));
+  function removeFromCart(productId: string, size?: string) {
+    setItems((prev) => prev.filter((i) => !sameLine(i, productId, size)));
   }
 
-  function updateQuantity(productId: string, quantity: number) {
+  function updateQuantity(productId: string, quantity: number, size?: string) {
     if (quantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(productId, size);
       return;
     }
     const capped = Math.min(quantity, maxFor(productId));
-    setItems((prev) => prev.map((i) => (i.productId === productId ? { ...i, quantity: capped } : i)));
+    setItems((prev) => prev.map((i) => (sameLine(i, productId, size) ? { ...i, quantity: capped } : i)));
   }
 
   function clearCart() {

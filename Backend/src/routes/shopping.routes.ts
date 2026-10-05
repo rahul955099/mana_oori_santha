@@ -25,6 +25,7 @@ router.put(
     body("items").isArray({ max: 100 }),
     body("items.*.productId").isString(),
     body("items.*.quantity").isInt({ min: 1, max: 99 }).toInt(),
+    body("items.*.size").optional({ values: "null" }).isString().trim().isLength({ max: 20 }),
     body("couponCode").optional({ values: "null" }).isString().trim().isLength({ max: 30 }),
   ]),
   replaceCart

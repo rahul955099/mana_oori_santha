@@ -29,6 +29,8 @@ function productFields(isCreate: boolean): ValidationChain[] {
     body("description").optional().isString().trim().isLength({ max: 3000 }),
     body("benefits").optional().isArray({ max: 20 }),
     body("benefits.*").isString().trim().isLength({ max: 120 }),
+    body("sizes").optional().isArray({ max: 15 }).withMessage("Up to 15 sizes"),
+    body("sizes.*").isString().trim().isLength({ max: 20 }).withMessage("Each size can be up to 20 characters"),
     body("image").optional().isString().trim().custom(isImageUrl).withMessage("Image must be an https:// URL"),
     body("images").optional().isArray({ max: 10 }),
     body("images.*").isString().trim().custom(isImageUrl).withMessage("Images must be https:// URLs"),

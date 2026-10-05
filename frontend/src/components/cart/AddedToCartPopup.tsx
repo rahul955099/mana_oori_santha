@@ -64,7 +64,7 @@ export function AddedToCartPopup() {
         <div className="min-w-0">
           <p className="line-clamp-2 font-semibold text-stone-800">{product.name}</p>
           <p className="mt-0.5 text-sm text-stone-500">
-            {product.unit} ×{lastAdded.quantity}
+            {lastAdded.size ? `Size ${lastAdded.size} · ` : `${product.unit} `}×{lastAdded.quantity}
           </p>
           <div className="mt-3 flex items-center gap-2">
             <span className="rounded-lg bg-primary-600 px-2.5 py-1 text-lg font-extrabold text-white">{formatCurrency(product.price)}</span>

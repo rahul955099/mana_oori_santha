@@ -3,6 +3,7 @@ import { Schema, model, type Document, type Types } from "mongoose";
 export interface CartLine {
   product: Types.ObjectId;
   quantity: number;
+  size?: string;
 }
 
 export interface CartDocument extends Document {
@@ -22,6 +23,7 @@ const cartSchema = new Schema<CartDocument>(
           {
             product: { type: Schema.Types.ObjectId, ref: "Product", required: true },
             quantity: { type: Number, required: true, min: 1 },
+            size: { type: String },
           },
           { _id: false }
         ),

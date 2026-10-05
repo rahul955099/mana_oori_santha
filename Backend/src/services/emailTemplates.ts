@@ -72,7 +72,7 @@ export function orderPlaced(name: string, order: OrderDocument): Email {
   const rows = order.items
     .map(
       (i) =>
-        `<tr><td style="padding:6px 0;border-bottom:1px solid #f5f5f4">${esc(i.name)} <span style="color:#a8a29e">× ${i.quantity}</span></td><td align="right" style="padding:6px 0;border-bottom:1px solid #f5f5f4">${rupees(i.price * i.quantity)}</td></tr>`
+        `<tr><td style="padding:6px 0;border-bottom:1px solid #f5f5f4">${esc(i.name)}${i.size ? ` (Size ${esc(i.size)})` : ""} <span style="color:#a8a29e">× ${i.quantity}</span></td><td align="right" style="padding:6px 0;border-bottom:1px solid #f5f5f4">${rupees(i.price * i.quantity)}</td></tr>`
     )
     .join("");
   const totals = [

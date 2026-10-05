@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Heart, ShoppingCart, Trash2 } from "lucide-react";
 import { useWishlist } from "@/context/WishlistContext";
 import { useProducts } from "@/context/ProductsContext";
@@ -12,10 +12,17 @@ export default function Wishlist() {
   const { wishlist, toggleWishlist } = useWishlist();
   const { products } = useProducts();
   const { addToCart } = useCart();
+  const navigate = useNavigate();
   const { showToast } = useToast();
   const wishlistedProducts = products.filter((p) => wishlist.includes(p.id));
 
   function handleMoveToCart(productId: string) {
+    const product = products.find((p) => p.id === productId);
+    if (product?.sizes?.length) {
+      // A size has to be picked first.
+      navigate(`/products/${product.slug}`);
+      return;
+    }
     addToCart(productId, 1);
     toggleWishlist(productId);
   }

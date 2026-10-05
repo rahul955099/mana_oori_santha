@@ -17,6 +17,7 @@ export interface ProductFormValues {
   isOrganic: boolean;
   isFeatured: boolean;
   benefits: string[];
+  sizes: string[];
 }
 
 interface ProductFormProps {
@@ -26,6 +27,10 @@ interface ProductFormProps {
   /** Only admins can feature products on the homepage. */
   canFeature?: boolean;
 }
+
+/** Categories whose products come in sizes. */
+const SIZED_CATEGORIES = new Set(["dresses", "customised-dresses", "sarees"]);
+const COMMON_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "3XL", "Free Size"];
 
 const inputClass =
   "w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100";
@@ -38,6 +43,19 @@ export function ProductForm({ initial, onSubmit, submitLabel, canFeature = false
   const [chosenCategory, setCategory] = useState<CategorySlug>(initial?.category ?? "");
   // Until the seller picks one, default to the first category (which may load after the form opens).
   const category = chosenCategory || categories[0]?.slug || "";
+  const showSizes = SIZED_CATEGORIES.has(category);
+
+  /** Keeps the common sizes in their natural order, custom ones after. */
+  function orderSizes(list: string[]) {
+    const rank = (x: string) => (COMMON_SIZES.includes(x) ? COMMON_SIZES.indexOf(x) : COMMON_SIZES.length);
+    return [...list].sort((a, b) => rank(a) - rank(b));
+  }
+
+  function addCustomSize() {
+    const s = customSize.trim();
+    if (s && !sizes.some((x) => x.toLowerCase() === s.toLowerCase())) setSizes(orderSizes([...sizes, s]));
+    setCustomSize("");
+  }
   const [description, setDescription] = useState(initial?.description ?? "");
   const [price, setPrice] = useState(initial?.price ?? 0);
   const [mrp, setMrp] = useState(initial?.mrp ?? 0);
@@ -49,6 +67,8 @@ export function ProductForm({ initial, onSubmit, submitLabel, canFeature = false
   const [isOrganic, setIsOrganic] = useState(initial?.isOrganic ?? false);
   const [isFeatured, setIsFeatured] = useState(initial?.isFeatured ?? false);
   const [benefitsText, setBenefitsText] = useState(initial?.benefits.join(", ") ?? "");
+  const [sizes, setSizes] = useState<string[]>(initial?.sizes ?? []);
+  const [customSize, setCustomSize] = useState("");
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -69,6 +89,8 @@ export function ProductForm({ initial, onSubmit, submitLabel, canFeature = false
       image: photos[0],
       images: photos.slice(1),
       isOrganic,
+      // Sizes only apply to clothing; clear them if the category changed away from it.
+      sizes: showSizes ? sizes : [],
       isFeatured,
       benefits: benefitsText
         .split(",")
@@ -126,6 +148,49 @@ export function ProductForm({ initial, onSubmit, submitLabel, canFeature = false
           <input required type="number" min={0} value={stock} onChange={(e) => setStock(Number(e.target.value))} className={inputClass} />
         </div>
       </div>
+
+      {showSizes && (
+        <div>
+          <label className={labelClass}>Sizes available</label>
+          <p className="mb-2 text-xs text-stone-400">Tap the sizes you can supply. Customers must pick one when they order. Leave all off if it's one size.</p>
+          <div className="flex flex-wrap gap-2">
+            {[...COMMON_SIZES, ...sizes.filter((s) => !COMMON_SIZES.includes(s))].map((s) => {
+              const on = sizes.includes(s);
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setSizes(on ? sizes.filter((x) => x !== s) : orderSizes([...sizes, s]))}
+                  aria-pressed={on}
+                  className={`min-w-11 rounded-lg border px-3 py-1.5 text-sm font-semibold transition ${
+                    on ? "border-primary-600 bg-primary-600 text-white" : "border-stone-200 text-stone-600 hover:border-primary-300"
+                  }`}
+                >
+                  {s}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-2 flex max-w-xs gap-2">
+            <input
+              value={customSize}
+              onChange={(e) => setCustomSize(e.target.value)}
+              maxLength={20}
+              placeholder="Other size, e.g. 32 or 6-7 Yrs"
+              className={inputClass}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addCustomSize();
+                }
+              }}
+            />
+            <button type="button" onClick={addCustomSize} className={buttonClasses("ghost", "sm")}>
+              Add
+            </button>
+          </div>
+        </div>
+      )}
 
       <div>
         <label className={labelClass}>Benefits (comma separated)</label>

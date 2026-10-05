@@ -84,6 +84,8 @@ export interface Product {
   stock: number;
   description: string;
   benefits: string[];
+  /** Sizes it comes in, e.g. ["S", "M", "L"]; empty or missing for products without sizes. */
+  sizes?: string[];
   isOrganic: boolean;
   isFeatured: boolean;
   createdAt: string;
@@ -96,6 +98,8 @@ export interface Product {
 export interface CartItem {
   productId: string;
   quantity: number;
+  /** Chosen size, for products that come in sizes (e.g. dresses). */
+  size?: string;
 }
 
 export type OrderStatus =
@@ -118,6 +122,7 @@ export interface OrderItem {
   price: number;
   unit: string;
   quantity: number;
+  size?: string;
 }
 
 export type PaymentStatus = "pending" | "paid" | "refunded";
@@ -351,8 +356,9 @@ export interface NotificationPrefs {
 /** Why a cart line can't be bought right now (from the server's quote). */
 export interface CartProblem {
   productId: string;
+  size?: string;
   name?: string;
-  reason: "unavailable" | "out-of-stock" | "insufficient-stock" | "no-price";
+  reason: "unavailable" | "out-of-stock" | "insufficient-stock" | "no-price" | "size-required";
   available?: number;
 }
 

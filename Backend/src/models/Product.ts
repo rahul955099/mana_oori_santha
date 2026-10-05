@@ -18,6 +18,9 @@ export interface ProductDocument extends Document {
   stock: number;
   description: string;
   benefits: string[];
+  /** Sizes this item comes in, e.g. ["S", "M", "L"]. Empty for products without sizes.
+   * All sizes share the one stock count. */
+  sizes: string[];
   isOrganic: boolean;
   isFeatured: boolean;
   priceAvailable: boolean;
@@ -45,6 +48,7 @@ const productSchema = new Schema<ProductDocument>(
     stock: { type: Number, default: 0, min: 0 },
     description: { type: String, default: "", trim: true },
     benefits: { type: [String], default: [] },
+    sizes: { type: [String], default: [] },
     isOrganic: { type: Boolean, default: false },
     isFeatured: { type: Boolean, default: false },
     priceAvailable: { type: Boolean, default: true },

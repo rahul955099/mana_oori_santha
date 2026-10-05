@@ -23,6 +23,8 @@ export interface OrderItem {
   name: string;
   image: string;
   unit: string;
+  /** The size chosen, for products that come in sizes. */
+  size?: string;
   category: string;
   price: number;
   quantity: number;
@@ -76,6 +78,7 @@ const orderItemSchema = new Schema<OrderItem>(
     name: { type: String, required: true },
     image: { type: String, default: "" },
     unit: { type: String, required: true },
+    size: { type: String },
     category: { type: String, required: true },
     price: { type: Number, required: true, min: 0 },
     quantity: { type: Number, required: true, min: 1 },

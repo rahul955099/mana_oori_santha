@@ -14,9 +14,9 @@ async function activeProductIds(ids: string[]): Promise<Set<string>> {
   return new Set(found.map((p) => p._id.toString()));
 }
 
-function serializeCart(items: { product: Types.ObjectId; quantity: number }[], couponCode?: string) {
+function serializeCart(items: { product: Types.ObjectId; quantity: number; size?: string }[], couponCode?: string) {
   return {
-    items: items.map((i) => ({ productId: i.product.toString(), quantity: i.quantity })),
+    items: items.map((i) => ({ productId: i.product.toString(), quantity: i.quantity, ...(i.size ? { size: i.size } : {}) })),
     couponCode: couponCode ?? null,
   };
 }
@@ -38,7 +38,7 @@ export async function replaceCart(req: AuthRequest, res: Response) {
   const active = await activeProductIds(items.map((i) => i.productId));
   const kept = items
     .filter((i) => active.has(i.productId))
-    .map((i) => ({ product: new Types.ObjectId(i.productId), quantity: Math.min(i.quantity, 99) }));
+    .map((i) => ({ product: new Types.ObjectId(i.productId), quantity: Math.min(i.quantity, 99), ...(i.size ? { size: i.size } : {}) }));
   const couponCode = req.body.couponCode ? String(req.body.couponCode).trim().toUpperCase() : undefined;
 
   await Cart.updateOne(

@@ -21,6 +21,7 @@ const itemRules = [
   body("items").isArray({ min: 1, max: 100 }).withMessage("Your cart is empty"),
   body("items.*.productId").isMongoId().withMessage("Invalid product in cart"),
   body("items.*.quantity").isInt({ min: 1, max: 99 }).withMessage("Quantity must be between 1 and 99").toInt(),
+  body("items.*.size").optional({ values: "null" }).isString().trim().isLength({ max: 20 }),
   body("couponCode").optional({ values: "falsy" }).isString().trim().isLength({ max: 30 }),
 ];
 

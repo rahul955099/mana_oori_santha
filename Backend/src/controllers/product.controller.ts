@@ -185,6 +185,7 @@ export async function createProduct(req: AuthRequest, res: Response) {
     stock: b.stock,
     description: b.description,
     benefits: b.benefits,
+    sizes: cleanSizes(b.sizes),
     isOrganic: b.isOrganic,
     // Homepage placement is a platform decision, so only admins can feature products.
     isFeatured: req.userRole === "admin" ? b.isFeatured : false,
@@ -193,6 +194,15 @@ export async function createProduct(req: AuthRequest, res: Response) {
   });
 
   success(res, "Product created", { product: toProduct(product) }, 201);
+}
+
+/** Trims, drops blanks and duplicates (case-insensitive), keeping the seller's order. */
+export function cleanSizes(sizes: unknown): string[] {
+  if (!Array.isArray(sizes)) return [];
+  const seen = new Set<string>();
+  return sizes
+    .map((s) => String(s).trim())
+    .filter((s) => s && !seen.has(s.toLowerCase()) && seen.add(s.toLowerCase()));
 }
 
 const EDITABLE_FIELDS = [
@@ -206,6 +216,7 @@ const EDITABLE_FIELDS = [
   "stock",
   "description",
   "benefits",
+  "sizes",
   "isOrganic",
   "priceAvailable",
   "priceLabel",
@@ -222,7 +233,7 @@ export async function updateProduct(req: AuthRequest, res: Response) {
 
   for (const field of EDITABLE_FIELDS) {
     if (b[field] !== undefined) {
-      product.set(field, b[field]);
+      product.set(field, field === "sizes" ? cleanSizes(b.sizes) : b[field]);
     }
   }
   if (b.isFeatured !== undefined && req.userRole === "admin") {

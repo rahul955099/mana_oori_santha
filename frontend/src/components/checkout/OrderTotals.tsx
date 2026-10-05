@@ -14,6 +14,8 @@ function problemText(problem: CartProblem, name: string) {
       return `${name} is out of stock. Please remove it.`;
     case "insufficient-stock":
       return `Only ${problem.available} of ${name} left. Please reduce the quantity.`;
+    case "size-required":
+      return `Please choose a size for ${name}: remove it and add it again from its page.`;
     case "no-price":
       return `${name} isn't available to order yet.`;
     default:
@@ -34,9 +36,9 @@ export function OrderTotals() {
   return (
     <div className="space-y-3 text-sm">
       {quote?.problems.map((p) => (
-        <p key={p.productId} className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+        <p key={`${p.productId}|${p.size ?? ""}`} className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
           <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-          {problemText(p, p.name ?? getProductById(p.productId)?.name ?? "An item")}
+          {problemText(p, `${p.name ?? getProductById(p.productId)?.name ?? "An item"}${p.size ? ` (size ${p.size})` : ""}`)}
         </p>
       ))}
       <div className="flex justify-between text-stone-600">

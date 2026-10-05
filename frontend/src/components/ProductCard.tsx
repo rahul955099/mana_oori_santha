@@ -27,12 +27,20 @@ export function ProductCard({ product }: { product: Product }) {
     e.preventDefault();
     // Guests can shop; their cart joins their account when they log in at checkout.
     if (!purchasable) return;
+    if (product.sizes?.length) {
+      navigate(productPath);
+      return;
+    }
     addToCart(product.id, 1);
   }
 
   function handleBuyNow(e: MouseEvent) {
     e.preventDefault();
     if (!purchasable) return;
+    if (product.sizes?.length) {
+      navigate(productPath);
+      return;
+    }
     addToCart(product.id, 1, { silent: true });
     navigate("/cart");
   }

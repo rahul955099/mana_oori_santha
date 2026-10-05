@@ -90,7 +90,15 @@ export async function placeOrder(
     throw new AppError(quote.coupon.message, 400, "INVALID_COUPON");
   }
 
-  const stockLines = quote.lines.map((l) => ({ productId: l.product._id, quantity: l.quantity }));
+  // Sizes share stock, so take it once per product.
+  const perProduct = new Map<string, { productId: Types.ObjectId; quantity: number }>();
+  for (const l of quote.lines) {
+    const key = l.product._id.toString();
+    const entry = perProduct.get(key) ?? { productId: l.product._id, quantity: 0 };
+    entry.quantity += l.quantity;
+    perProduct.set(key, entry);
+  }
+  const stockLines = [...perProduct.values()];
   await reserveStock(stockLines);
 
   try {
@@ -104,6 +112,7 @@ export async function placeOrder(
         name: l.product.name,
         image: l.product.image,
         unit: l.product.unit,
+        size: l.size,
         category: l.product.category,
         price: l.product.price,
         quantity: l.quantity,

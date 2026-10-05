@@ -8,19 +8,23 @@ import { sellableSellerIds } from "./sellerAccess.service";
 export interface RequestedItem {
   productId: string;
   quantity: number;
+  /** Required for products that come in sizes; ignored otherwise. */
+  size?: string;
 }
 
 export interface PricedLine {
   product: ProductDocument;
   quantity: number;
+  size?: string;
   lineTotal: number;
 }
 
 /** Why a requested cart line can't be bought right now. */
 export interface LineProblem {
   productId: string;
+  size?: string;
   name?: string;
-  reason: "unavailable" | "out-of-stock" | "insufficient-stock" | "no-price";
+  reason: "unavailable" | "out-of-stock" | "insufficient-stock" | "no-price" | "size-required";
   available?: number;
 }
 
@@ -42,16 +46,20 @@ export interface Quote {
   coupon: CouponOutcome | null;
 }
 
-/** Merges duplicate product ids and drops malformed entries. */
+/** Merges duplicate lines (same product and size) and drops malformed entries. */
 export function normalizeItems(items: RequestedItem[]): RequestedItem[] {
-  const merged = new Map<string, number>();
+  const merged = new Map<string, RequestedItem>();
   for (const item of items) {
     if (!Types.ObjectId.isValid(item.productId)) continue;
     const quantity = Math.floor(Number(item.quantity));
     if (!(quantity > 0)) continue;
-    merged.set(item.productId, (merged.get(item.productId) ?? 0) + quantity);
+    const size = typeof item.size === "string" && item.size.trim() ? item.size.trim() : undefined;
+    const key = `${item.productId}|${size ?? ""}`;
+    const existing = merged.get(key);
+    if (existing) existing.quantity += quantity;
+    else merged.set(key, { productId: item.productId, quantity, ...(size ? { size } : {}) });
   }
-  return [...merged].map(([productId, quantity]) => ({ productId, quantity }));
+  return [...merged.values()];
 }
 
 /** Looks up live prices and stock. Prices always come from the database,
@@ -65,20 +73,30 @@ export async function priceItems(items: RequestedItem[]): Promise<{ lines: Price
   });
   const byId = new Map(products.map((p) => [p._id.toString(), p]));
 
+  // All sizes of a product share its stock, so check the total across sizes.
+  const totalByProduct = new Map<string, number>();
+  for (const i of requested) totalByProduct.set(i.productId, (totalByProduct.get(i.productId) ?? 0) + i.quantity);
+
   const lines: PricedLine[] = [];
   const problems: LineProblem[] = [];
-  for (const { productId, quantity } of requested) {
+  for (const { productId, quantity, size: requestedSize } of requested) {
     const product = byId.get(productId);
+    const hasSizes = (product?.sizes?.length ?? 0) > 0;
+    // Match the size case-insensitively, but keep the seller's spelling.
+    const size = hasSizes ? product!.sizes.find((s) => s.toLowerCase() === requestedSize?.toLowerCase()) : undefined;
+    const sized = requestedSize ? { size: requestedSize } : {};
     if (!product) {
-      problems.push({ productId, reason: "unavailable" });
+      problems.push({ productId, ...sized, reason: "unavailable" });
+    } else if (hasSizes && !size) {
+      problems.push({ productId, ...sized, name: product.name, reason: "size-required" });
     } else if (!product.priceAvailable) {
-      problems.push({ productId, name: product.name, reason: "no-price" });
+      problems.push({ productId, ...sized, name: product.name, reason: "no-price" });
     } else if (product.stock <= 0) {
-      problems.push({ productId, name: product.name, reason: "out-of-stock", available: 0 });
-    } else if (product.stock < quantity) {
-      problems.push({ productId, name: product.name, reason: "insufficient-stock", available: product.stock });
+      problems.push({ productId, ...sized, name: product.name, reason: "out-of-stock", available: 0 });
+    } else if (product.stock < totalByProduct.get(productId)!) {
+      problems.push({ productId, ...sized, name: product.name, reason: "insufficient-stock", available: product.stock });
     } else {
-      lines.push({ product, quantity, lineTotal: product.price * quantity });
+      lines.push({ product, quantity, ...(size ? { size } : {}), lineTotal: product.price * quantity });
     }
   }
   return { lines, problems };
@@ -150,6 +168,7 @@ export function serializeQuote(quote: Quote) {
       name: l.product.name,
       price: l.product.price,
       quantity: l.quantity,
+      ...(l.size ? { size: l.size } : {}),
       lineTotal: l.lineTotal,
     })),
     problems: quote.problems,
