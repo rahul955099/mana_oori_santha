@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { useLocation } from "react-router-dom";
 import { BadgeCheck, ShieldCheck } from "lucide-react";
 import { useSellerAccount, type KycInput } from "@/context/SellerAccountContext";
 import { useToast } from "@/context/ToastContext";
@@ -17,6 +18,14 @@ const labelClass = "mb-1.5 block text-xs font-bold text-stone-600";
 
 export default function SellerProfile() {
   const { account, loading } = useSellerAccount();
+  const { hash, key } = useLocation();
+
+  // Jump to a section named in the link (e.g. "Add details" → #kyc). The router
+  // doesn't do this itself, and the section only exists once the shop has loaded.
+  useEffect(() => {
+    if (loading || !hash) return;
+    document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [hash, key, loading]);
 
   if (loading) {
     return <Loading label="Loading your shop..." />;
@@ -31,9 +40,11 @@ export default function SellerProfile() {
         <p className="text-sm text-stone-500">Update your shop, photos and payout details.</p>
       </div>
       <SellerStatusBanner />
-      {/* Keyed so the forms re-initialise if the account is reloaded. */}
+      {/* Keyed so the forms re-initialise if the account is reloaded. Until the
+          verification details are in, they come first: the shop can't go live without them. */}
+      {!account.kyc && <KycForm key="kyc-none" account={account} />}
       <ShopProfileForm key={`shop-${account.id}`} account={account} />
-      <KycForm key={`kyc-${account.kyc?.submittedAt ?? "none"}`} account={account} />
+      {account.kyc && <KycForm key={`kyc-${account.kyc.submittedAt}`} account={account} />}
     </div>
   );
 }
