@@ -5,7 +5,6 @@ import type { Product } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
-import { useToast } from "@/context/ToastContext";
 import { formatCurrency, discountPercent } from "@/utils/format";
 import { optimizedImage } from "@/utils/image";
 
@@ -13,7 +12,6 @@ export function ProductCard({ product }: { product: Product }) {
   const { user } = useAuth();
   const { addToCart } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
-  const { showToast } = useToast();
   const navigate = useNavigate();
   const discount = discountPercent(product.price, product.mrp);
   const savings = product.mrp - product.price;
@@ -30,13 +28,12 @@ export function ProductCard({ product }: { product: Product }) {
     // Guests can shop; their cart joins their account when they log in at checkout.
     if (!purchasable) return;
     addToCart(product.id, 1);
-    showToast(`${product.name} added to cart`);
   }
 
   function handleBuyNow(e: MouseEvent) {
     e.preventDefault();
     if (!purchasable) return;
-    addToCart(product.id, 1);
+    addToCart(product.id, 1, { silent: true });
     navigate("/cart");
   }
 

@@ -10,7 +10,6 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { Loading } from "@/components/common/Loading";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
-import { useToast } from "@/context/ToastContext";
 import { formatCurrency, discountPercent, categoryLabel } from "@/utils/format";
 import { DeliveryInfo } from "@/components/location/DeliveryInfo";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
@@ -24,7 +23,6 @@ export default function ProductDetails() {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
-  const { showToast } = useToast();
   const [quantity, setQuantity] = useState(1);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
@@ -60,12 +58,11 @@ export default function ProductDetails() {
   function handleAddToCart() {
     if (!product || !purchasable) return;
     addToCart(product.id, quantity);
-    showToast(`${quantity} × ${product.name} added to cart`);
   }
 
   function handleBuyNow() {
     if (!product || !purchasable) return;
-    addToCart(product.id, quantity);
+    addToCart(product.id, quantity, { silent: true });
     navigate("/cart");
   }
 

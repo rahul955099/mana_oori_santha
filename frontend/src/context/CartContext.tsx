@@ -4,9 +4,20 @@ import { useProducts } from "@/context/ProductsContext";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 
+/** The item just added, shown in the "Added to Cart" popup under the header cart icon. */
+export interface AddedToCart {
+  productId: string;
+  quantity: number;
+  /** Changes on every add, so adding the same product again re-opens the popup. */
+  key: number;
+}
+
 interface CartContextValue {
   items: CartItem[];
-  addToCart: (productId: string, quantity?: number) => void;
+  /** `silent` skips the popup, e.g. for Buy Now, which goes straight to the cart. */
+  addToCart: (productId: string, quantity?: number, options?: { silent?: boolean }) => void;
+  lastAdded: AddedToCart | null;
+  dismissAdded: () => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -139,7 +150,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return Math.min(MAX_QUANTITY, stock ?? MAX_QUANTITY);
   }
 
-  function addToCart(productId: string, quantity = 1) {
+  const [lastAdded, setLastAdded] = useState<AddedToCart | null>(null);
+  const dismissAdded = useCallback(() => setLastAdded(null), []);
+
+  function addToCart(productId: string, quantity = 1, options: { silent?: boolean } = {}) {
+    if (!options.silent) setLastAdded({ productId, quantity, key: Date.now() });
     setItems((prev) => {
       const existing = prev.find((i) => i.productId === productId);
       if (existing) {
@@ -188,6 +203,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const value: CartContextValue = {
     items,
     addToCart,
+    lastAdded,
+    dismissAdded,
     removeFromCart,
     updateQuantity,
     clearCart,

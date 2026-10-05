@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCategories } from "@/context/CategoriesContext";
 import { LocationSelector } from "@/components/location/LocationSelector";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { AddedToCartPopup } from "@/components/cart/AddedToCartPopup";
 import { SearchSuggestions } from "@/components/search/SearchSuggestions";
 import { useRotatingPlaceholder } from "@/hooks/useRotatingPlaceholder";
 import { useRecentSearches } from "@/hooks/useRecentSearches";
@@ -131,14 +132,24 @@ export function Navbar() {
 
           {user?.role === "customer" && <NotificationBell />}
 
-          <Link to="/cart" className="relative rounded-full p-2 text-stone-500 hover:bg-stone-100" aria-label="Cart">
-            <ShoppingCart size={20} />
-            {totalItems > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-earth-500 text-[10px] font-bold text-white">
-                {totalItems}
+          <div className="relative">
+            <Link
+              to="/cart"
+              className="flex flex-col items-center rounded-xl px-2 py-1 text-stone-600 hover:bg-stone-100 hover:text-primary-700"
+              aria-label={totalItems > 0 ? `Cart, ${totalItems} items` : "Cart"}
+            >
+              <span className="relative">
+                <ShoppingCart size={22} />
+                {totalItems > 0 && (
+                  <span className="absolute -right-2.5 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-earth-500 px-1 text-[10px] font-bold text-white">
+                    {totalItems > 99 ? "99+" : totalItems}
+                  </span>
+                )}
               </span>
-            )}
-          </Link>
+              <span className="mt-0.5 text-[11px] font-medium leading-none">Cart</span>
+            </Link>
+            <AddedToCartPopup />
+          </div>
 
           {user ? (
             <div

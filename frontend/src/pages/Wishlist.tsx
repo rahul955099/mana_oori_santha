@@ -15,10 +15,9 @@ export default function Wishlist() {
   const { showToast } = useToast();
   const wishlistedProducts = products.filter((p) => wishlist.includes(p.id));
 
-  function handleMoveToCart(productId: string, name: string) {
+  function handleMoveToCart(productId: string) {
     addToCart(productId, 1);
     toggleWishlist(productId);
-    showToast(`${name} moved to cart`);
   }
 
   function handleRemove(productId: string, name: string) {
@@ -69,7 +68,7 @@ export default function Wishlist() {
               </div>
               <div className="flex items-center gap-2 sm:flex-col sm:items-end">
                 <button
-                  onClick={() => handleMoveToCart(product.id, product.name)}
+                  onClick={() => handleMoveToCart(product.id)}
                   disabled={!purchasable}
                   className="flex items-center gap-1.5 rounded-full bg-primary-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-stone-300"
                 >
