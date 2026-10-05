@@ -22,6 +22,7 @@ const Register = lazy(() => import("@/pages/Register"));
 const MyOrders = lazy(() => import("@/pages/MyOrders"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const HelpCenter = lazy(() => import("@/pages/HelpCenter"));
+const Fashion = lazy(() => import("@/pages/Fashion"));
 const About = lazy(() => import("@/pages/About"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -115,6 +116,7 @@ function App() {
               }
             />
             <Route path="help" element={<HelpCenter />} />
+            <Route path="fashion" element={<Fashion />} />
             <Route path="about" element={<About />} />
             <Route path="contact" element={<Contact />} />
           </Route>

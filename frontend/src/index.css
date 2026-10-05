@@ -4,6 +4,17 @@
   --font-sans: "Inter", "Poppins", "Segoe UI", system-ui, sans-serif;
   --font-display: "Inter", "Poppins", "Segoe UI", system-ui, sans-serif;
 
+  /* MAAD Fashions page: serif headings, wine and blush */
+  --font-serif: "Playfair Display", Georgia, serif;
+  --color-maad-50: #fdf5f4;
+  --color-maad-100: #f9e6e5;
+  --color-maad-200: #efc9cb;
+  --color-maad-300: #dca2a8;
+  --color-maad-500: #a85068;
+  --color-maad-700: #8b3a50;
+  --color-maad-800: #6f2c3f;
+  --color-maad-900: #3a2328;
+
   /* Primary: natural green (leaves, farms) */
   --color-primary-50: #f1f8f0;
   --color-primary-100: #dcedd8;

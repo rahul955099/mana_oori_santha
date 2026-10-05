@@ -3,6 +3,7 @@ import { Seller } from "../models/Seller";
 import { Product } from "../models/Product";
 import { Review } from "../models/Review";
 import { User } from "../models/User";
+import { Category } from "../models/Category";
 
 /** Small, idempotent data fixes run at startup. */
 export async function runMigrations() {
@@ -14,6 +15,22 @@ export async function runMigrations() {
 
   await recalculateAllRatings();
   await ensureOwner();
+  await ensureFashionCategories();
+}
+
+/** The MAAD Fashions page lists products from these categories. Created once;
+ * admins can rename them or add photos later. */
+export const FASHION_CATEGORIES = [
+  { slug: "dresses", name: "Dresses", description: "Everyday and occasion dresses from MAAD Fashions." },
+  { slug: "sarees", name: "Sarees", description: "Silk, cotton and designer sarees from MAAD Fashions." },
+  { slug: "customised-dresses", name: "Customised Dresses", description: "Dresses made to your design and measurements." },
+];
+
+export async function ensureFashionCategories() {
+  for (const [i, c] of FASHION_CATEGORIES.entries()) {
+    const res = await Category.updateOne({ slug: c.slug }, { $setOnInsert: { ...c, sortOrder: 100 + i, isActive: true } }, { upsert: true });
+    if (res.upsertedCount > 0) console.log(`Migration: added the ${c.name} category`);
+  }
 }
 
 /** The site always has an owner: if none exists (e.g. data from before owners

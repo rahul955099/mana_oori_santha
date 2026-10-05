@@ -79,6 +79,9 @@ export function Navbar() {
           <NavLink to="/products" className={navLinkClass}>
             Products
           </NavLink>
+          <NavLink to="/fashion" className={navLinkClass}>
+            Fashion
+          </NavLink>
           <NavLink to="/sellers" className={navLinkClass}>
             Sellers
           </NavLink>
@@ -237,6 +240,7 @@ export function Navbar() {
             {[
               { to: "/", label: "Home" },
               { to: "/products", label: "Products" },
+              { to: "/fashion", label: "Fashion" },
               { to: "/sellers", label: "Sellers" },
               { to: "/about", label: "About" },
               { to: "/contact", label: "Contact" },

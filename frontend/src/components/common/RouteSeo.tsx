@@ -7,6 +7,7 @@ const PAGES: Record<string, { title?: string; description?: string; noIndex?: bo
   "/": {},
   "/products": { title: "All Products", description: "Shop millets, pulses, rice, cold-pressed oils, flours, dry fruits and dairy from local farmers." },
   "/sellers": { title: "Our Farmers & Sellers", description: "Meet the local farmers and producers behind Mana Oori Santha." },
+  "/fashion": { title: "MAAD Fashions" },
   "/about": { title: "About Us" },
   "/contact": { title: "Contact Us" },
   "/help": { title: "Help Center" },

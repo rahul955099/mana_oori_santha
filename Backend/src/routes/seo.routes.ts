@@ -24,6 +24,7 @@ router.get("/sitemap.xml", async (_req, res) => {
     url("/"),
     url("/products"),
     url("/sellers"),
+    url("/fashion"),
     url("/about"),
     url("/contact"),
     url("/help"),

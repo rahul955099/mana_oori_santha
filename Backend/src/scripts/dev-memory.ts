@@ -20,6 +20,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import app from "../app";
 import { env } from "../config/env";
 import { seedCatalog } from "../seed/seed";
+import { runMigrations } from "../config/migrations";
 
 async function main() {
   const mongo = await MongoMemoryServer.create();
@@ -29,6 +30,8 @@ async function main() {
   const adminPassword = "admin12345";
   const sellerPassword = "seller12345";
   await seedCatalog({ reset: true, adminEmail, adminPassword, sellerPassword });
+  // Same startup fixes as the real server (e.g. the Fashion categories).
+  await runMigrations();
 
   app.listen(env.port, () => {
     console.log(`\nIn-memory API running on http://localhost:${env.port} (data resets on restart)`);
