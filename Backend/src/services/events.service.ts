@@ -30,6 +30,14 @@ async function sellerUserIds(order: OrderDocument) {
   return sellers.map((s) => s.user);
 }
 
+function customerMessage(order: OrderDocument, to: OrderStatus, attemptFailed: boolean) {
+  if (attemptFailed) return "Our delivery partner couldn't deliver it this time. We'll arrange another attempt.";
+  if (to === "out-for-delivery" && order.delivery?.code) {
+    return `Your order is on its way. Your delivery code is ${order.delivery.code}: give it at the door.`;
+  }
+  return `Your order is now ${STATUS_TEXT[to]}.`;
+}
+
 function safely(task: () => Promise<unknown>) {
   task().catch((err) => console.error("Event handling failed:", err instanceof Error ? err.message : err));
 }
@@ -62,14 +70,19 @@ export function onOrderStatusChanged(order: OrderDocument, from: OrderStatus, to
   safely(async () => {
     const buyer = (order.user as unknown as { _id?: Types.ObjectId })._id ?? (order.user as unknown as Types.ObjectId);
     const returnRejected = from === "return-requested" && to === "delivered";
-    const title = returnRejected ? `Return not accepted for ${order.orderNumber}` : `Order ${order.orderNumber} ${STATUS_TEXT[to]}`;
+    const attemptFailed = from === "out-for-delivery" && to === "packed";
+    const title = returnRejected
+      ? `Return not accepted for ${order.orderNumber}`
+      : attemptFailed
+        ? `Delivery attempt for ${order.orderNumber} unsuccessful`
+        : `Order ${order.orderNumber} ${STATUS_TEXT[to]}`;
 
     // The customer hears about everything they didn't do themselves.
     if (byRole !== "customer") {
       const email = orderStatusEmail(await nameOf(buyer), order, to, returnRejected);
       await notifyUser(
         buyer,
-        { type: "order-status", title, message: `Your order is now ${STATUS_TEXT[to]}.`, link: "/my-orders" },
+        { type: "order-status", title, message: customerMessage(order, to, attemptFailed), link: "/my-orders" },
         email ? { content: email, pref: to === "out-for-delivery" || to === "delivered" ? "deliveryAlerts" : "orderUpdates" } : undefined
       );
     }

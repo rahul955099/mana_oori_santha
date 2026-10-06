@@ -62,6 +62,7 @@ router.get(
   validate([
     query("status").optional().isIn(ORDER_STATUSES),
     query("search").optional().isString().isLength({ max: 80 }),
+    query("delivery").optional().isIn(["unassigned", "attention"]),
   ]),
   listAllOrders
 );
@@ -73,6 +74,9 @@ router.patch(
     orderNumberParam,
     body("status").isIn(ORDER_STATUSES).withMessage("Unknown order status"),
     body("note").optional().isString().trim().isLength({ max: 300 }),
+    body("code").optional().isString().trim().isLength({ max: 10 }),
+    body("skipCodeReason").optional().isString().trim().isLength({ max: 300 }),
+    body("cashCollected").optional().isFloat({ min: 0 }).toFloat(),
   ]),
   updateOrderStatus
 );

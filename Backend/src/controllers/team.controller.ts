@@ -11,6 +11,7 @@ import { sendMailInBackground } from "../services/mail.service";
 import { notifyUser } from "../services/notification.service";
 import { adminInviteEmail, adminRemovedEmail, siteLink } from "../services/emailTemplates";
 import type { AuthRequest } from "../middleware/auth.middleware";
+import { DeliveryPartner } from "../models/DeliveryPartner";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -43,11 +44,14 @@ function openInviteFilter() {
   return { acceptedAt: { $exists: false }, cancelledAt: { $exists: false }, expiresAt: { $gt: new Date() } };
 }
 
+/** Admin invitations only (older ones have no role). Delivery partner invites live on their own page. */
+const ADMIN_INVITES = { role: { $ne: "delivery" as const } };
+
 /** Admins, pending invitations and recent changes, for the Team page. */
 export async function getTeam(req: AuthRequest, res: Response) {
   const [admins, invites, activity] = await Promise.all([
     User.find({ role: "admin", isActive: true }).sort({ createdAt: 1 }).select("name email userCode createdAt isOwner"),
-    AdminInvite.find(openInviteFilter()).sort({ createdAt: -1 }).populate("invitedBy", "name"),
+    AdminInvite.find({ ...ADMIN_INVITES, ...openInviteFilter() }).sort({ createdAt: -1 }).populate("invitedBy", "name"),
     AdminActivity.find().sort({ createdAt: -1 }).limit(50),
   ]);
   success(res, "Team fetched", {
@@ -101,7 +105,7 @@ export async function addAdmin(req: AuthRequest, res: Response) {
 
   // Everyone, including people who already have an account, must accept before
   // getting admin access, so a mistyped email can't hand it to a stranger.
-  if (await AdminInvite.exists({ email, ...openInviteFilter() })) {
+  if (await AdminInvite.exists({ email, ...ADMIN_INVITES, ...openInviteFilter() })) {
     throw new AppError("An invitation to this email is already waiting. Use Resend if they can't find it.", 409, "INVITE_PENDING");
   }
   await sendInvite(req, email);
@@ -161,7 +165,7 @@ export async function transferOwnership(req: AuthRequest, res: Response) {
 }
 
 export async function resendInvite(req: AuthRequest, res: Response) {
-  const invite = await AdminInvite.findOne({ _id: req.params.inviteId, acceptedAt: { $exists: false }, cancelledAt: { $exists: false } });
+  const invite = await AdminInvite.findOne({ _id: req.params.inviteId, ...ADMIN_INVITES, acceptedAt: { $exists: false }, cancelledAt: { $exists: false } });
   if (!invite) {
     throw new AppError("Invitation not found", 404, "NOT_FOUND");
   }
@@ -197,7 +201,7 @@ async function findValidInvite(token: string) {
 export async function previewInvite(req: Request, res: Response) {
   const invite = await findValidInvite(String(req.query.token));
   const hasAccount = !!(await User.exists({ email: invite.email }));
-  success(res, "Invitation is valid", { email: invite.email, hasAccount });
+  success(res, "Invitation is valid", { email: invite.email, hasAccount, role: invite.role ?? "admin" });
 }
 
 /** Public: completes an invitation by creating the admin account and logging them in. */
@@ -212,19 +216,27 @@ export async function acceptInvite(req: Request, res: Response) {
     );
   }
 
+  const isDelivery = invite.role === "delivery";
   const user = await User.create({
     name: req.body.name,
     email: invite.email,
     phone: req.body.phone,
     password: req.body.password,
-    role: "admin",
+    role: isDelivery ? "delivery" : "admin",
     // The link arrived in their inbox, which proves they own the address.
     emailVerified: true,
   });
+  if (isDelivery) {
+    await DeliveryPartner.create({
+      user: user._id,
+      vehicle: invite.delivery?.vehicle ?? "bike",
+      serviceAreas: invite.delivery?.serviceAreas ?? [],
+    });
+  }
   invite.acceptedAt = new Date();
   await invite.save();
   await AdminActivity.create({
-    action: "admin.invite-accepted",
+    action: isDelivery ? "delivery.joined" : "admin.invite-accepted",
     actorName: user.name,
     actorEmail: user.email,
     targetEmail: user.email,
@@ -237,6 +249,9 @@ export async function acceptInvite(req: Request, res: Response) {
 /** Logged in: the invited person accepts with the account they already have. */
 export async function acceptInviteAsExisting(req: AuthRequest, res: Response) {
   const invite = await findValidInvite(req.body.token);
+  if (invite.role === "delivery") {
+    throw new AppError("Delivery partner invitations need a new account. Ask the team to invite a different email.", 400, "NEW_ACCOUNT_NEEDED");
+  }
   const user = await User.findById(req.userId);
   if (!user || user.email !== invite.email) {
     throw new AppError(`This invitation is for ${invite.email}. Log in with that account to accept it.`, 403, "WRONG_ACCOUNT");

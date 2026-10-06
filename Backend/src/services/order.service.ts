@@ -10,13 +10,17 @@ import { deliveryRules, isServiceablePincode, isValidPincode } from "../config/d
 import { buildQuote, type RequestedItem } from "./pricing.service";
 import { env } from "../config/env";
 import { onOrderPlaced, onOrderStatusChanged } from "./events.service";
+import { deliveryFee, getDeliverySettings, newDeliveryCode } from "./deliverySettings.service";
+import { AdminActivity } from "../models/AdminActivity";
+import { User } from "../models/User";
 
 /** Which statuses an order may move to from each status. */
 const FLOW: Record<OrderStatus, OrderStatus[]> = {
   pending: ["confirmed", "cancelled"],
   confirmed: ["packed", "cancelled"],
   packed: ["out-for-delivery", "cancelled"],
-  "out-for-delivery": ["delivered"],
+  // Back to "packed" when a delivery attempt fails or the goods go back to the shop.
+  "out-for-delivery": ["delivered", "packed"],
   delivered: ["return-requested"],
   // Moving back to "delivered" means the return request was rejected.
   "return-requested": ["returned", "delivered"],
@@ -29,6 +33,16 @@ const SELLER_ALLOWED = new Set<OrderStatus>(["confirmed", "packed", "out-for-del
 export interface Actor {
   userId: string;
   role: UserRole;
+}
+
+/** Extra details when marking an order delivered. */
+export interface DeliveredInput {
+  /** The 4-digit code from the customer. */
+  code?: string;
+  /** Admins only: why they're marking it delivered without the code. */
+  skipCodeReason?: string;
+  /** Cash collected at the door (defaults to the order total). */
+  cashCollected?: number;
 }
 
 export class CartChangedError extends AppError {
@@ -99,6 +113,16 @@ export async function placeOrder(
     perProduct.set(key, entry);
   }
   const stockLines = [...perProduct.values()];
+
+  // Partner delivery if any seller in the order uses it, so the customer gets one delivery.
+  const sellerIds = [...new Set(quote.lines.map((l) => l.product.seller.toString()))];
+  const usesPartners = await Seller.exists({ _id: { $in: sellerIds }, deliveryMethod: "partner" });
+  const delivery = {
+    mode: (usesPartners ? "partner" : "self") as "partner" | "self",
+    code: newDeliveryCode(),
+    pickups: sellerIds.length,
+    attempts: [],
+  };
   await reserveStock(stockLines);
 
   try {
@@ -128,6 +152,7 @@ export async function placeOrder(
       status: "pending",
       statusHistory: [{ status: "pending", at: new Date(), byRole: actor.role }],
       shippingAddress,
+      delivery,
     });
     // The order now holds what was in the cart.
     await Cart.updateOne({ user: actor.userId }, { $set: { items: [] }, $unset: { couponCode: 1 } });
@@ -180,6 +205,9 @@ async function assertTransitionAllowed(actor: Actor, order: OrderDocument, next:
   }
 
   if (actor.role === "seller" && SELLER_ALLOWED.has(next)) {
+    if (order.delivery?.mode === "partner" && (next === "out-for-delivery" || next === "delivered")) {
+      throw new AppError("A Mana Oori Santha delivery partner delivers this order.", 403, "PARTNER_DELIVERY");
+    }
     const sellerId = await sellerIdFor(actor.userId);
     // A seller fulfils an order only when every item in it is theirs;
     // mixed-seller orders are coordinated by an admin.
@@ -190,14 +218,72 @@ async function assertTransitionAllowed(actor: Actor, order: OrderDocument, next:
   throw new AppError("You can't change this order's status.", 403, "FORBIDDEN");
 }
 
-export async function changeStatus(actor: Actor, orderNumber: string, next: OrderStatus, note?: string) {
+export async function changeStatus(
+  actor: Actor,
+  orderNumber: string,
+  next: OrderStatus,
+  note?: string,
+  delivered: DeliveredInput = {}
+) {
   const order = await Order.findOne({ orderNumber });
   if (!order || !(await canView(actor, order))) {
     throw new AppError("Order not found", 404, "NOT_FOUND");
   }
   await assertTransitionAllowed(actor, order, next);
 
-  const set: Record<string, unknown> = { status: next };
+  const extra: Record<string, unknown> = {};
+  if (next === "delivered" && order.status === "out-for-delivery") {
+    Object.assign(extra, await deliveredFields(actor, order, delivered));
+  }
+  return commitStatus(order, next, actor.role, note, extra);
+}
+
+/** Checks the customer's code (or an admin's reason for skipping it) and works out
+ * what gets recorded when an order is handed over. */
+export async function deliveredFields(actor: Actor, order: OrderDocument, input: DeliveredInput) {
+  const set: Record<string, unknown> = {};
+  const d = order.delivery;
+  if (!d) return set; // orders from before delivery codes
+
+  const skipReason = input.skipCodeReason?.trim();
+  if (actor.role === "admin" && skipReason) {
+    const admin = await User.findById(actor.userId).select("name email");
+    set["delivery.codeSkipped"] = { byName: admin?.name ?? "An admin", reason: skipReason, at: new Date() };
+    await AdminActivity.create({
+      action: "delivery.code-skipped",
+      actorName: admin?.name ?? "An admin",
+      actorEmail: admin?.email ?? "",
+      targetEmail: `${order.orderNumber}: ${skipReason}`,
+    });
+  } else if (String(input.code ?? "").trim() !== d.code) {
+    throw new AppError(
+      actor.role === "admin"
+        ? "Enter the customer's 4-digit delivery code, or give a reason to mark it delivered without it."
+        : "That delivery code is wrong. Ask the customer for the 4-digit code shown in their order.",
+      400,
+      "WRONG_CODE"
+    );
+  }
+
+  if (d.mode === "partner" && d.partner) {
+    const cash = input.cashCollected ?? order.total;
+    set["delivery.cashCollected"] = cash;
+    set["delivery.fee"] = deliveryFee(await getDeliverySettings(), d.pickups);
+    if (cash !== order.total) set["delivery.needsAttention"] = "cash-mismatch";
+  }
+  return set;
+}
+
+/** Moves an order to `next` and runs the side effects (restock on cancel, notifications).
+ * Callers check permissions first. `extra` is merged into the update. */
+export async function commitStatus(
+  order: OrderDocument,
+  next: OrderStatus,
+  byRole: UserRole,
+  note?: string,
+  extra: Record<string, unknown> = {}
+) {
+  const set: Record<string, unknown> = { status: next, ...extra };
   if (next === "delivered" && order.status === "out-for-delivery") {
     set.deliveredAt = new Date();
     set.paymentStatus = "paid"; // cash collected on delivery
@@ -210,7 +296,7 @@ export async function changeStatus(actor: Actor, orderNumber: string, next: Orde
   // double-clicked cancel) can't both apply and restock twice.
   const updated = await Order.findOneAndUpdate(
     { _id: order._id, status: order.status },
-    { $set: set, $push: { statusHistory: { status: next, at: new Date(), byRole: actor.role, note } } },
+    { $set: set, $push: { statusHistory: { status: next, at: new Date(), byRole, note } } },
     { returnDocument: "after" }
   );
   if (!updated) {
@@ -220,6 +306,6 @@ export async function changeStatus(actor: Actor, orderNumber: string, next: Orde
   if (next === "cancelled") {
     await releaseStock(order.items.map((i) => ({ productId: i.product, quantity: i.quantity })));
   }
-  onOrderStatusChanged(updated, order.status, next, actor.role);
+  onOrderStatusChanged(updated, order.status, next, byRole);
   return updated;
 }

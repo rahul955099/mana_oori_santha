@@ -110,14 +110,23 @@ export function orderStatusEmail(name: string, order: OrderDocument, status: Ord
     ? { title: "Return request update", line: "After review, we couldn't accept the return for this order. Please contact support if you have questions." }
     : STATUS_COPY[status];
   if (!copy) return null;
+  // On its way: the customer needs their code, and who's bringing it.
+  const d = order.delivery;
+  const onTheWay = status === "out-for-delivery" && !wasReturnRejected && d;
+  const who = onTheWay && d.partnerName ? `${d.partnerName}${d.partnerPhone ? ` (${d.partnerPhone})` : ""} is bringing it.` : "";
+  const codeHtml = onTheWay
+    ? `<p style="font-size:15px;line-height:1.5">${esc(who)} Give this code at the door to receive your order:</p><p style="font-size:30px;font-weight:800;letter-spacing:8px;margin:8px 0 16px">${esc(d.code)}</p>`
+    : undefined;
+  const codeText = onTheWay ? `\n\n${who} Your delivery code: ${d.code} (give it at the door).` : "";
   return {
     subject: `${copy.title}: ${order.orderNumber}`,
     html: layout({
       heading: copy.title,
       intro: `Hi ${esc(name)}, an update on order <b>${esc(order.orderNumber)}</b>: ${copy.line}`,
+      ...(codeHtml ? { body: codeHtml } : {}),
       button: { label: "View your order", url: siteLink("/my-orders") },
     }),
-    text: `Hi ${name},\n\nOrder ${order.orderNumber}: ${copy.line}\n\n${siteLink("/my-orders")}`,
+    text: `Hi ${name},\n\nOrder ${order.orderNumber}: ${copy.line}${codeText}\n\n${siteLink("/my-orders")}`,
   };
 }
 
@@ -188,6 +197,33 @@ export function adminInviteEmail(inviterName: string, url: string, hasAccount: b
       footnote: "Nothing changes until you accept. This invitation expires in 7 days. If you weren't expecting it, you can ignore this email.",
     }),
     text: `${inviterName} has invited you to be an admin of ${BRAND}. ${how}\n\nAccept: ${url}\n\nNothing changes until you accept. This invitation expires in 7 days.`,
+  };
+}
+
+export function deliveryInviteEmail(inviterName: string, url: string): Email {
+  return {
+    subject: `Join ${BRAND} as a delivery partner`,
+    html: layout({
+      heading: "You're invited as a delivery partner",
+      intro: `${esc(inviterName)} has invited you to deliver orders for ${BRAND}. Set up your account with your name, mobile number and a password, then switch on "Available today" to start getting deliveries.`,
+      button: { label: "Accept invitation", url },
+      footnote: "This invitation expires in 7 days. If you weren't expecting it, you can ignore this email.",
+    }),
+    text: `${inviterName} has invited you to deliver orders for ${BRAND}.\n\nAccept: ${url}\n\nThis invitation expires in 7 days.`,
+  };
+}
+
+export function deliveryAssignedEmail(name: string, orderNumbers: string[]): Email {
+  const list = orderNumbers.join(", ");
+  const one = orderNumbers.length === 1;
+  return {
+    subject: one ? `New delivery: ${list}` : `${orderNumbers.length} new deliveries`,
+    html: layout({
+      heading: one ? "New delivery for you" : `${orderNumbers.length} new deliveries for you`,
+      intro: `Hi ${esc(name)}, you've been given ${one ? "order" : "orders"} <b>${esc(list)}</b>. Please accept so the team knows you're on it.`,
+      button: { label: "Open my deliveries", url: siteLink("/delivery") },
+    }),
+    text: `Hi ${name},\n\nYou've been given ${one ? "order" : "orders"} ${list}. Please accept: ${siteLink("/delivery")}`,
   };
 }
 

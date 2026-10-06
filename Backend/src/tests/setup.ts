@@ -9,6 +9,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import app from "../app";
+import { Order } from "../models/Order";
 
 let mongo: MongoMemoryServer;
 let server: Server;
@@ -49,4 +50,12 @@ export async function api<T = any>(
 export async function rawGet(path: string, token?: string) {
   const res = await fetch(`${baseUrl}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
   return { status: res.status, contentType: res.headers.get("content-type") ?? "", text: await res.text() };
+}
+
+/** Request body for an order status change, adding the customer's delivery
+ * code when marking it delivered (as the person at the door would). */
+export async function statusBody(orderNumber: string, status: string) {
+  if (status !== "delivered") return { status };
+  const order = await Order.findOne({ orderNumber }).select("delivery.code");
+  return { status, code: order?.delivery?.code };
 }

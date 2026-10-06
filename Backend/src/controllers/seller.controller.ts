@@ -9,6 +9,14 @@ import { toSeller, toSellerPrivate } from "../utils/serialize";
 import { sellerEarnings } from "../services/earnings.service";
 import type { AuthRequest } from "../middleware/auth.middleware";
 import { onKycSubmitted, onSellerStatusChanged } from "../services/events.service";
+import { notifyAdmins, notifyUser } from "../services/notification.service";
+import { AdminActivity } from "../models/AdminActivity";
+import type { DeliveryMethod } from "../models/Seller";
+
+const METHOD_TEXT: Record<DeliveryMethod, string> = {
+  self: "deliver orders themselves",
+  partner: "use Mana Oori Santha delivery partners",
+};
 
 const USER_FIELDS = "name email phone";
 
@@ -112,6 +120,53 @@ export async function getSeller(req: AuthRequest, res: Response) {
     throw new AppError("Seller not found", 404, "NOT_FOUND");
   }
   success(res, "Seller fetched", { seller: await publicView(seller) });
+}
+
+/** Seller: asks to change who delivers their orders. An admin approves it. */
+export async function requestDeliveryMethod(req: AuthRequest, res: Response) {
+  const seller = await findMine(req);
+  const method = req.body.method as DeliveryMethod;
+  if (method === (seller.deliveryMethod ?? "self")) {
+    // Asking for what they already have withdraws any pending change.
+    seller.deliveryMethodRequest = undefined;
+    await seller.save();
+    return success(res, "No change needed.", { seller: await privateView(seller) });
+  }
+  seller.deliveryMethodRequest = { method, requestedAt: new Date() };
+  await seller.save();
+  await notifyAdmins({
+    type: "account",
+    title: `${seller.farmName} wants to change delivery`,
+    message: `They'd like to ${METHOD_TEXT[method]}. Approve or decline it in Farmers/Sellers.`,
+    link: "/admin/sellers",
+  });
+  success(res, "Request sent. An admin will review it.", { seller: await privateView(seller) });
+}
+
+/** Admin: approves or declines a seller's delivery method change. */
+export async function decideDeliveryMethod(req: AuthRequest, res: Response) {
+  const seller = await findById(String(req.params.id));
+  const request = seller.deliveryMethodRequest;
+  if (!request) throw new AppError("This seller has no pending delivery change.", 400, "NO_REQUEST");
+  const approve = req.body.approve === true;
+  if (approve) seller.deliveryMethod = request.method;
+  seller.deliveryMethodRequest = undefined;
+  await seller.save();
+
+  const admin = await User.findById(req.userId).select("name email");
+  await AdminActivity.create({
+    action: "seller.delivery-method",
+    actorName: admin?.name ?? "An admin",
+    actorEmail: admin?.email ?? "",
+    targetEmail: `${seller.farmName}: ${approve ? "approved" : "declined"} "${request.method}"`,
+  });
+  await notifyUser(seller.user, {
+    type: "account",
+    title: approve ? "Delivery change approved" : "Delivery change declined",
+    message: approve ? `From now on you ${METHOD_TEXT[request.method]}.` : "Your delivery method stays the same. Contact us if you have questions.",
+    link: "/seller/profile",
+  });
+  success(res, approve ? "Delivery change approved." : "Delivery change declined.", { seller: await privateView(seller) });
 }
 
 export async function getMySeller(req: AuthRequest, res: Response) {

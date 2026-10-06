@@ -1,4 +1,4 @@
-import { api, rawGet, startTestServer, stopTestServer } from "./setup";
+import { api, rawGet, startTestServer, stopTestServer, statusBody } from "./setup";
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { seedCatalog } from "../seed/seed";
@@ -63,7 +63,7 @@ describe("reviews", () => {
     assert.equal(list.body.data.canReview, false, "not yet delivered");
 
     for (const s of ["confirmed", "packed", "out-for-delivery", "delivered"]) {
-      await api("PATCH", `/orders/${orderId}/status`, { token: seller, body: { status: s } });
+      await api("PATCH", `/orders/${orderId}/status`, { token: seller, body: await statusBody(orderId, s) });
     }
     const created = await api("PUT", `/products/${productId}/reviews/mine`, {
       token: customer,

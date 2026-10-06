@@ -48,6 +48,45 @@ export interface StatusChange {
   note?: string;
 }
 
+export const ATTEMPT_KINDS = ["failed", "declined", "no-response"] as const;
+
+/** A delivery that didn't happen: the partner couldn't deliver, declined, or didn't respond. */
+export interface DeliveryAttempt {
+  kind: (typeof ATTEMPT_KINDS)[number];
+  at: Date;
+  partner?: Types.ObjectId;
+  partnerName?: string;
+  reason?: string;
+  note?: string;
+  /** Normally 0; an admin can grant a fee for a failed attempt. */
+  fee: number;
+}
+
+/** Who delivers the order and how it went. Older orders have none: their seller delivered them. */
+export interface OrderDelivery {
+  /** "self": the seller delivers. "partner": a delivery partner does. */
+  mode: "self" | "partner";
+  /** 4 digits the customer gives at the door. Only the customer is shown it. */
+  code: string;
+  partner?: Types.ObjectId;
+  /** Copied in on assignment, so the order reads correctly later. */
+  partnerName?: string;
+  partnerPhone?: string;
+  assignedAt?: Date;
+  acceptedAt?: Date;
+  pickedUpAt?: Date;
+  /** Number of shops to pick up from (one per seller in the order). */
+  pickups: number;
+  cashCollected?: number;
+  /** What the partner earned for delivering it. */
+  fee?: number;
+  /** Set when an admin marked it delivered without the customer's code. */
+  codeSkipped?: { byName: string; reason: string; at: Date };
+  attempts: DeliveryAttempt[];
+  /** Why an admin needs to look at it: "declined", "no-response", "failed" or "cash-mismatch". */
+  needsAttention?: string;
+}
+
 export interface OrderDocument extends Document {
   _id: Types.ObjectId;
   /** Human-readable, sequential, e.g. "MOS-100001". */
@@ -67,6 +106,7 @@ export interface OrderDocument extends Document {
   statusHistory: StatusChange[];
   shippingAddress: ShippingAddress;
   deliveredAt?: Date;
+  delivery?: OrderDelivery;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -130,10 +170,52 @@ const orderSchema = new Schema<OrderDocument>(
     },
     shippingAddress: { type: shippingSchema, required: true },
     deliveredAt: { type: Date },
+    delivery: {
+      type: new Schema<OrderDelivery>(
+        {
+          mode: { type: String, enum: ["self", "partner"], required: true },
+          code: { type: String, required: true },
+          partner: { type: Schema.Types.ObjectId, ref: "DeliveryPartner" },
+          partnerName: { type: String },
+          partnerPhone: { type: String },
+          assignedAt: { type: Date },
+          acceptedAt: { type: Date },
+          pickedUpAt: { type: Date },
+          pickups: { type: Number, default: 1 },
+          cashCollected: { type: Number, min: 0 },
+          fee: { type: Number, min: 0 },
+          codeSkipped: {
+            type: new Schema({ byName: String, reason: String, at: Date }, { _id: false }),
+            default: undefined,
+          },
+          attempts: {
+            type: [
+              new Schema<DeliveryAttempt>(
+                {
+                  kind: { type: String, enum: ATTEMPT_KINDS, required: true },
+                  at: { type: Date, default: Date.now },
+                  partner: { type: Schema.Types.ObjectId, ref: "DeliveryPartner" },
+                  partnerName: { type: String },
+                  reason: { type: String, trim: true },
+                  note: { type: String, trim: true },
+                  fee: { type: Number, default: 0, min: 0 },
+                },
+                { _id: false }
+              ),
+            ],
+            default: [],
+          },
+          needsAttention: { type: String },
+        },
+        { _id: false }
+      ),
+      default: undefined,
+    },
   },
   { timestamps: true }
 );
 
 orderSchema.index({ "items.seller": 1, createdAt: -1 });
+orderSchema.index({ "delivery.partner": 1, status: 1 });
 
 export const Order = model<OrderDocument>("Order", orderSchema);

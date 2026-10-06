@@ -101,6 +101,10 @@ export function toSellerPrivate(seller: SellerDocument, productsCount = 0, optio
           bankName: seller.payout.bankName,
         }
       : null,
+    deliveryMethod: seller.deliveryMethod ?? "self",
+    deliveryMethodRequest: seller.deliveryMethodRequest
+      ? { method: seller.deliveryMethodRequest.method, requestedAt: seller.deliveryMethodRequest.requestedAt }
+      : null,
   };
 }
 
@@ -131,9 +135,54 @@ export function toProduct(product: ProductDocument) {
   };
 }
 
+export type OrderViewer = "buyer" | "seller" | "admin";
+
+/** Delivery details, trimmed to what each viewer may see. Only the buyer ever
+ * gets the delivery code; admins can skip it with a reason instead. */
+function deliveryFor(order: OrderDocument, viewer: OrderViewer) {
+  const d = order.delivery;
+  if (!d) return undefined;
+  const assigned = !!d.partner;
+  const base = { mode: d.mode, partnerName: assigned ? d.partnerName : undefined };
+  if (viewer === "buyer") {
+    const open = ["pending", "confirmed", "packed", "out-for-delivery"].includes(order.status);
+    return {
+      ...base,
+      partnerPhone: order.status === "out-for-delivery" ? d.partnerPhone : undefined,
+      code: open ? d.code : undefined,
+    };
+  }
+  if (viewer === "seller") {
+    return { ...base, partnerPhone: assigned ? d.partnerPhone : undefined, pickedUpAt: d.pickedUpAt };
+  }
+  return {
+    ...base,
+    partnerId: d.partner?.toString(),
+    partnerPhone: d.partnerPhone,
+    assignedAt: d.assignedAt,
+    acceptedAt: d.acceptedAt,
+    pickedUpAt: d.pickedUpAt,
+    pickups: d.pickups,
+    cashCollected: d.cashCollected,
+    fee: d.fee,
+    codeSkipped: d.codeSkipped,
+    needsAttention: d.needsAttention,
+    attempts: d.attempts.map((a, index) => ({
+      index,
+      kind: a.kind,
+      at: a.at,
+      partnerName: a.partnerName,
+      reason: a.reason,
+      note: a.note,
+      fee: a.fee,
+    })),
+  };
+}
+
 /** `order.user` may be populated with userCode; sellers pass their own
  * seller id so they only see their items of a mixed-seller order. */
-export function toOrder(order: OrderDocument, options: { onlySellerId?: Types.ObjectId } = {}) {
+export function toOrder(order: OrderDocument, options: { onlySellerId?: Types.ObjectId; viewer?: OrderViewer } = {}) {
+  const viewer: OrderViewer = options.viewer ?? (options.onlySellerId ? "seller" : "buyer");
   const user = order.user as unknown as { _id?: Types.ObjectId; userCode?: string };
   const items = options.onlySellerId
     ? order.items.filter((i) => i.seller.equals(options.onlySellerId!))
@@ -168,6 +217,7 @@ export function toOrder(order: OrderDocument, options: { onlySellerId?: Types.Ob
     customer: order.shippingAddress,
     statusHistory: order.statusHistory.map((h) => ({ status: h.status, at: h.at, byRole: h.byRole, note: h.note })),
     deliveredAt: order.deliveredAt,
+    delivery: deliveryFor(order, viewer),
     returnDeadline,
     /** True when the seller view hides other sellers' items. */
     partial: items.length !== order.items.length,

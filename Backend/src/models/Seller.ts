@@ -1,5 +1,8 @@
 import { Schema, model, type Document, type Types } from "mongoose";
 
+/** "self": the seller delivers. "partner": Mana Oori Santha delivery partners pick up from the shop. */
+export type DeliveryMethod = "self" | "partner";
+
 /** Onboarding state. Only "approved" sellers' products are shown and sold. */
 export type SellerStatus = "pending" | "approved" | "rejected" | "suspended";
 
@@ -47,6 +50,10 @@ export interface SellerDocument extends Document {
   reviewCount: number;
   joinedYear: number;
   isActive: boolean;
+  /** Who takes this seller's orders to customers. Changes need admin approval. */
+  deliveryMethod: DeliveryMethod;
+  /** A change the seller asked for, waiting for an admin. */
+  deliveryMethodRequest?: { method: DeliveryMethod; requestedAt: Date };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -97,6 +104,14 @@ const sellerSchema = new Schema<SellerDocument>(
     reviewCount: { type: Number, default: 0, min: 0 },
     joinedYear: { type: Number, default: () => new Date().getFullYear() },
     isActive: { type: Boolean, default: true },
+    deliveryMethod: { type: String, enum: ["self", "partner"], default: "self" },
+    deliveryMethodRequest: {
+      type: new Schema(
+        { method: { type: String, enum: ["self", "partner"], required: true }, requestedAt: { type: Date, default: Date.now } },
+        { _id: false }
+      ),
+      default: undefined,
+    },
   },
   { timestamps: true }
 );

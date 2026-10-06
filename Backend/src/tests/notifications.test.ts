@@ -1,4 +1,4 @@
-import { api, rawGet, startTestServer, stopTestServer } from "./setup";
+import { api, rawGet, startTestServer, stopTestServer, statusBody } from "./setup";
 import { after, before, beforeEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { seedCatalog } from "../seed/seed";
@@ -117,7 +117,7 @@ describe("order notifications", () => {
   it("respects the customer's email preferences", async () => {
     await api("PATCH", "/auth/me", { token: customer, body: { notificationPrefs: { deliveryAlerts: false } } });
     for (const status of ["confirmed", "packed", "out-for-delivery", "delivered"]) {
-      await api("PATCH", `/orders/${orderId}/status`, { token: seller, body: { status } });
+      await api("PATCH", `/orders/${orderId}/status`, { token: seller, body: await statusBody(orderId, status) });
     }
     await settle();
     const subjects = testOutbox.filter((m) => m.to === "anita@mail.in").map((m) => m.subject);

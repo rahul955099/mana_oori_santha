@@ -9,6 +9,13 @@ export const ADMIN_ACTIONS = [
   "admin.removed",
   "customer.deleted",
   "owner.transferred",
+  "delivery.invited",
+  "delivery.joined",
+  "delivery.partner-updated",
+  "delivery.code-skipped",
+  "delivery.settings-changed",
+  "delivery.settlement",
+  "seller.delivery-method",
 ] as const;
 export type AdminAction = (typeof ADMIN_ACTIONS)[number];
 

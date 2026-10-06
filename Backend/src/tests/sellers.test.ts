@@ -3,7 +3,7 @@ process.env.CLOUDINARY_CLOUD_NAME = "test-cloud";
 process.env.CLOUDINARY_API_KEY = "test-key";
 process.env.CLOUDINARY_API_SECRET = "test-secret";
 
-import { api, startTestServer, stopTestServer } from "./setup";
+import { api, startTestServer, stopTestServer, statusBody } from "./setup";
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { seedCatalog } from "../seed/seed";
@@ -177,8 +177,8 @@ describe("seller onboarding", () => {
 
 describe("earnings and payouts", () => {
   let orderId = "";
-  const setStatus = (token: string, status: string) =>
-    api("PATCH", `/orders/${orderId}/status`, { token, body: { status } });
+  const setStatus = async (token: string, status: string) =>
+    api("PATCH", `/orders/${orderId}/status`, { token, body: await statusBody(orderId, status) });
 
   it("tracks a sale through the return window to a payable balance", async () => {
     const foxtail = (await api("GET", "/products/foxtail-millet")).body.data.product;

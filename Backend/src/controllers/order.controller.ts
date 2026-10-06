@@ -5,13 +5,19 @@ import { Seller } from "../models/Seller";
 import { AppError } from "../utils/AppError";
 import { success } from "../utils/response";
 import { escapeRegex } from "../utils/slugify";
-import { toOrder } from "../utils/serialize";
+import { toOrder, type OrderViewer } from "../utils/serialize";
 import { buildQuote, serializeQuote } from "../services/pricing.service";
 import { buyerId, canView, changeStatus, placeOrder, type Actor } from "../services/order.service";
+import { expireStaleAssignments } from "../services/delivery.service";
 import type { AuthRequest } from "../middleware/auth.middleware";
 
 const USER_FIELDS = "userCode";
 const MAX_LIST = 500;
+
+function viewerOf(actor: Actor, isBuyer: boolean): OrderViewer {
+  if (isBuyer) return "buyer";
+  return actor.role === "admin" ? "admin" : "seller";
+}
 
 function actorOf(req: AuthRequest): Actor {
   return { userId: req.userId!, role: req.userRole! };
@@ -55,14 +61,25 @@ export async function listSellerOrders(req: AuthRequest, res: Response) {
 /** Admin: every order, optionally filtered by status or searched by order number / customer name. */
 export async function listAllOrders(req: AuthRequest, res: Response) {
   const filter: QueryFilter<OrderDocument> = {};
-  const { status, search } = req.query as Record<string, string | undefined>;
+  const { status, search, delivery } = req.query as Record<string, string | undefined>;
   if (status) filter.status = status as OrderStatus;
+  if (delivery === "unassigned") {
+    Object.assign(filter, {
+      "delivery.mode": "partner",
+      "delivery.partner": { $exists: false },
+      status: status ? status : { $in: ["confirmed", "packed"] },
+    });
+  }
+  if (delivery === "attention") {
+    Object.assign(filter, { "delivery.needsAttention": { $exists: true }, status: status ? status : { $nin: ["cancelled", "returned"] } });
+  }
+  await expireStaleAssignments();
   if (search) {
     const pattern = new RegExp(escapeRegex(search.trim()), "i");
     filter.$or = [{ orderNumber: pattern }, { "shippingAddress.fullName": pattern }];
   }
   const orders = await Order.find(filter).sort({ createdAt: -1 }).limit(MAX_LIST).populate("user", USER_FIELDS);
-  success(res, "Orders fetched", { orders: orders.map((o) => toOrder(o)) });
+  success(res, "Orders fetched", { orders: orders.map((o) => toOrder(o, { viewer: "admin" })) });
 }
 
 export async function getOrder(req: AuthRequest, res: Response) {
@@ -76,17 +93,23 @@ export async function getOrder(req: AuthRequest, res: Response) {
   if (actor.role === "seller" && !isBuyer) {
     onlySellerId = (await Seller.findOne({ user: actor.userId }).select("_id"))?._id;
   }
-  success(res, "Order fetched", { order: toOrder(order, { onlySellerId }) });
+  success(res, "Order fetched", { order: toOrder(order, { onlySellerId, viewer: viewerOf(actor, isBuyer) }) });
 }
 
 export async function updateOrderStatus(req: AuthRequest, res: Response) {
   const actor = actorOf(req);
-  const updated = await changeStatus(actor, String(req.params.orderNumber), req.body.status, req.body.note);
+  const updated = await changeStatus(actor, String(req.params.orderNumber), req.body.status, req.body.note, {
+    code: req.body.code,
+    skipCodeReason: req.body.skipCodeReason,
+    cashCollected: req.body.cashCollected,
+  });
   await updated.populate("user", USER_FIELDS);
 
   let onlySellerId;
   if (actor.role === "seller" && buyerId(updated) !== actor.userId) {
     onlySellerId = (await Seller.findOne({ user: actor.userId }).select("_id"))?._id;
   }
-  success(res, "Order status updated", { order: toOrder(updated, { onlySellerId }) });
+  success(res, "Order status updated", {
+    order: toOrder(updated, { onlySellerId, viewer: viewerOf(actor, buyerId(updated) === actor.userId) }),
+  });
 }

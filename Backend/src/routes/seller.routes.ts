@@ -12,6 +12,8 @@ import {
   adminUpdateSeller,
   adminSetSellerStatus,
   adminDeleteSeller,
+  requestDeliveryMethod,
+  decideDeliveryMethod,
 } from "../controllers/seller.controller";
 import { requireAuth } from "../middleware/auth.middleware";
 import { optionalAuth } from "../middleware/optionalAuth.middleware";
@@ -77,6 +79,13 @@ router.get("/me", requireAuth, requireRole("seller"), getMySeller);
 router.patch("/me", requireAuth, requireRole("seller"), validate(profileFields), updateMySeller);
 router.put("/me/kyc", requireAuth, requireRole("seller"), validate(kycFields), submitMyKyc);
 router.get("/me/earnings", requireAuth, requireRole("seller"), getMyEarnings);
+router.put(
+  "/me/delivery-method",
+  requireAuth,
+  requireRole("seller"),
+  validate([body("method").isIn(["self", "partner"]).withMessage("Choose who delivers your orders")]),
+  requestDeliveryMethod
+);
 
 router.get("/:id", optionalAuth, validate([idParam]), getSeller);
 // Full bank/PAN details and money are for the site owner only.
@@ -99,5 +108,6 @@ router.patch(
   adminSetSellerStatus
 );
 router.delete("/:id", ...admin, validate([idParam]), adminDeleteSeller);
+router.patch("/:id/delivery-method", ...admin, validate([idParam, body("approve").isBoolean().toBoolean()]), decideDeliveryMethod);
 
 export default router;

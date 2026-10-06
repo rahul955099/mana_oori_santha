@@ -1,4 +1,4 @@
-import { api, startTestServer, stopTestServer } from "./setup";
+import { api, startTestServer, stopTestServer, statusBody } from "./setup";
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { seedCatalog } from "../seed/seed";
@@ -234,8 +234,8 @@ describe("order status flow", () => {
     assert.equal(res.status, 201, res.body.message);
     return res.body.data.order.id as string;
   }
-  const setStatus = (token: string, id: string, status: string) =>
-    api("PATCH", `/orders/${id}/status`, { token, body: { status } });
+  const setStatus = async (token: string, id: string, status: string) =>
+    api("PATCH", `/orders/${id}/status`, { token, body: await statusBody(id, status) });
 
   it("lets the customer cancel a pending order and restores stock once", async () => {
     const before = await stockOf(foxtail.id);

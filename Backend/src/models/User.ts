@@ -1,7 +1,7 @@
 import { Schema, model, type Document, type Types } from "mongoose";
 import { hashPassword } from "../utils/password";
 
-export type UserRole = "customer" | "seller" | "admin";
+export type UserRole = "customer" | "seller" | "admin" | "delivery";
 
 export interface UserAddress {
   addressLine?: string;
@@ -101,7 +101,7 @@ const userSchema = new Schema<UserDocument>(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     phone: { type: String, required: true, trim: true },
     password: { type: String, required: true, select: false },
-    role: { type: String, enum: ["customer", "seller", "admin"], default: "customer" },
+    role: { type: String, enum: ["customer", "seller", "admin", "delivery"], default: "customer" },
     address: { type: addressSchema, default: undefined },
     addresses: { type: [savedAddressSchema], default: [] },
     wishlist: { type: [{ type: Schema.Types.ObjectId, ref: "Product" }], default: [] },
