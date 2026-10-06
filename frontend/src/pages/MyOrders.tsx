@@ -111,6 +111,33 @@ export default function MyOrders() {
                     <OrderTracker status={order.status} />
                   </div>
 
+                  {order.delivery?.code && (
+                    <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-primary-50 p-4">
+                      <div>
+                        <p className="text-sm font-bold text-primary-800">Your delivery code</p>
+                        <p className="text-xs text-primary-700">
+                          Give this code at the door to receive your order. Don't share it before then.
+                          {order.status === "out-for-delivery" && order.delivery.partnerName && (
+                            <>
+                              {" "}
+                              {order.delivery.partnerName} is bringing it
+                              {order.delivery.partnerPhone && (
+                                <>
+                                  {": "}
+                                  <a href={`tel:${order.delivery.partnerPhone}`} className="font-semibold underline">
+                                    {order.delivery.partnerPhone}
+                                  </a>
+                                </>
+                              )}
+                              .
+                            </>
+                          )}
+                        </p>
+                      </div>
+                      <p className="rounded-xl bg-white px-4 py-2 text-3xl font-extrabold tracking-[0.4em] text-stone-900">{order.delivery.code}</p>
+                    </div>
+                  )}
+
                   <div className="space-y-3">
                     {order.items.map((item) => (
                       <div key={item.productId} className="flex items-center gap-3">

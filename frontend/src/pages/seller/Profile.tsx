@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocation } from "react-router-dom";
-import { BadgeCheck, ShieldCheck } from "lucide-react";
+import { BadgeCheck, ShieldCheck, Truck } from "lucide-react";
 import { useSellerAccount, type KycInput } from "@/context/SellerAccountContext";
 import { useToast } from "@/context/ToastContext";
 import { buttonClasses } from "@/components/common/Button";
@@ -8,7 +8,7 @@ import { Loading } from "@/components/common/Loading";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ImageUploader } from "@/components/common/ImageUploader";
 import { SellerStatusBanner } from "@/components/seller/SellerStatusBanner";
-import { errorMessage } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import { formatDate } from "@/utils/format";
 import type { SellerAccount } from "@/types";
 
@@ -44,7 +44,77 @@ export default function SellerProfile() {
           verification details are in, they come first: the shop can't go live without them. */}
       {!account.kyc && <KycForm key="kyc-none" account={account} />}
       <ShopProfileForm key={`shop-${account.id}`} account={account} />
+      <DeliveryMethodCard account={account} />
       {account.kyc && <KycForm key={`kyc-${account.kyc.submittedAt}`} account={account} />}
+    </div>
+  );
+}
+
+const METHODS = [
+  { value: "self", title: "I deliver myself", text: "You take orders to customers and mark them delivered with the customer's 4-digit code." },
+  { value: "partner", title: "Use Mana Oori Santha delivery partners", text: "Our partners pick up packed orders from your shop and deliver them." },
+] as const;
+
+/** Seller: who delivers their orders. Changes wait for an admin's approval. */
+function DeliveryMethodCard({ account }: { account: SellerAccount }) {
+  const { reload } = useSellerAccount();
+  const { showToast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const current = account.deliveryMethod ?? "self";
+  const pending = account.deliveryMethodRequest?.method;
+
+  async function choose(method: "self" | "partner") {
+    setSaving(true);
+    try {
+      await api.put("/sellers/me/delivery-method", { method });
+      await reload();
+      showToast(method === current ? "Request withdrawn." : "Request sent. An admin will review it.");
+    } catch (err) {
+      showToast(errorMessage(err), "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-stone-200 bg-white p-6">
+      <div className="mb-4 flex items-start gap-3">
+        <Truck size={22} className="mt-0.5 shrink-0 text-primary-600" />
+        <div>
+          <h2 className="text-lg font-bold text-stone-900">Delivery</h2>
+          <p className="text-sm text-stone-500">Choose who takes your orders to customers. Changes take effect once an admin approves them.</p>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {METHODS.map((m) => {
+          const isCurrent = current === m.value;
+          const isPending = pending === m.value;
+          return (
+            <button
+              key={m.value}
+              type="button"
+              disabled={saving || isCurrent && !pending}
+              onClick={() => choose(m.value)}
+              className={`rounded-xl border-2 p-4 text-left transition ${
+                isCurrent ? "border-primary-500 bg-primary-50" : isPending ? "border-accent-400 bg-accent-50" : "border-stone-200 hover:border-primary-300"
+              }`}
+            >
+              <p className="font-semibold text-stone-800">{m.title}</p>
+              <p className="mt-1 text-xs text-stone-500">{m.text}</p>
+              <p className="mt-2 text-xs font-bold">
+                {isCurrent ? (
+                  <span className="text-primary-700">Current{pending ? " (tap to keep it and withdraw the request)" : ""}</span>
+                ) : isPending ? (
+                  <span className="text-accent-700">Waiting for admin approval</span>
+                ) : (
+                  <span className="text-stone-400">Tap to request this</span>
+                )}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-3 text-xs text-stone-400">Orders already placed keep the delivery they started with.</p>
     </div>
   );
 }

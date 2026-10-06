@@ -20,6 +20,13 @@ export interface PlaceOrderInput {
   shippingAddress: ShippingDetails;
 }
 
+/** Extra details when marking an order delivered. */
+export interface StatusExtra {
+  code?: string;
+  skipCodeReason?: string;
+  cashCollected?: number;
+}
+
 interface OrdersContextValue {
   /** Orders this user works with: everything for admins, sales for sellers, purchases for customers. */
   orders: Order[];
@@ -30,7 +37,7 @@ interface OrdersContextValue {
   reload: () => Promise<void>;
   placeOrder: (input: PlaceOrderInput) => Promise<Order>;
   /** Moves an order to a new status. The server enforces who may do what. */
-  updateOrderStatus: (id: string, status: OrderStatus, note?: string) => Promise<Order>;
+  updateOrderStatus: (id: string, status: OrderStatus, note?: string, extra?: StatusExtra) => Promise<Order>;
 }
 
 const OrdersContext = createContext<OrdersContextValue | undefined>(undefined);
@@ -55,6 +62,12 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const managedPath = role === "admin" ? "/orders" : role === "seller" ? "/orders/seller" : null;
+      // Delivery partners load their jobs on their own pages.
+      if (role === "delivery") {
+        setMyOrders([]);
+        setManaged([]);
+        return;
+      }
       const [mine, others] = await Promise.all([
         api.get<OrdersResponse>("/orders/mine"),
         managedPath ? api.get<OrdersResponse>(managedPath) : Promise.resolve(null),
@@ -90,8 +103,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return order;
   }
 
-  async function updateOrderStatus(id: string, status: OrderStatus, note?: string) {
-    const { order } = await api.patch<{ order: Order }>(`/orders/${id}/status`, { status, note });
+  async function updateOrderStatus(id: string, status: OrderStatus, note?: string, extra: StatusExtra = {}) {
+    const { order } = await api.patch<{ order: Order }>(`/orders/${id}/status`, { status, note, ...extra });
     setMyOrders((prev) => replace(prev, order));
     setManaged((prev) => replace(prev, order));
     return order;

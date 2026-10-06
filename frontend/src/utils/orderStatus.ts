@@ -58,7 +58,7 @@ const FLOW: Record<OrderStatus, OrderStatus[]> = {
   pending: ["confirmed", "cancelled"],
   confirmed: ["packed", "cancelled"],
   packed: ["out-for-delivery", "cancelled"],
-  "out-for-delivery": ["delivered"],
+  "out-for-delivery": ["delivered", "packed"],
   delivered: ["return-requested"],
   "return-requested": ["returned", "delivered"],
   returned: [],
@@ -70,7 +70,14 @@ const FLOW: Record<OrderStatus, OrderStatus[]> = {
 export function managementNextStatuses(order: Order, role: UserRole): OrderStatus[] {
   const next = FLOW[order.status].filter((s) => s !== "return-requested");
   if (role === "admin") return next;
-  if (role === "seller" && !order.partial) return next.filter((s) => s !== "returned" && order.status !== "return-requested");
+  if (role === "seller" && !order.partial) {
+    // Delivery partners take partner-delivery orders from "packed" onwards.
+    const partnerDelivers = order.delivery?.mode === "partner";
+    return next.filter(
+      (s) =>
+        s !== "returned" && order.status !== "return-requested" && !(partnerDelivers && (s === "out-for-delivery" || s === "delivered"))
+    );
+  }
   return [];
 }
 
@@ -78,6 +85,7 @@ export function managementNextStatuses(order: Order, role: UserRole): OrderStatu
 export function transitionLabel(from: OrderStatus, to: OrderStatus): string {
   if (from === "return-requested" && to === "delivered") return "Reject Return";
   if (to === "returned") return "Approve Return";
+  if (from === "out-for-delivery" && to === "packed") return "Back to Packed (not delivered)";
   if (to === "cancelled") return "Cancel Order";
   return `Mark ${ORDER_STATUS_LABELS[to]}`;
 }

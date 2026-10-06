@@ -1,9 +1,10 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Loading } from "@/components/common/Loading";
 import { MainLayout } from "@/layouts/MainLayout";
 import { SellerLayout } from "@/layouts/SellerLayout";
 import { AdminLayout, OwnerOnly } from "@/layouts/AdminLayout";
+import { DeliveryLayout } from "@/layouts/DeliveryLayout";
 import { RequireAuth } from "@/components/RequireAuth";
 
 import Home from "@/pages/Home";
@@ -54,6 +55,11 @@ const AdminCoupons = lazy(() => import("@/pages/admin/Coupons"));
 const AdminNotifications = lazy(() => import("@/pages/admin/Notifications"));
 const AdminPayouts = lazy(() => import("@/pages/admin/Payouts"));
 const AdminTeam = lazy(() => import("@/pages/admin/Team"));
+const AdminDeliveryPartners = lazy(() => import("@/pages/admin/DeliveryPartners"));
+const AdminDeliverySettlements = lazy(() => import("@/pages/admin/DeliverySettlements"));
+const DeliveryDashboard = lazy(() => import("@/pages/delivery/Dashboard"));
+const DeliveryHistory = lazy(() => import("@/pages/delivery/History"));
+const DeliveryEarnings = lazy(() => import("@/pages/delivery/Earnings"));
 
 function App() {
   return (
@@ -154,13 +160,29 @@ function App() {
             <Route element={<OwnerOnly />}>
               <Route path="payouts" element={<AdminPayouts />} />
               <Route path="team" element={<AdminTeam />} />
+              <Route path="delivery/settlements" element={<AdminDeliverySettlements />} />
             </Route>
+            <Route path="delivery/partners" element={<AdminDeliveryPartners />} />
             <Route path="categories" element={<AdminCategories />} />
             <Route path="support" element={<AdminSupport />} />
             <Route path="reviews" element={<AdminReviews />} />
             <Route path="coupons" element={<AdminCoupons />} />
             <Route path="notifications" element={<AdminNotifications />} />
             <Route path="reports" element={<AdminReports />} />
+          </Route>
+
+          <Route
+            path="delivery"
+            element={
+              <RequireAuth roles={["delivery"]}>
+                <DeliveryLayout />
+              </RequireAuth>
+            }
+          >
+            <Route index element={<Navigate to="/delivery/dashboard" replace />} />
+            <Route path="dashboard" element={<DeliveryDashboard />} />
+            <Route path="history" element={<DeliveryHistory />} />
+            <Route path="earnings" element={<DeliveryEarnings />} />
           </Route>
 
           {/* Standalone (no header/footer) so it prints cleanly. */}

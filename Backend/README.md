@@ -44,6 +44,17 @@ database, seeded with the sample catalog, and prints test logins. Data resets on
 | POST | `/api/payouts` | owner — record a payment made to a seller (up to their balance) |
 | GET/POST/DELETE | `/api/admin/team`, `/api/admin/team/:userId`, `/api/admin/team/invites/:id` | owner — admin team and invitations |
 | POST | `/api/admin/team/transfer-ownership` | owner — make another admin the owner |
+| PUT | `/api/sellers/me/delivery-method` | seller — ask to deliver themselves or use delivery partners (admin approves) |
+| PATCH | `/api/sellers/:id/delivery-method` | admin — approve or decline that request |
+| GET/POST | `/api/admin/delivery/partners`, `/api/admin/delivery/partners/invite` | admin — partners with workload and cash; invite a partner |
+| PATCH | `/api/admin/delivery/partners/:partnerId` | admin — vehicle, pincodes covered, pause / unpause |
+| GET | `/api/admin/delivery/orders/:orderNumber/suggestions` | admin — partners ranked for an order, with reasons |
+| POST | `/api/admin/delivery/assign`, `/api/admin/delivery/orders/:n/unassign` | admin — give one or many orders to a partner, or take one back |
+| GET/PUT | `/api/admin/delivery/settings` | admin reads; owner sets fees, job and cash limits |
+| GET/POST | `/api/admin/delivery/settlements` | owner — balances; record cash handed over and fees paid |
+| GET | `/api/delivery/me`, `/api/delivery/orders` | delivery partner — profile, earnings, active jobs and history |
+| PATCH | `/api/delivery/me/availability` | delivery partner — "Available today" on/off |
+| POST | `/api/delivery/orders/:n/accept` · `decline` · `pickup` · `deliver` · `fail` | delivery partner — job actions (deliver needs the customer's 4-digit code) |
 | GET | `/api/products/:id/reviews` | public — published reviews; logged-in callers also get their own review and whether they may write one |
 | PUT / DELETE | `/api/products/:id/reviews/mine` | logged in — write/edit/delete own review (needs a delivered order) |
 | GET | `/api/reviews/mine` | logged in — own reviews across products |

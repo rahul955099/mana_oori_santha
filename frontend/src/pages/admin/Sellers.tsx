@@ -71,6 +71,16 @@ export default function AdminSellers() {
     }
   }
 
+  async function decideDelivery(seller: SellerAccount, approve: boolean) {
+    try {
+      const res = await api.patch<{ seller: SellerAccount }>(`/sellers/${seller.id}/delivery-method`, { approve });
+      showToast(approve ? `${seller.farmName}: delivery change approved` : `${seller.farmName}: delivery change declined`);
+      await afterChange(res.seller);
+    } catch (err) {
+      showToast(errorMessage(err), "error");
+    }
+  }
+
   function startAction(seller: SellerAccount, status: SellerStatus) {
     setReview(null);
     setReason("");
@@ -188,6 +198,18 @@ export default function AdminSellers() {
                   <td className="px-5 py-3">
                     <Badge tone={STATUS[seller.status].tone}>{STATUS[seller.status].label}</Badge>
                     {seller.status === "pending" && !seller.kyc && <p className="mt-1 text-[11px] text-stone-400">Details not submitted</p>}
+                    <p className="mt-1 text-[11px] text-stone-500">
+                      {seller.deliveryMethod === "partner" ? "Uses delivery partners" : "Delivers own orders"}
+                    </p>
+                    {seller.deliveryMethodRequest && (
+                      <div className="mt-1 rounded-lg bg-accent-50 px-2 py-1.5 text-[11px] text-accent-800">
+                        Wants to {seller.deliveryMethodRequest.method === "partner" ? "use delivery partners" : "deliver themselves"}
+                        <div className="mt-1 flex gap-3">
+                          <button onClick={() => decideDelivery(seller, true)} className="font-bold underline">Approve</button>
+                          <button onClick={() => decideDelivery(seller, false)} className="font-bold underline">Decline</button>
+                        </div>
+                      </div>
+                    )}
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex justify-end gap-1">

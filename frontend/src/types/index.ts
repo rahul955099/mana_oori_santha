@@ -1,3 +1,4 @@
+import type { DeliveryMethod, OrderDelivery } from "./delivery";
 /** Categories are managed by admins in the database, so any slug is possible. */
 export type CategorySlug = string;
 
@@ -36,6 +37,9 @@ export interface SellerKyc {
 /** The seller as they (or an admin) see it: adds onboarding and payout details. */
 export interface SellerAccount extends Seller {
   status: SellerStatus;
+  deliveryMethod?: DeliveryMethod;
+  /** A change waiting for an admin. */
+  deliveryMethodRequest?: { method: DeliveryMethod; requestedAt: string } | null;
   statusReason?: string;
   kyc: SellerKyc | null;
   payout: PayoutDetails | null;
@@ -157,6 +161,8 @@ export interface Order {
   partial?: boolean;
   /** The buyer's AuthUser.userId (e.g. "MOS-10245"). */
   userId?: string;
+  /** Who delivers it; missing on older orders (their seller delivered them). */
+  delivery?: OrderDelivery;
   customer: {
     fullName: string;
     mobile: string;
@@ -169,7 +175,7 @@ export interface Order {
   };
 }
 
-export type UserRole = "customer" | "seller" | "admin";
+export type UserRole = "customer" | "seller" | "admin" | "delivery";
 
 export interface AuthUser {
   id: string;

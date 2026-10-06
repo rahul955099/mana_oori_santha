@@ -21,6 +21,9 @@ import app from "../app";
 import { env } from "../config/env";
 import { seedCatalog } from "../seed/seed";
 import { runMigrations } from "../config/migrations";
+import { User } from "../models/User";
+import { DeliveryPartner } from "../models/DeliveryPartner";
+import { indiaToday } from "../services/deliverySettings.service";
 
 async function main() {
   const mongo = await MongoMemoryServer.create();
@@ -32,11 +35,17 @@ async function main() {
   await seedCatalog({ reset: true, adminEmail, adminPassword, sellerPassword });
   // Same startup fixes as the real server (e.g. the Fashion categories).
   await runMigrations();
+  // A delivery partner to try the delivery flow, available today and covering common practice pincodes.
+  const partnerEmail = "partner@manaoorisantha.local";
+  const partnerPassword = "partner12345";
+  const partnerUser = await User.create({ name: "Ravi (Delivery)", email: partnerEmail, phone: "9123456789", password: partnerPassword, role: "delivery", emailVerified: true });
+  await DeliveryPartner.create({ user: partnerUser._id, vehicle: "bike", serviceAreas: ["500079", "500074", "500035", "517501", "500001"], availableOn: indiaToday() });
 
   app.listen(env.port, () => {
     console.log(`\nIn-memory API running on http://localhost:${env.port} (data resets on restart)`);
     console.log(`  Admin login:  ${adminEmail} / ${adminPassword}`);
-    console.log(`  Seller login: ramulu.farms@example.com / ${sellerPassword} (any sample seller email works)\n`);
+    console.log(`  Seller login: ramulu.farms@example.com / ${sellerPassword} (any sample seller email works)`);
+    console.log(`  Delivery login: ${partnerEmail} / ${partnerPassword}\n`);
   });
 
   const shutdown = async () => {

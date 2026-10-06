@@ -25,7 +25,8 @@ export default function Login() {
     if (result.success) {
       showToast(result.message);
       const from = (location.state as { from?: Location } | null)?.from;
-      const redirectTo = from ? `${from.pathname}${from.search ?? ""}${from.hash ?? ""}` : "/";
+      const home = result.role === "delivery" ? "/delivery/dashboard" : "/";
+      const redirectTo = from ? `${from.pathname}${from.search ?? ""}${from.hash ?? ""}` : home;
       navigate(redirectTo, { replace: true });
     } else {
       setError(result.message);

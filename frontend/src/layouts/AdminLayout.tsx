@@ -1,11 +1,11 @@
-import { LayoutDashboard, Package, Store, Users, ShoppingBag, LayoutGrid, BarChart3, LifeBuoy, Star, Tag, Bell, Wallet, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Package, Store, Users, ShoppingBag, LayoutGrid, BarChart3, LifeBuoy, Star, Tag, Bell, Wallet, ShieldCheck, Truck, HandCoins } from "lucide-react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import type { SidebarLink } from "@/components/layout/DashboardSidebar";
 
 /** Pages only the site owner sees. */
-const OWNER_ONLY = new Set(["/admin/payouts", "/admin/team"]);
+const OWNER_ONLY = new Set(["/admin/payouts", "/admin/team", "/admin/delivery/settlements"]);
 
 const links: SidebarLink[] = [
   { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -14,7 +14,9 @@ const links: SidebarLink[] = [
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/categories", label: "Categories", icon: LayoutGrid },
   { to: "/admin/orders", label: "Orders", icon: ShoppingBag },
+  { to: "/admin/delivery/partners", label: "Delivery Partners", icon: Truck },
   { to: "/admin/payouts", label: "Seller Payouts", icon: Wallet },
+  { to: "/admin/delivery/settlements", label: "Delivery Settlements", icon: HandCoins },
   { to: "/admin/reviews", label: "Reviews", icon: Star },
   { to: "/admin/coupons", label: "Coupons/Offers", icon: Tag },
   { to: "/admin/support", label: "Customer Support", icon: LifeBuoy },

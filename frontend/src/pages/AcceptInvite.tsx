@@ -16,7 +16,7 @@ export default function AcceptInvite() {
   const location = useLocation();
   const { showToast } = useToast();
   const navigate = useNavigate();
-  const [invite, setInvite] = useState<{ email: string; hasAccount: boolean } | null>(null);
+  const [invite, setInvite] = useState<{ email: string; hasAccount: boolean; role?: "admin" | "delivery" } | null>(null);
   const [loadError, setLoadError] = useState("");
   const [form, setForm] = useState({ name: "", phone: "", password: "", confirm: "" });
   const [error, setError] = useState("");
@@ -28,7 +28,7 @@ export default function AcceptInvite() {
       return;
     }
     api
-      .get<{ email: string; hasAccount: boolean }>("/auth/admin-invite", { token })
+      .get<{ email: string; hasAccount: boolean; role?: "admin" | "delivery" }>("/auth/admin-invite", { token })
       .then(setInvite)
       .catch((err) => setLoadError(errorMessage(err)));
   }, [token]);
@@ -47,8 +47,8 @@ export default function AcceptInvite() {
       setError(result.message);
       return;
     }
-    showToast(result.message);
-    navigate("/admin/dashboard", { replace: true });
+    showToast(isDelivery ? "Welcome! Switch on \"Available today\" to start getting deliveries." : result.message);
+    navigate(isDelivery ? "/delivery/dashboard" : "/admin/dashboard", { replace: true });
   }
 
   async function acceptWithAccount() {
@@ -83,6 +83,17 @@ export default function AcceptInvite() {
         <div className="flex justify-center py-6">
           <Loader2 size={32} className="animate-spin text-primary-600" />
         </div>
+      </AuthCard>
+    );
+  }
+
+  const isDelivery = invite.role === "delivery";
+
+  if (invite.hasAccount && isDelivery) {
+    return (
+      <AuthCard title="Use a different email" subtitle={`${invite.email} already has an account on the site.`}>
+        <Seo title="Delivery partner invitation" noIndex />
+        <p className="text-center text-sm text-stone-600">Delivery partners need their own login. Ask the team to invite a different email address.</p>
       </AuthCard>
     );
   }
@@ -131,8 +142,11 @@ export default function AcceptInvite() {
   const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [field]: e.target.value });
 
   return (
-    <AuthCard title="Join the admin team" subtitle={`Set up your admin account for ${invite.email}.`}>
-      <Seo title="Admin invitation" noIndex />
+    <AuthCard
+      title={isDelivery ? "Become a delivery partner" : "Join the admin team"}
+      subtitle={isDelivery ? `Set up your delivery account for ${invite.email}.` : `Set up your admin account for ${invite.email}.`}
+    >
+      <Seo title={isDelivery ? "Delivery partner invitation" : "Admin invitation"} noIndex />
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="name" className="mb-1.5 block text-xs font-bold text-stone-600">Your name</label>
@@ -162,7 +176,7 @@ export default function AcceptInvite() {
         </div>
         {error && <p className="text-sm font-medium text-red-600">{error}</p>}
         <button type="submit" disabled={submitting} className={buttonClasses("primary", "lg", "w-full")}>
-          {submitting ? "Setting up..." : "Create Admin Account"}
+          {submitting ? "Setting up..." : isDelivery ? "Create Delivery Account" : "Create Admin Account"}
         </button>
       </form>
     </AuthCard>

@@ -170,6 +170,11 @@ export function Navbar() {
                       <LayoutDashboard size={15} /> Seller Dashboard
                     </Link>
                   )}
+                  {user.role === "delivery" && (
+                    <Link to="/delivery/dashboard" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-stone-600 hover:bg-primary-50 hover:text-primary-700">
+                      <LayoutDashboard size={15} /> My Deliveries
+                    </Link>
+                  )}
                   {user.role === "admin" && (
                     <Link to="/admin/dashboard" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-stone-600 hover:bg-primary-50 hover:text-primary-700">
                       <LayoutDashboard size={15} /> Admin Panel

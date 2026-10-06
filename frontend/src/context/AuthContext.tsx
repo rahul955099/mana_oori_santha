@@ -5,6 +5,8 @@ import { api, getToken, setToken, ApiError } from "@/lib/api";
 interface Result {
   success: boolean;
   message: string;
+  /** Set on login, so the page can send each kind of user to their home. */
+  role?: UserRole;
 }
 
 interface AuthContextValue {
@@ -105,8 +107,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(email: string, password: string) {
     try {
-      startSession(await api.post("/auth/login", { email, password }));
-      return { success: true, message: "Logged in successfully." };
+      const data = await api.post<{ token: string; user: ApiUser }>("/auth/login", { email, password });
+      startSession(data);
+      return { success: true, message: "Logged in successfully.", role: data.user.role };
     } catch (err) {
       return failure(err);
     }
