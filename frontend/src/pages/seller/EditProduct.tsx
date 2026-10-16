@@ -38,8 +38,12 @@ export default function SellerEditProduct() {
   async function handleSubmit(values: ProductFormValues) {
     if (!product) return;
     try {
-      await updateProduct(product.id, values);
-      showToast("Product updated successfully!");
+      const updated = await updateProduct(product.id, values);
+      showToast(
+        updated.approvalStatus === "pending"
+          ? "Changes saved and sent for approval. The product is hidden from the store until the site owner approves it."
+          : "Product updated successfully!"
+      );
       navigate("/seller/products");
     } catch (err) {
       showToast(errorMessage(err), "error");
@@ -50,6 +54,19 @@ export default function SellerEditProduct() {
     <div className="mx-auto max-w-3xl">
       <h1 className="mb-1 text-2xl font-extrabold text-stone-900">Edit Product</h1>
       <p className="mb-6 text-sm text-stone-500">Update details for "{product.name}".</p>
+      {product.approvalStatus === "rejected" && (
+        <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p className="font-bold">Not approved</p>
+          {product.rejectionReason && <p className="mt-1">Reason: {product.rejectionReason}</p>}
+          <p className="mt-1">Fix the issue and save to send it for approval again.</p>
+        </div>
+      )}
+      {product.approvalStatus === "approved" && (
+        <p className="mb-4 rounded-xl bg-accent-50 p-3 text-xs text-accent-800">
+          Price, stock and unit changes go live straight away. Changes to the name, Telugu name, category, description, photos or
+          benefits are checked by the site owner first, and the product is hidden until they approve.
+        </p>
+      )}
       <div className="rounded-2xl border border-stone-200 bg-white p-6">
         <ProductForm initial={product} onSubmit={handleSubmit} submitLabel="Save Changes" />
       </div>

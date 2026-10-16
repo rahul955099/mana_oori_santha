@@ -5,12 +5,13 @@ import type { Product } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
-import { formatCurrency, discountPercent } from "@/utils/format";
+import { formatCurrency, discountPercent, teluguName } from "@/utils/format";
 import { optimizedImage } from "@/utils/image";
+import { QuantityStepper } from "@/components/cart/QuantityStepper";
 
 export function ProductCard({ product }: { product: Product }) {
   const { user } = useAuth();
-  const { addToCart } = useCart();
+  const { addToCart, quantityOf } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
   const navigate = useNavigate();
   const discount = discountPercent(product.price, product.mrp);
@@ -18,30 +19,28 @@ export function ProductCard({ product }: { product: Product }) {
   const wishlisted = isWishlisted(product.id);
   const purchasable = product.priceAvailable !== false && product.stock > 0;
   const productPath = `/products/${product.slug}`;
+  const nameTe = teluguName(product);
+  const hasSizes = (product.sizes?.length ?? 0) > 0;
 
   function redirectToLogin() {
     navigate("/login", { state: { from: { pathname: productPath } } });
   }
 
-  function handleAddToCart(e: MouseEvent) {
+  /** Sized products need a size first, so ADD opens the product page. */
+  function handleChooseSize(e: MouseEvent) {
     e.preventDefault();
-    // Guests can shop; their cart joins their account when they log in at checkout.
-    if (!purchasable) return;
-    if (product.sizes?.length) {
-      navigate(productPath);
-      return;
-    }
-    addToCart(product.id, 1);
+    if (purchasable) navigate(productPath);
   }
 
   function handleBuyNow(e: MouseEvent) {
     e.preventDefault();
     if (!purchasable) return;
-    if (product.sizes?.length) {
+    if (hasSizes) {
       navigate(productPath);
       return;
     }
-    addToCart(product.id, 1, { silent: true });
+    // Already in the cart: go there with the chosen quantity rather than adding another.
+    if (quantityOf(product.id) === 0) addToCart(product.id, 1, { silent: true });
     navigate("/cart");
   }
 
@@ -89,21 +88,39 @@ export function ProductCard({ product }: { product: Product }) {
           </span>
         )}
 
-        {/* Compact "+ ADD" action, anchored to the image like a modern grocery app */}
-        <button
-          onClick={handleAddToCart}
-          disabled={!purchasable}
-          aria-label={`Add ${product.name} to cart`}
-          className="absolute bottom-2 right-2 flex items-center gap-0.5 rounded-full border border-primary-600 bg-white px-2.5 py-1 text-[11px] font-extrabold text-primary-700 shadow-sm transition-all duration-150 hover:bg-primary-50 active:scale-95 disabled:cursor-not-allowed disabled:border-stone-300 disabled:text-stone-400"
-        >
-          <Plus size={12} strokeWidth={3} className="shrink-0" /> ADD
-        </button>
+        {product.stock <= 0 && product.priceAvailable !== false && (
+          <span className="absolute inset-x-0 top-1/2 -translate-y-1/2 bg-stone-900/70 py-1 text-center text-[11px] font-bold uppercase tracking-wide text-white">
+            Out of stock
+          </span>
+        )}
+
+        {/* Compact "+ ADD" action, anchored to the image like a modern grocery app.
+            Guests can shop; their cart joins their account when they log in at checkout. */}
+        <div className="absolute bottom-2 right-2">
+          {hasSizes ? (
+            <button
+              onClick={handleChooseSize}
+              disabled={!purchasable}
+              aria-label={`Choose a size of ${product.name}`}
+              className="flex h-8 items-center gap-0.5 rounded-full border border-primary-600 bg-white px-3 text-[11px] font-extrabold text-primary-700 shadow-sm transition-all duration-150 hover:bg-primary-50 active:scale-95 disabled:cursor-not-allowed disabled:border-stone-300 disabled:text-stone-400"
+            >
+              <Plus size={12} strokeWidth={3} className="shrink-0" /> ADD
+            </button>
+          ) : (
+            <QuantityStepper product={product} />
+          )}
+        </div>
       </div>
 
       <div className="flex flex-1 flex-col gap-1 p-2.5">
-        <h3 className="line-clamp-2 text-xs font-bold text-stone-800 group-hover:text-primary-700 sm:text-sm">
+        <h3 className="line-clamp-2 break-words text-xs font-bold text-stone-800 group-hover:text-primary-700 sm:text-sm">
           {product.name}
         </h3>
+        {nameTe && (
+          <p lang="te" className="line-clamp-1 break-words text-[11px] font-medium leading-snug text-stone-500 sm:text-xs" title={nameTe}>
+            {nameTe}
+          </p>
+        )}
         <p className="text-[11px] text-stone-400">{product.unit}</p>
 
         <div className="mt-1 flex items-baseline gap-1.5">

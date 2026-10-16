@@ -12,8 +12,12 @@ export default function SellerAddProduct() {
   async function handleSubmit(values: ProductFormValues) {
     try {
       // The API assigns the product to the logged-in seller.
-      await addProduct(values);
-      showToast("Product added successfully!");
+      const product = await addProduct(values);
+      showToast(
+        product.approvalStatus === "pending"
+          ? "Product submitted! It will appear in the store once the site owner approves it."
+          : "Product added successfully!"
+      );
       navigate("/seller/products");
     } catch (err) {
       showToast(errorMessage(err), "error");

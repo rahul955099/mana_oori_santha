@@ -6,10 +6,10 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { buttonClasses } from "@/components/common/Button";
 import { CouponBox } from "@/components/checkout/CouponBox";
 import { OrderTotals } from "@/components/checkout/OrderTotals";
-import { formatCurrency } from "@/utils/format";
+import { formatCurrency, teluguName } from "@/utils/format";
 
 export default function Cart() {
-  const { items, updateQuantity, removeFromCart, clearCart, quote } = useCart();
+  const { items, updateQuantity, removeFromCart, clearCart, quote, maxQuantity } = useCart();
   const { getProductById } = useProducts();
   const navigate = useNavigate();
 
@@ -59,6 +59,9 @@ export default function Cart() {
                   <Link to={`/products/${product.slug}`} className="font-bold text-stone-800 hover:text-primary-700">
                     {product.name}
                   </Link>
+                  {teluguName(product) && (
+                    <p lang="te" className="break-words text-sm text-stone-500">{teluguName(product)}</p>
+                  )}
                   <p className="text-xs text-stone-400">{item.size ? `Size ${item.size} · ${product.unit}` : product.unit}</p>
                   <p className="mt-1 text-sm font-bold text-stone-900">{formatCurrency(product.price)}</p>
                 </div>
@@ -75,7 +78,8 @@ export default function Cart() {
                     <button
                       onClick={() => updateQuantity(item.productId, item.quantity + 1, item.size)}
                       aria-label={`Increase quantity of ${product.name}`}
-                      className="flex h-9 w-9 items-center justify-center text-stone-500 hover:text-primary-700"
+                      disabled={item.quantity >= maxQuantity(item.productId)}
+                      className="flex h-9 w-9 items-center justify-center text-stone-500 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Plus size={14} />
                     </button>

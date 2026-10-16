@@ -36,7 +36,8 @@ const PROFILE_FIELDS = [
 
 async function productCounts(sellerIds: Types.ObjectId[]): Promise<Map<string, number>> {
   const rows = await Product.aggregate<{ _id: Types.ObjectId; count: number }>([
-    { $match: { isActive: true, seller: { $in: sellerIds } } },
+    // Shown on public shop pages, so count only products customers can see.
+    { $match: { isActive: true, approvalStatus: "approved", seller: { $in: sellerIds } } },
     { $group: { _id: "$seller", count: { $sum: 1 } } },
   ]);
   return new Map(rows.map((r) => [r._id.toString(), r.count]));

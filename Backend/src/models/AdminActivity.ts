@@ -16,6 +16,8 @@ export const ADMIN_ACTIONS = [
   "delivery.settings-changed",
   "delivery.settlement",
   "seller.delivery-method",
+  "product.approved",
+  "product.rejected",
 ] as const;
 export type AdminAction = (typeof ADMIN_ACTIONS)[number];
 

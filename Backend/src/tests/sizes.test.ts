@@ -21,6 +21,7 @@ const shippingAddress = {
 
 let customer = "";
 let seller = "";
+let admin = "";
 let dressId = "";
 
 before(async () => {
@@ -30,6 +31,7 @@ before(async () => {
   customer = (await api("POST", "/auth/register", { body: { name: "Anita", email: "anita@example.com", phone: "9876543210", password: "secret12" } }))
     .body.data.token;
   seller = (await api("POST", "/auth/login", { body: { email: "ramulu.farms@example.com", password: SELLER_PASSWORD } })).body.data.token;
+  admin = (await api("POST", "/auth/login", { body: ADMIN })).body.data.token;
 });
 after(stopTestServer);
 
@@ -52,6 +54,8 @@ describe("product sizes", () => {
     assert.equal(res.status, 201, JSON.stringify(res.body));
     assert.deepEqual(res.body.data.product.sizes, ["S", "M", "L"]);
     dressId = res.body.data.product.id;
+    // New listings go on sale once the site owner approves them.
+    await api("PATCH", `/products/${dressId}/approval`, { token: admin, body: { decision: "approve" } });
 
     const edited = await api("PATCH", `/products/${dressId}`, { token: seller, body: { sizes: ["S", "M", "L", "XL"] } });
     assert.deepEqual(edited.body.data.product.sizes, ["S", "M", "L", "XL"]);

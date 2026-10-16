@@ -13,6 +13,12 @@ export async function runMigrations() {
     console.log(`Migration: marked ${res.modifiedCount} existing seller(s) as approved`);
   }
 
+  // Products listed before owner approval existed were already on sale; keep them live.
+  const products = await Product.updateMany({ approvalStatus: { $exists: false } }, { $set: { approvalStatus: "approved" } });
+  if (products.modifiedCount > 0) {
+    console.log(`Migration: marked ${products.modifiedCount} existing product(s) as approved`);
+  }
+
   await recalculateAllRatings();
   await ensureOwner();
   await ensureFashionCategories();

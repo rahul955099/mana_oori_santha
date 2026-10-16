@@ -166,6 +166,8 @@ describe("seller onboarding", () => {
 
   it("shows the shop and its products once approved, and hides them when suspended", async () => {
     await api("PATCH", `/sellers/${newSellerId}/status`, { token: admin, body: { status: "approved" } });
+    assert.equal((await api("GET", `/products/${newProductId}`)).status, 404, "still waiting for the owner's product review");
+    await api("PATCH", `/products/${newProductId}/approval`, { token: admin, body: { decision: "approve" } });
     assert.equal((await api("GET", `/products/${newProductId}`)).status, 200);
     assert.equal((await api("GET", `/sellers/${newSellerId}`)).status, 200);
 

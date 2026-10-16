@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { CircleCheck, X, ChevronRight } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useProducts } from "@/context/ProductsContext";
-import { formatCurrency } from "@/utils/format";
+import { formatCurrency, teluguName } from "@/utils/format";
 
 const SHOW_FOR_MS = 5000;
 
@@ -63,6 +63,7 @@ export function AddedToCartPopup() {
         <img src={product.image} alt="" className="h-24 w-24 shrink-0 rounded-xl bg-stone-100 object-cover" />
         <div className="min-w-0">
           <p className="line-clamp-2 font-semibold text-stone-800">{product.name}</p>
+          {teluguName(product) && <p lang="te" className="line-clamp-1 text-sm text-stone-500">{teluguName(product)}</p>}
           <p className="mt-0.5 text-sm text-stone-500">
             {lastAdded.size ? `Size ${lastAdded.size} · ` : `${product.unit} `}×{lastAdded.quantity}
           </p>

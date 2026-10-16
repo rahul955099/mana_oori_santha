@@ -10,7 +10,8 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { Loading } from "@/components/common/Loading";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
-import { formatCurrency, discountPercent, categoryLabel } from "@/utils/format";
+import { formatCurrency, discountPercent, categoryLabel, teluguName } from "@/utils/format";
+import { QuantityStepper } from "@/components/cart/QuantityStepper";
 import { DeliveryInfo } from "@/components/location/DeliveryInfo";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
 import { optimizedImage } from "@/utils/image";
@@ -21,7 +22,7 @@ export default function ProductDetails() {
   const { products, getProductBySlug, loading } = useProducts();
   const { sellers } = useSellers();
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { addToCart, quantityOf, maxQuantity } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
   const [quantity, setQuantity] = useState(1);
   const [size, setSize] = useState("");
@@ -58,6 +59,9 @@ export default function ProductDetails() {
   const purchasable = product.priceAvailable !== false && product.stock > 0;
 
   const sizes = product.sizes ?? [];
+  const nameTe = teluguName(product);
+  // Unsized products already in the cart show the cart's own quantity, like the product cards.
+  const inCart = sizes.length === 0 ? quantityOf(product.id) : 0;
 
   /** Sized products need a size before they can go in the cart. */
   function sizeChosen() {
@@ -73,6 +77,10 @@ export default function ProductDetails() {
 
   function handleBuyNow() {
     if (!product || !purchasable || !sizeChosen()) return;
+    if (inCart > 0) {
+      navigate("/cart");
+      return;
+    }
     addToCart(product.id, quantity, { silent: true, size: size || undefined });
     navigate("/cart");
   }
@@ -146,7 +154,12 @@ export default function ProductDetails() {
 
         <div>
           <Badge tone="green">{categoryLabel(product.category)}</Badge>
-          <h1 className="mt-3 text-3xl font-extrabold text-stone-900">{product.name}</h1>
+          <h1 className="mt-3 break-words text-3xl font-extrabold text-stone-900">{product.name}</h1>
+          {nameTe && (
+            <p lang="te" className="mt-1 break-words text-xl font-semibold text-stone-600">
+              {nameTe}
+            </p>
+          )}
           <div className="mt-2 flex items-center gap-3">
             <RatingStars rating={product.rating} reviewCount={product.reviewCount} />
           </div>
@@ -236,6 +249,12 @@ export default function ProductDetails() {
           </p>
 
           <div className="mt-6 flex flex-wrap items-center gap-4">
+            {inCart > 0 ? (
+              <>
+                <QuantityStepper product={product} variant="page" />
+                <span className="text-sm font-semibold text-primary-700">In your cart</span>
+              </>
+            ) : (
             <div className="flex items-center rounded-full border border-stone-300">
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -247,14 +266,15 @@ export default function ProductDetails() {
               </button>
               <span className="w-10 text-center text-sm font-bold text-stone-800">{quantity}</span>
               <button
-                onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
+                onClick={() => setQuantity((q) => Math.min(maxQuantity(product.id), q + 1))}
                 aria-label="Increase quantity"
-                disabled={!purchasable}
+                disabled={!purchasable || quantity >= maxQuantity(product.id)}
                 className="flex h-11 w-11 items-center justify-center text-stone-500 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Plus size={16} />
               </button>
             </div>
+            )}
             <button
               onClick={() => toggleWishlist(product.id)}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-stone-300 text-stone-500 hover:border-red-300 hover:text-red-500"
@@ -265,6 +285,14 @@ export default function ProductDetails() {
           </div>
 
           <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            {inCart > 0 ? (
+              <Link
+                to="/cart"
+                className="flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-primary-600 px-6 py-3.5 text-sm font-bold text-primary-700 transition hover:bg-primary-50"
+              >
+                <ShoppingCart size={18} /> Go to Cart
+              </Link>
+            ) : (
             <button
               onClick={handleAddToCart}
               disabled={!purchasable}
@@ -272,6 +300,7 @@ export default function ProductDetails() {
             >
               <ShoppingCart size={18} /> Add to Cart
             </button>
+            )}
             <button
               onClick={handleBuyNow}
               disabled={!purchasable}

@@ -132,7 +132,8 @@ export async function seedCatalog(options: { reset: boolean; adminEmail: string;
           priceLabel: p.priceLabel,
           isActive: true,
         },
-        $setOnInsert: { createdAt: new Date(p.createdAt) },
+        // The curated catalog is live from the start; a later review decision is never overwritten.
+        $setOnInsert: { createdAt: new Date(p.createdAt), approvalStatus: "approved" },
       },
       { upsert: true }
     );
