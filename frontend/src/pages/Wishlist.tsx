@@ -6,7 +6,7 @@ import { useCart } from "@/context/CartContext";
 import { useToast } from "@/context/ToastContext";
 import { EmptyState } from "@/components/common/EmptyState";
 import { buttonClasses } from "@/components/common/Button";
-import { formatCurrency } from "@/utils/format";
+import { formatCurrency, teluguName } from "@/utils/format";
 
 export default function Wishlist() {
   const { wishlist, toggleWishlist } = useWishlist();
@@ -67,6 +67,9 @@ export default function Wishlist() {
                 <Link to={`/products/${product.slug}`} className="font-bold text-stone-800 hover:text-primary-700">
                   {product.name}
                 </Link>
+                {teluguName(product) && (
+                  <p lang="te" className="break-words text-sm text-stone-500">{teluguName(product)}</p>
+                )}
                 <p className="text-xs text-stone-400">{product.unit}</p>
                 <p className="mt-1 text-sm font-bold text-stone-900">
                   {product.priceAvailable === false ? (product.priceLabel ?? "Price TBD") : formatCurrency(product.price)}

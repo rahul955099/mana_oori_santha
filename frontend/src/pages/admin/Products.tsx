@@ -25,7 +25,7 @@ const FILTERS = [
   { id: "pending", label: "Pending Approval" },
   { id: "approved", label: "Approved" },
   { id: "rejected", label: "Rejected" },
-  { id: "missing-te", label: "No Telugu Name" },
+  { id: "missing-te", label: "Add Telugu Name" },
 ] as const;
 type FilterId = (typeof FILTERS)[number]["id"];
 
@@ -299,10 +299,8 @@ export default function AdminProducts() {
                           <img src={product.image} alt={product.name} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
                           <div className="min-w-0">
                             <p className="font-semibold text-stone-800">{product.name}</p>
-                            {teluguName(product) ? (
+                            {teluguName(product) && (
                               <p lang="te" className="max-w-56 truncate text-xs text-stone-500">{teluguName(product)}</p>
-                            ) : (
-                              <p className="text-xs italic text-stone-300">No Telugu name</p>
                             )}
                           </div>
                         </div>

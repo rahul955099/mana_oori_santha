@@ -2,8 +2,9 @@ import { api, startTestServer, stopTestServer } from "./setup";
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { seedCatalog } from "../seed/seed";
-import { runMigrations } from "../config/migrations";
+import { fillMissingTeluguNames, runMigrations } from "../config/migrations";
 import { Product } from "../models/Product";
+import { products as catalog } from "../seed/data/products";
 import { Seller } from "../models/Seller";
 import { User } from "../models/User";
 
@@ -179,7 +180,7 @@ describe("product approval", () => {
 describe("Telugu names", () => {
   it("stores Telugu text alongside the English name and finds products by it", async () => {
     const millet = (await api("GET", "/products/foxtail-millet")).body.data.product;
-    assert.equal(millet.nameTe, "", "missing Telugu names come back empty, never null");
+    assert.equal(millet.nameTe, "కొర్రలు", "the catalog ships with Telugu names");
 
     const res = await api("PATCH", `/products/${millet.id}`, { token: owner, body: { nameTe: "  కొర్రలు  " } });
     assert.equal(res.body.data.product.nameTe, "కొర్రలు");
@@ -232,5 +233,46 @@ describe("admin products by category", () => {
     assert.equal((await api("GET", "/products/manage?category=64b7f0c2a1b2c3d4e5f60718", { token: admin })).status, 404);
     const any = ((await api("GET", "/categories")).body.data.categories as { id: string }[])[0];
     assert.equal((await api("GET", `/products/manage?category=${any.id}`, { token: seller })).status, 403);
+  });
+});
+
+describe("catalog Telugu names", () => {
+  /** Telugu letters, plus the spaces, joiners and dashes used between words. */
+  const TELUGU = /^[\u0C00-\u0C7F\s\u200C\u200D–-]+$/;
+
+  it("gives every catalog product a Telugu name in Telugu script", async () => {
+    for (const c of catalog) {
+      const p = (await api("GET", `/products/${c.slug}`)).body.data.product as { name: string; nameTe: string };
+      assert.ok(TELUGU.test(p.nameTe.replace(/BPT/g, "")), `${p.name} has a Telugu name (got "${p.nameTe}")`);
+      assert.equal(p.name, c.name, "the English name is unchanged");
+    }
+    assert.equal(catalog.find((c) => c.slug === "browntop-millet")!.nameTe, "అండు కొర్రలు");
+    assert.equal(catalog.find((c) => c.slug === "proso-millet")!.nameTe, "వరిగలు");
+  });
+
+  it("fills only missing names and never overwrites one already entered", async () => {
+    await Product.updateOne({ slug: "proso-millet" }, { $set: { nameTe: "ప్రొసో" } });
+    await Product.updateOne({ slug: "little-millet" }, { $set: { nameTe: "" } });
+    await Product.updateOne({ slug: "kodo-millet" }, { $unset: { nameTe: 1 } });
+    await fillMissingTeluguNames();
+    const te = async (slug: string) => (await Product.findOne({ slug }).lean())!.nameTe;
+    assert.equal(await te("proso-millet"), "ప్రొసో", "an entered name is kept");
+    assert.equal(await te("little-millet"), "సామలు");
+    assert.equal(await te("kodo-millet"), "అరికెలు");
+    await Product.updateOne({ slug: "proso-millet" }, { $set: { nameTe: "వరిగలు" } });
+  });
+
+  it("matches a re-created product by its English name when the slug differs", async () => {
+    const res = await api("POST", "/products", { token: owner, body: productBody("Browntop  millet", { sellerId }) });
+    assert.equal(res.status, 201, JSON.stringify(res.body));
+    assert.equal(res.body.data.product.nameTe, "");
+    await fillMissingTeluguNames();
+    assert.equal((await Product.findById(res.body.data.product.id).lean())!.nameTe, "అండు కొర్రలు");
+  });
+
+  it("leaves products it has no name for blank rather than inventing one", async () => {
+    const res = await api("POST", "/products", { token: owner, body: productBody("Moringa Leaf Powder", { sellerId }) });
+    await fillMissingTeluguNames();
+    assert.equal((await Product.findById(res.body.data.product.id).lean())!.nameTe, "");
   });
 });

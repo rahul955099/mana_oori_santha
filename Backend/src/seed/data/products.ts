@@ -6,6 +6,7 @@ export const products: Product[] = [
   {
     id: "p-millet-1",
     name: "Foxtail Millet",
+    nameTe: "కొర్రలు",
     slug: "foxtail-millet",
     category: "millets",
     price: 75,
@@ -26,6 +27,7 @@ export const products: Product[] = [
   {
     id: "p-millet-2",
     name: "Little Millet",
+    nameTe: "సామలు",
     slug: "little-millet",
     category: "millets",
     price: 100,
@@ -46,6 +48,7 @@ export const products: Product[] = [
   {
     id: "p-millet-3",
     name: "Finger Millet (Ragi)",
+    nameTe: "రాగులు",
     slug: "finger-millet-ragi",
     category: "millets",
     price: 60,
@@ -66,6 +69,7 @@ export const products: Product[] = [
   {
     id: "p-millet-4",
     name: "Pearl Millet (Bajra)",
+    nameTe: "సజ్జలు",
     slug: "pearl-millet-bajra",
     category: "millets",
     price: 54,
@@ -86,6 +90,7 @@ export const products: Product[] = [
   {
     id: "p-millet-5",
     name: "Kodo Millet",
+    nameTe: "అరికెలు",
     slug: "kodo-millet",
     category: "millets",
     price: 105,
@@ -106,6 +111,7 @@ export const products: Product[] = [
   {
     id: "p-millet-6",
     name: "Arikelu Millet",
+    nameTe: "అరికెలు",
     slug: "arikelu-millet",
     category: "millets",
     price: 95,
@@ -126,6 +132,7 @@ export const products: Product[] = [
   {
     id: "p-millet-7",
     name: "Andu Korralu",
+    nameTe: "అండు కొర్రలు",
     slug: "andu-korralu",
     category: "millets",
     price: 135,
@@ -146,6 +153,7 @@ export const products: Product[] = [
   {
     id: "p-millet-8",
     name: "Native Jowar (Sorghum)",
+    nameTe: "నాటు జొన్నలు",
     slug: "native-jowar-sorghum",
     category: "millets",
     price: 82,
@@ -167,6 +175,7 @@ export const products: Product[] = [
   {
     id: "p-millet-9",
     name: "Barnyard Millet",
+    nameTe: "ఊదలు",
     slug: "barnyard-millet",
     category: "millets",
     price: 98,
@@ -187,6 +196,7 @@ export const products: Product[] = [
   {
     id: "p-millet-10",
     name: "Proso Millet",
+    nameTe: "వరిగలు",
     slug: "proso-millet",
     category: "millets",
     price: 88,
@@ -207,6 +217,7 @@ export const products: Product[] = [
   {
     id: "p-millet-11",
     name: "Browntop Millet",
+    nameTe: "అండు కొర్రలు",
     slug: "browntop-millet",
     category: "millets",
     price: 145,
@@ -229,6 +240,7 @@ export const products: Product[] = [
   {
     id: "p-flour-1",
     name: "Ragi Flour",
+    nameTe: "రాగి పిండి",
     slug: "ragi-flour",
     category: "flours",
     price: 65,
@@ -249,6 +261,7 @@ export const products: Product[] = [
   {
     id: "p-flour-2",
     name: "Jowar Flour",
+    nameTe: "జొన్న పిండి",
     slug: "jowar-flour",
     category: "flours",
     price: 70,
@@ -269,6 +282,7 @@ export const products: Product[] = [
   {
     id: "p-flour-3",
     name: "Bajra Flour",
+    nameTe: "సజ్జ పిండి",
     slug: "bajra-flour",
     category: "flours",
     price: 62,
@@ -289,6 +303,7 @@ export const products: Product[] = [
   {
     id: "p-flour-4",
     name: "Rice Flour",
+    nameTe: "బియ్యపు పిండి",
     slug: "rice-flour",
     category: "flours",
     price: 58,
@@ -309,6 +324,7 @@ export const products: Product[] = [
   {
     id: "p-flour-5",
     name: "Wheat Flour",
+    nameTe: "గోధుమ పిండి",
     slug: "wheat-flour",
     category: "flours",
     price: 55,
@@ -329,6 +345,7 @@ export const products: Product[] = [
   {
     id: "p-flour-6",
     name: "Multi-Grain Flour",
+    nameTe: "మిశ్రమ ధాన్యాల పిండి",
     slug: "multi-grain-flour",
     category: "flours",
     price: 78,
@@ -349,6 +366,7 @@ export const products: Product[] = [
   {
     id: "p-flour-7",
     name: "Millet Flour Mix",
+    nameTe: "చిరుధాన్యాల పిండి మిశ్రమం",
     slug: "millet-flour-mix",
     category: "flours",
     price: 82,
@@ -371,6 +389,7 @@ export const products: Product[] = [
   {
     id: "p-dairy-1",
     name: "Fresh Cow Milk",
+    nameTe: "ఆవు పాలు",
     slug: "fresh-cow-milk",
     category: "dairy",
     price: 60,
@@ -391,6 +410,7 @@ export const products: Product[] = [
   {
     id: "p-dairy-2",
     name: "Fresh Curd (Dahi)",
+    nameTe: "పెరుగు",
     slug: "fresh-curd-dahi",
     category: "dairy",
     price: 45,
@@ -411,6 +431,7 @@ export const products: Product[] = [
   {
     id: "p-dairy-3",
     name: "Pure Cow Ghee",
+    nameTe: "ఆవు నెయ్యి",
     slug: "pure-cow-ghee",
     category: "dairy",
     price: 650,
@@ -431,6 +452,7 @@ export const products: Product[] = [
   {
     id: "p-dairy-4",
     name: "White Butter (Makhan)",
+    nameTe: "వెన్న",
     slug: "white-butter-makhan",
     category: "dairy",
     price: 220,
@@ -451,6 +473,7 @@ export const products: Product[] = [
   {
     id: "p-dairy-5",
     name: "Fresh Paneer",
+    nameTe: "పనీర్",
     slug: "fresh-paneer",
     category: "dairy",
     price: 320,
@@ -471,6 +494,7 @@ export const products: Product[] = [
   {
     id: "p-dairy-6",
     name: "Spiced Buttermilk (Majjiga)",
+    nameTe: "మసాలా మజ్జిగ",
     slug: "spiced-buttermilk-majjiga",
     category: "dairy",
     price: 30,
@@ -493,6 +517,7 @@ export const products: Product[] = [
   {
     id: "p-dry-1",
     name: "Almonds (Badam)",
+    nameTe: "బాదం పప్పు",
     slug: "almonds-badam",
     category: "dry-fruits",
     price: 260,
@@ -513,6 +538,7 @@ export const products: Product[] = [
   {
     id: "p-dry-2",
     name: "Cashews (Kaju)",
+    nameTe: "జీడిపప్పు",
     slug: "cashews-kaju",
     category: "dry-fruits",
     price: 260,
@@ -533,6 +559,7 @@ export const products: Product[] = [
   {
     id: "p-dry-3",
     name: "Raisins (Kishmish)",
+    nameTe: "ఎండు ద్రాక్ష",
     slug: "raisins-kishmish",
     category: "dry-fruits",
     price: 130,
@@ -553,6 +580,7 @@ export const products: Product[] = [
   {
     id: "p-dry-4",
     name: "Walnuts (Akhrot)",
+    nameTe: "అక్రోట్లు",
     slug: "walnuts-akhrot",
     category: "dry-fruits",
     price: 900,
@@ -573,6 +601,7 @@ export const products: Product[] = [
   {
     id: "p-dry-5",
     name: "Pistachios",
+    nameTe: "పిస్తా పప్పు",
     slug: "pistachios",
     category: "dry-fruits",
     price: 320,
@@ -593,6 +622,7 @@ export const products: Product[] = [
   {
     id: "p-dry-6",
     name: "Dry Dates",
+    nameTe: "ఎండు ఖర్జూరం",
     slug: "dry-dates",
     category: "dry-fruits",
     price: 90,
@@ -613,6 +643,7 @@ export const products: Product[] = [
   {
     id: "p-dry-7",
     name: "Anjeer (Dried Figs)",
+    nameTe: "అంజీర్",
     slug: "anjeer-dried-figs",
     category: "dry-fruits",
     price: 260,
@@ -635,6 +666,7 @@ export const products: Product[] = [
   {
     id: "p-pulse-1",
     name: "Toor Dal (Arhar)",
+    nameTe: "కంది పప్పు",
     slug: "toor-dal-arhar",
     category: "pulses",
     price: 140,
@@ -655,6 +687,7 @@ export const products: Product[] = [
   {
     id: "p-pulse-2",
     name: "Green Gram (Moong)",
+    nameTe: "పెసలు",
     slug: "green-gram-moong",
     category: "pulses",
     price: 120,
@@ -675,6 +708,7 @@ export const products: Product[] = [
   {
     id: "p-pulse-3",
     name: "Black Gram (Urad)",
+    nameTe: "మినప పప్పు",
     slug: "black-gram-urad",
     category: "pulses",
     price: 120,
@@ -695,6 +729,7 @@ export const products: Product[] = [
   {
     id: "p-pulse-4",
     name: "Chickpeas (Chana)",
+    nameTe: "శనగలు",
     slug: "chickpeas-chana",
     category: "pulses",
     price: 80,
@@ -715,6 +750,7 @@ export const products: Product[] = [
   {
     id: "p-pulse-5",
     name: "Groundnuts",
+    nameTe: "వేరుశనగలు",
     slug: "groundnuts",
     category: "pulses",
     price: 160,
@@ -735,6 +771,7 @@ export const products: Product[] = [
   {
     id: "p-pulse-6",
     name: "Horse Gram",
+    nameTe: "ఉలవలు",
     slug: "horse-gram",
     category: "pulses",
     price: 92,
@@ -755,6 +792,7 @@ export const products: Product[] = [
   {
     id: "p-pulse-7",
     name: "Cowpeas (Bobbarlu)",
+    nameTe: "బొబ్బర్లు",
     slug: "cowpeas-bobbarlu",
     category: "pulses",
     price: 104,
@@ -775,6 +813,7 @@ export const products: Product[] = [
   {
     id: "p-pulse-8",
     name: "Pure Organic Toor Dal",
+    nameTe: "సేంద్రియ కంది పప్పు",
     slug: "pure-organic-toor-dal",
     category: "pulses",
     price: 230,
@@ -797,6 +836,7 @@ export const products: Product[] = [
   {
     id: "p-seed-1",
     name: "Sunflower Seeds",
+    nameTe: "పొద్దుతిరుగుడు గింజలు",
     slug: "sunflower-seeds",
     category: "seeds",
     price: 56,
@@ -817,6 +857,7 @@ export const products: Product[] = [
   {
     id: "p-seed-2",
     name: "Pumpkin Seeds",
+    nameTe: "గుమ్మడి గింజలు",
     slug: "pumpkin-seeds",
     category: "seeds",
     price: 115,
@@ -837,6 +878,7 @@ export const products: Product[] = [
   {
     id: "p-seed-3",
     name: "Flax Seeds (Alsi)",
+    nameTe: "అవిసె గింజలు",
     slug: "flax-seeds-alsi",
     category: "seeds",
     price: 0,
@@ -859,6 +901,7 @@ export const products: Product[] = [
   {
     id: "p-seed-4",
     name: "Sesame Seeds (Til)",
+    nameTe: "నువ్వులు",
     slug: "sesame-seeds-til",
     category: "seeds",
     price: 46,
@@ -879,6 +922,7 @@ export const products: Product[] = [
   {
     id: "p-seed-5",
     name: "Watermelon Seeds",
+    nameTe: "పుచ్చకాయ గింజలు",
     slug: "watermelon-seeds",
     category: "seeds",
     price: 142,
@@ -899,6 +943,7 @@ export const products: Product[] = [
   {
     id: "p-seed-6",
     name: "Chia Seeds",
+    nameTe: "చియా గింజలు",
     slug: "chia-seeds",
     category: "seeds",
     price: 73,
@@ -921,6 +966,7 @@ export const products: Product[] = [
   {
     id: "p-rice-1",
     name: "Organic Rice – All Varieties",
+    nameTe: "సేంద్రియ బియ్యం – అన్ని రకాలు",
     slug: "organic-rice-all-varieties",
     category: "rice",
     price: 2500,
@@ -941,6 +987,7 @@ export const products: Product[] = [
   {
     id: "p-rice-2",
     name: "BPT Single Polished Rice",
+    nameTe: "బీపీటీ సింగిల్ పాలిష్ బియ్యం",
     slug: "bpt-single-polished-rice",
     category: "rice",
     price: 1500,
@@ -963,6 +1010,7 @@ export const products: Product[] = [
   {
     id: "p-oil-1",
     name: "Sesame Oil (Nuvvula Oil)",
+    nameTe: "నువ్వుల నూనె",
     slug: "sesame-oil-nuvvula-oil",
     category: "oil",
     price: 270,
@@ -985,6 +1033,7 @@ export const products: Product[] = [
   {
     id: "p-powder-1",
     name: "Chilli Powder",
+    nameTe: "కారం పొడి",
     slug: "chilli-powder",
     category: "powders",
     price: 310,

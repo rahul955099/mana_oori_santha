@@ -35,6 +35,8 @@ export interface SeedSeller {
 export interface SeedProduct {
   id: string;
   name: string;
+  /** Telugu name in Telugu script, shown under the English name. */
+  nameTe?: string;
   slug: string;
   category: string;
   price: number;
