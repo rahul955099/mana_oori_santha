@@ -112,6 +112,7 @@ export function toProduct(product: ProductDocument) {
   return {
     id: product._id.toString(),
     name: product.name,
+    nameTe: product.nameTe ?? "",
     slug: product.slug,
     category: product.category,
     price: product.price,
@@ -131,6 +132,8 @@ export function toProduct(product: ProductDocument) {
     priceAvailable: product.priceAvailable,
     priceLabel: product.priceLabel,
     isActive: product.isActive,
+    approvalStatus: product.approvalStatus,
+    ...(product.rejectionReason ? { rejectionReason: product.rejectionReason } : {}),
     createdAt: product.createdAt.toISOString().slice(0, 10),
   };
 }

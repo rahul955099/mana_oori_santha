@@ -6,6 +6,7 @@ import { ImageUploader } from "@/components/common/ImageUploader";
 
 export interface ProductFormValues {
   name: string;
+  nameTe: string;
   category: CategorySlug;
   description: string;
   price: number;
@@ -40,6 +41,7 @@ export function ProductForm({ initial, onSubmit, submitLabel, canFeature = false
   const { categories } = useCategories();
   const [submitting, setSubmitting] = useState(false);
   const [name, setName] = useState(initial?.name ?? "");
+  const [nameTe, setNameTe] = useState(initial?.nameTe ?? "");
   const [chosenCategory, setCategory] = useState<CategorySlug>(initial?.category ?? "");
   // Until the seller picks one, default to the first category (which may load after the form opens).
   const category = chosenCategory || categories[0]?.slug || "";
@@ -80,6 +82,7 @@ export function ProductForm({ initial, onSubmit, submitLabel, canFeature = false
     setSubmitting(true);
     await onSubmit({
       name,
+      nameTe: nameTe.trim(),
       category,
       description,
       price: Number(price),
@@ -106,6 +109,21 @@ export function ProductForm({ initial, onSubmit, submitLabel, canFeature = false
         <div>
           <label className={labelClass}>Product Name</label>
           <input required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="e.g. Foxtail Millet" />
+        </div>
+        <div>
+          <label htmlFor="product-name-te" className={labelClass}>
+            Telugu Name <span className="font-medium text-stone-400">(తెలుగు పేరు, optional)</span>
+          </label>
+          <input
+            id="product-name-te"
+            lang="te"
+            value={nameTe}
+            onChange={(e) => setNameTe(e.target.value)}
+            maxLength={120}
+            className={inputClass}
+            placeholder="e.g. కొర్రలు"
+          />
+          <p className="mt-1 text-xs text-stone-400">Shown under the English name. Leave blank if you're not sure of the spelling.</p>
         </div>
         <div>
           <label className={labelClass}>Category</label>

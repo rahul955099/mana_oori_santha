@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 /** Fields a seller/admin sends when creating or editing a product. */
 export type ProductInput = Pick<
   Product,
-  "name" | "category" | "description" | "price" | "mrp" | "unit" | "stock" | "image" | "isOrganic" | "isFeatured" | "benefits"
+  "name" | "nameTe" | "category" | "description" | "price" | "mrp" | "unit" | "stock" | "image" | "isOrganic" | "isFeatured" | "benefits"
 > & { images?: string[]; sellerId?: string; sizes?: string[] };
 
 interface ProductsContextValue {
@@ -73,7 +73,12 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
 
   async function updateProduct(id: string, updates: Partial<ProductInput>) {
     const { product } = await api.patch<{ product: Product }>(`/products/${id}`, updates);
-    setProducts((prev) => prev.map((p) => (p.id === id ? product : p)));
+    // Content edits can send a product back for review, which takes it off the store.
+    setProducts((prev) =>
+      product.approvalStatus && product.approvalStatus !== "approved"
+        ? prev.filter((p) => p.id !== id)
+        : prev.map((p) => (p.id === id ? product : p))
+    );
     setMyProducts((prev) => prev.map((p) => (p.id === id ? product : p)));
     return product;
   }

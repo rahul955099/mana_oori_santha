@@ -22,6 +22,13 @@ interface CartContextValue {
   dismissAdded: () => void;
   removeFromCart: (productId: string, size?: string) => void;
   updateQuantity: (productId: string, quantity: number, size?: string) => void;
+  /** Adds `delta` (e.g. +1 or -1) to a line, capped at stock; the line is removed at zero.
+   * Works from the latest cart state, so rapid taps never skip or double a step. */
+  changeQuantity: (productId: string, delta: number, size?: string) => void;
+  /** How many of this product (in this size) are in the cart; 0 when none. */
+  quantityOf: (productId: string, size?: string) => number;
+  /** The most of this product the cart may hold (stock, capped at 99). */
+  maxQuantity: (productId: string) => number;
   clearCart: () => void;
   totalItems: number;
   /** Instant estimate from the loaded catalog; `quote` is the authoritative total. */
@@ -188,6 +195,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems((prev) => prev.map((i) => (sameLine(i, productId, size) ? { ...i, quantity: capped } : i)));
   }
 
+  function changeQuantity(productId: string, delta: number, size?: string) {
+    const max = maxFor(productId);
+    setItems((prev) => {
+      const existing = prev.find((i) => sameLine(i, productId, size));
+      const next = Math.min((existing?.quantity ?? 0) + delta, max);
+      if (next <= 0) return prev.filter((i) => !sameLine(i, productId, size));
+      if (existing) return prev.map((i) => (sameLine(i, productId, size) ? { ...i, quantity: next } : i));
+      return [...prev, { productId, quantity: next, ...(size ? { size } : {}) }];
+    });
+  }
+
+  function quantityOf(productId: string, size?: string) {
+    return items.find((i) => sameLine(i, productId, size))?.quantity ?? 0;
+  }
+
   function clearCart() {
     setItems([]);
     setCouponCode(null);
@@ -217,6 +239,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     dismissAdded,
     removeFromCart,
     updateQuantity,
+    changeQuantity,
+    quantityOf,
+    maxQuantity: maxFor,
     clearCart,
     totalItems,
     subtotal,

@@ -16,6 +16,19 @@ export function discountPercent(price: number, mrp: number): number {
   return Math.round(((mrp - price) / mrp) * 100);
 }
 
+/** The product's Telugu name, or null when there isn't one (never "undefined" or blank). */
+export function teluguName(product: { nameTe?: string | null }): string | null {
+  const name = product.nameTe?.trim();
+  return name ? name : null;
+}
+
+/** Case-insensitive match on a product's English or Telugu name. */
+export function matchesProductName(product: { name: string; nameTe?: string | null }, term: string): boolean {
+  const q = term.trim().toLowerCase();
+  if (!q) return true;
+  return product.name.toLowerCase().includes(q) || (product.nameTe ?? "").toLowerCase().includes(q);
+}
+
 export function categoryLabel(slug: string): string {
   return slug
     .split("-")

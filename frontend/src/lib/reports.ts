@@ -26,6 +26,7 @@ export interface SalesReport {
     customers: number;
     approvedSellers: number;
     pendingSellers: number;
+    pendingProducts: number;
     liveProducts: number;
     outOfStock: number;
     openOrders: number;

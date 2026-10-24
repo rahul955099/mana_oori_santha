@@ -157,18 +157,19 @@ export async function salesSummary(range: DateRange) {
 /** Live counts for the admin dashboard (not limited to a date range). */
 export async function platformSnapshot() {
   const sellable = await sellableSellerIds();
-  const [customers, approvedSellers, pendingSellers, liveProducts, outOfStock, openOrders, returnRequests, openTickets] =
+  const [customers, approvedSellers, pendingSellers, liveProducts, outOfStock, openOrders, returnRequests, openTickets, pendingProducts] =
     await Promise.all([
       User.countDocuments({ role: "customer", isActive: true }),
       Seller.countDocuments({ isActive: true, status: "approved" }),
       Seller.countDocuments({ isActive: true, status: "pending" }),
-      Product.countDocuments({ isActive: true, seller: { $in: sellable } }),
-      Product.countDocuments({ isActive: true, seller: { $in: sellable }, stock: 0 }),
+      Product.countDocuments({ isActive: true, approvalStatus: "approved", seller: { $in: sellable } }),
+      Product.countDocuments({ isActive: true, approvalStatus: "approved", seller: { $in: sellable }, stock: 0 }),
       Order.countDocuments({ status: { $in: ["pending", "confirmed", "packed", "out-for-delivery"] } }),
       Order.countDocuments({ status: "return-requested" }),
       SupportTicket.countDocuments({ status: { $ne: "resolved" } }),
+      Product.countDocuments({ isActive: true, approvalStatus: "pending" }),
     ]);
-  return { customers, approvedSellers, pendingSellers, liveProducts, outOfStock, openOrders, returnRequests, openTickets };
+  return { customers, approvedSellers, pendingSellers, liveProducts, outOfStock, openOrders, returnRequests, openTickets, pendingProducts };
 }
 
 /** Neutralises spreadsheet formulas (e.g. a name starting with "=") and quotes as needed. */

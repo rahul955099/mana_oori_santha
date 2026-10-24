@@ -14,7 +14,7 @@ const site = () => env.clientUrl.replace(/\/$/, "");
 router.get("/sitemap.xml", async (_req, res) => {
   const sellable = await sellableSellerIds();
   const [products, categories, sellers] = await Promise.all([
-    Product.find({ isActive: true, seller: { $in: sellable } }).select("slug updatedAt"),
+    Product.find({ isActive: true, approvalStatus: "approved", seller: { $in: sellable } }).select("slug updatedAt"),
     Category.find({ isActive: true }).select("slug updatedAt"),
     Seller.find({ _id: { $in: sellable } }).select("_id updatedAt"),
   ]);

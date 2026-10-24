@@ -5,12 +5,13 @@ import { Product } from "../models/Product";
 import { User } from "../models/User";
 import { success } from "../utils/response";
 import { normalizeItems } from "../services/pricing.service";
+import { publicProductFilter } from "../services/sellerAccess.service";
 import type { AuthRequest } from "../middleware/auth.middleware";
 
-/** Ids from `ids` that are active products, in the given order. */
+/** Ids from `ids` that customers may buy (active, approved, approved seller). */
 async function activeProductIds(ids: string[]): Promise<Set<string>> {
   const valid = ids.filter((id) => Types.ObjectId.isValid(id));
-  const found = await Product.find({ _id: { $in: valid }, isActive: true }).select("_id");
+  const found = await Product.find({ _id: { $in: valid }, ...(await publicProductFilter()) }).select("_id");
   return new Set(found.map((p) => p._id.toString()));
 }
 

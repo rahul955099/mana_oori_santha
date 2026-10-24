@@ -71,9 +71,14 @@ export interface Seller {
   photos?: string[];
 }
 
+/** Products wait for the site owner's approval before customers can see them. */
+export type ApprovalStatus = "pending" | "approved" | "rejected";
+
 export interface Product {
   id: string;
   name: string;
+  /** Telugu display name, shown alongside `name`; empty or missing when nobody has entered it. */
+  nameTe?: string;
   slug: string;
   category: CategorySlug;
   price: number;
@@ -97,6 +102,12 @@ export interface Product {
   priceAvailable?: boolean;
   /** Shown instead of the formatted price when priceAvailable is false, e.g. "Price TBD". */
   priceLabel?: string;
+  /** Always "approved" in the public catalog; sellers and admins also see pending and rejected ones. */
+  approvalStatus?: ApprovalStatus;
+  /** The owner's reason, when rejected. */
+  rejectionReason?: string;
+  /** Admin product list only: who added it. */
+  submittedBy?: { name: string; email?: string; role?: string } | null;
 }
 
 export interface CartItem {

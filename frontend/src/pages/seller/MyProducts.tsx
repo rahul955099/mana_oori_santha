@@ -7,7 +7,8 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { Badge } from "@/components/common/Badge";
 import { Modal } from "@/components/common/Modal";
 import { buttonClasses } from "@/components/common/Button";
-import { formatCurrency, categoryLabel } from "@/utils/format";
+import { formatCurrency, categoryLabel, teluguName } from "@/utils/format";
+import { ApprovalBadge } from "@/components/common/ApprovalBadge";
 import { errorMessage } from "@/lib/api";
 import { LOW_STOCK_THRESHOLD } from "@/utils/stock";
 import { SellerStatusBanner } from "@/components/seller/SellerStatusBanner";
@@ -45,6 +46,13 @@ export default function SellerMyProducts() {
 
       <SellerStatusBanner />
 
+      {myProducts.some((p) => p.approvalStatus && p.approvalStatus !== "approved") && (
+        <p className="mb-4 rounded-xl bg-accent-50 p-3 text-sm text-accent-800">
+          New products, and changes to a product's name, photos or description, are checked by the site owner before customers can
+          see them. Rejected products show the reason — edit them to send them again.
+        </p>
+      )}
+
       {myProducts.length === 0 ? (
         <EmptyState
           icon={Package}
@@ -66,7 +74,8 @@ export default function SellerMyProducts() {
                   <th className="px-5 py-3">Category</th>
                   <th className="px-5 py-3">Price</th>
                   <th className="px-5 py-3">Stock</th>
-                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3">Stock Status</th>
+                  <th className="px-5 py-3">Approval</th>
                   <th className="px-5 py-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -74,8 +83,13 @@ export default function SellerMyProducts() {
                 {myProducts.map((product) => (
                   <tr key={product.id} className="border-t border-stone-100">
                     <td className="flex items-center gap-3 px-5 py-3">
-                      <img src={product.image} alt={product.name} className="h-10 w-10 rounded-lg object-cover" />
-                      <span className="font-semibold text-stone-800">{product.name}</span>
+                      <img src={product.image} alt={product.name} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                      <div className="min-w-0">
+                        <p className="font-semibold text-stone-800">{product.name}</p>
+                        {teluguName(product) && (
+                          <p lang="te" className="max-w-56 truncate text-xs text-stone-500">{teluguName(product)}</p>
+                        )}
+                      </div>
                     </td>
                     <td className="px-5 py-3 text-stone-500">{categoryLabel(product.category)}</td>
                     <td className="px-5 py-3 font-semibold text-stone-800">
@@ -86,6 +100,12 @@ export default function SellerMyProducts() {
                       <Badge tone={product.stock === 0 ? "red" : product.stock <= LOW_STOCK_THRESHOLD ? "gold" : "green"}>
                         {product.stock === 0 ? "Out of Stock" : product.stock <= LOW_STOCK_THRESHOLD ? "Low Stock" : "In Stock"}
                       </Badge>
+                    </td>
+                    <td className="px-5 py-3">
+                      <ApprovalBadge status={product.approvalStatus} />
+                      {product.approvalStatus === "rejected" && product.rejectionReason && (
+                        <p className="mt-1 max-w-48 text-xs text-red-600">{product.rejectionReason}</p>
+                      )}
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex justify-end gap-2">

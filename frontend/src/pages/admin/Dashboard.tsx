@@ -59,6 +59,7 @@ export default function AdminDashboard() {
           <TodoRow to="/admin/orders" label="Orders to fulfil" count={s.openOrders} />
           <TodoRow to="/admin/orders" label="Return requests" count={s.returnRequests} />
           <TodoRow to="/admin/sellers" label="Sellers awaiting approval" count={s.pendingSellers} />
+          <TodoRow to="/admin/products?status=pending" label="Products awaiting approval" count={s.pendingProducts ?? 0} />
           <TodoRow to="/admin/support" label="Open support requests" count={s.openTickets} />
           <TodoRow to="/admin/products" label="Products out of stock" count={s.outOfStock} />
         </div>

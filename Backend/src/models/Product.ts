@@ -1,8 +1,14 @@
 import { Schema, model, type Document, type Types } from "mongoose";
 
+/** New products wait for the site owner's review before customers can see them. */
+export const APPROVAL_STATUSES = ["pending", "approved", "rejected"] as const;
+export type ApprovalStatus = (typeof APPROVAL_STATUSES)[number];
+
 export interface ProductDocument extends Document {
   _id: Types.ObjectId;
   name: string;
+  /** Telugu display name, shown alongside `name`. Empty until someone enters it. */
+  nameTe: string;
   slug: string;
   /** Category slug — categories are few and slugs are stable, so products
    * reference them by slug to keep storefront filtering simple. */
@@ -28,6 +34,14 @@ export interface ProductDocument extends Document {
   /** Soft-delete flag: deleted products stay in the database so past orders
    * can still show what was bought. */
   isActive: boolean;
+  /** Only approved products are shown or sold to customers. */
+  approvalStatus: ApprovalStatus;
+  /** Why the owner rejected it; cleared when it is resubmitted. */
+  rejectionReason?: string;
+  /** The user (seller or admin) who added the product. */
+  submittedBy?: Types.ObjectId;
+  reviewedBy?: Types.ObjectId;
+  reviewedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -35,6 +49,7 @@ export interface ProductDocument extends Document {
 const productSchema = new Schema<ProductDocument>(
   {
     name: { type: String, required: true, trim: true },
+    nameTe: { type: String, default: "", trim: true },
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
     category: { type: String, required: true, lowercase: true, trim: true, index: true },
     price: { type: Number, required: true, min: 0 },
@@ -54,6 +69,11 @@ const productSchema = new Schema<ProductDocument>(
     priceAvailable: { type: Boolean, default: true },
     priceLabel: { type: String, trim: true },
     isActive: { type: Boolean, default: true, index: true },
+    approvalStatus: { type: String, enum: APPROVAL_STATUSES, default: "pending", index: true },
+    rejectionReason: { type: String, trim: true },
+    submittedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    reviewedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    reviewedAt: { type: Date },
   },
   { timestamps: true }
 );

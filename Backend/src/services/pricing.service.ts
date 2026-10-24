@@ -3,7 +3,7 @@ import { Product, type ProductDocument } from "../models/Product";
 import { Coupon, type CouponDocument } from "../models/Coupon";
 import { Order } from "../models/Order";
 import { deliveryChargeFor } from "../config/delivery";
-import { sellableSellerIds } from "./sellerAccess.service";
+import { publicProductFilter } from "./sellerAccess.service";
 
 export interface RequestedItem {
   productId: string;
@@ -68,8 +68,7 @@ export async function priceItems(items: RequestedItem[]): Promise<{ lines: Price
   const requested = normalizeItems(items);
   const products = await Product.find({
     _id: { $in: requested.map((i) => i.productId) },
-    isActive: true,
-    seller: { $in: await sellableSellerIds() },
+    ...(await publicProductFilter()),
   });
   const byId = new Map(products.map((p) => [p._id.toString(), p]));
 

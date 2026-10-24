@@ -9,7 +9,7 @@ import { useAddresses } from "@/context/AddressContext";
 import { useAuth } from "@/context/AuthContext";
 import { EmptyState } from "@/components/common/EmptyState";
 import { buttonClasses } from "@/components/common/Button";
-import { formatCurrency } from "@/utils/format";
+import { formatCurrency, teluguName } from "@/utils/format";
 import { DeliveryLocationBar } from "@/components/location/DeliveryLocationBar";
 import { CouponBox } from "@/components/checkout/CouponBox";
 import { OrderTotals } from "@/components/checkout/OrderTotals";
@@ -214,6 +214,7 @@ export default function Checkout() {
                   <img src={product.image} alt={product.name} className="h-12 w-12 rounded-lg object-cover" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-semibold text-stone-800">{product.name}</p>
+                    {teluguName(product) && <p lang="te" className="truncate text-[11px] text-stone-500">{teluguName(product)}</p>}
                     <p className="text-[11px] text-stone-400">
                       {item.size && `Size ${item.size} · `}Qty: {item.quantity}
                     </p>

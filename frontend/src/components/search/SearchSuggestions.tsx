@@ -5,7 +5,7 @@ import { useSellers } from "@/context/SellersContext";
 import { useCategories } from "@/context/CategoriesContext";
 import { useRecentSearches } from "@/hooks/useRecentSearches";
 import { POPULAR_SEARCH_TERMS } from "@/data/searchTerms";
-import { categoryLabel } from "@/utils/format";
+import { categoryLabel, matchesProductName, teluguName } from "@/utils/format";
 
 interface SearchSuggestionsProps {
   query: string;
@@ -65,7 +65,7 @@ export function SearchSuggestions({ query, onSelectTerm, onNavigate }: SearchSug
     );
   }
 
-  const matchedProducts = products.filter((p) => p.name.toLowerCase().includes(trimmed)).slice(0, MAX_MATCHES);
+  const matchedProducts = products.filter((p) => matchesProductName(p, trimmed)).slice(0, MAX_MATCHES);
   const matchedCategories = categories.filter((c) => c.name.toLowerCase().includes(trimmed)).slice(0, MAX_MATCHES);
   const matchedSellers = sellers.filter((s) => s.farmName.toLowerCase().includes(trimmed) || s.name.toLowerCase().includes(trimmed)).slice(0, MAX_MATCHES);
 
@@ -92,7 +92,15 @@ export function SearchSuggestions({ query, onSelectTerm, onNavigate }: SearchSug
               onClick={onNavigate}
               className="flex items-center gap-2.5 px-3 py-2 text-sm text-stone-700 hover:bg-primary-50 hover:text-primary-700"
             >
-              <Package size={14} className="shrink-0 text-stone-400" /> {p.name}
+              <Package size={14} className="shrink-0 text-stone-400" />
+              <span className="min-w-0 truncate">
+                {p.name}
+                {teluguName(p) && (
+                  <span lang="te" className="ml-1.5 text-xs text-stone-400">
+                    {teluguName(p)}
+                  </span>
+                )}
+              </span>
             </Link>
           ))}
         </div>

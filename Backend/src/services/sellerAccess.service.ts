@@ -8,6 +8,13 @@ export async function sellableSellerIds(): Promise<Types.ObjectId[]> {
   return sellers.map((s) => s._id);
 }
 
+/** The filter for products customers may see and buy: not deleted, approved
+ * by the site owner, and from an approved seller. Every customer-facing
+ * product query goes through this. */
+export async function publicProductFilter() {
+  return { isActive: true, approvalStatus: "approved" as const, seller: { $in: await sellableSellerIds() } };
+}
+
 /** Pending sellers may prepare listings (hidden until approval); rejected
  * or suspended sellers may not add or edit products. */
 export const CAN_MANAGE_PRODUCTS: SellerStatus[] = ["pending", "approved"];

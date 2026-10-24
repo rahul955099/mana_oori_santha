@@ -7,10 +7,14 @@ import {
   updateProduct,
   deleteProduct,
   listMyProducts,
+  listManagedProducts,
+  reviewProduct,
 } from "../controllers/product.controller";
 import { optionalAuth } from "../middleware/optionalAuth.middleware";
 import { requireAuth } from "../middleware/auth.middleware";
 import { requireRole } from "../middleware/role.middleware";
+import { requireOwner } from "../middleware/owner.middleware";
+import { APPROVAL_STATUSES } from "../models/Product";
 import { validate } from "../middleware/validate.middleware";
 import { isImageUrl } from "../utils/validators";
 
@@ -26,6 +30,7 @@ function productFields(isCreate: boolean): ValidationChain[] {
     core(body("mrp").isFloat({ min: 0 }).withMessage("MRP must be 0 or more").toFloat()),
     core(body("unit").isString().trim().isLength({ min: 1, max: 30 }).withMessage("Unit is required, e.g. 1 kg")),
     core(body("stock").isInt({ min: 0 }).withMessage("Stock must be a whole number, 0 or more").toInt()),
+    body("nameTe").optional().isString().trim().isLength({ max: 120 }).withMessage("Telugu name can be up to 120 characters"),
     body("description").optional().isString().trim().isLength({ max: 3000 }),
     body("benefits").optional().isArray({ max: 20 }),
     body("benefits.*").isString().trim().isLength({ max: 120 }),
@@ -58,6 +63,16 @@ router.get(
   listProducts
 );
 router.get("/mine", requireAuth, requireRole("seller"), listMyProducts);
+router.get(
+  "/manage",
+  requireAuth,
+  requireRole("admin"),
+  validate([
+    query("status").optional().isIn(APPROVAL_STATUSES).withMessage("Unknown status"),
+    query("category").optional().isMongoId().withMessage("Invalid category id"),
+  ]),
+  listManagedProducts
+);
 router.get("/:idOrSlug", optionalAuth, getProduct);
 router.post("/", requireAuth, requireRole("seller", "admin"), validate(productFields(true)), createProduct);
 router.patch(
@@ -66,6 +81,24 @@ router.patch(
   requireRole("seller", "admin"),
   validate([idParam, ...productFields(false)]),
   updateProduct
+);
+// Only the site owner reviews products; the role and decision come from the token and body, never trusted flags.
+router.patch(
+  "/:id/approval",
+  requireAuth,
+  requireRole("admin"),
+  requireOwner,
+  validate([
+    idParam,
+    body("decision").isIn(["approve", "reject"]).withMessage("Decision must be approve or reject"),
+    body("reason")
+      .if(body("decision").equals("reject"))
+      .isString()
+      .trim()
+      .isLength({ min: 3, max: 300 })
+      .withMessage("Give a reason (3-300 characters) so the seller can fix it"),
+  ]),
+  reviewProduct
 );
 router.delete("/:id", requireAuth, requireRole("seller", "admin"), validate([idParam]), deleteProduct);
 

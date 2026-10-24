@@ -4,6 +4,7 @@ import { Product } from "../models/Product";
 import { Review } from "../models/Review";
 import { User } from "../models/User";
 import { Category } from "../models/Category";
+import { products as catalog } from "../seed/data/products";
 
 /** Small, idempotent data fixes run at startup. */
 export async function runMigrations() {
@@ -13,9 +14,43 @@ export async function runMigrations() {
     console.log(`Migration: marked ${res.modifiedCount} existing seller(s) as approved`);
   }
 
+  // Products listed before owner approval existed were already on sale; keep them live.
+  const products = await Product.updateMany({ approvalStatus: { $exists: false } }, { $set: { approvalStatus: "approved" } });
+  if (products.modifiedCount > 0) {
+    console.log(`Migration: marked ${products.modifiedCount} existing product(s) as approved`);
+  }
+
   await recalculateAllRatings();
   await ensureOwner();
   await ensureFashionCategories();
+  await fillMissingTeluguNames();
+}
+
+const normalizeName = (name: string) => name.trim().toLowerCase().replace(/\s+/g, " ");
+
+/** Gives catalog products without a Telugu name the one from the curated
+ * catalog, matched by slug or, failing that, by English name. A Telugu name an
+ * admin or seller has already entered is never overwritten. */
+export async function fillMissingTeluguNames() {
+  const bySlug = new Map<string, string>();
+  const byName = new Map<string, string>();
+  for (const p of catalog) {
+    if (!p.nameTe) continue;
+    bySlug.set(p.slug, p.nameTe);
+    byName.set(normalizeName(p.name), p.nameTe);
+  }
+
+  const missing = { $or: [{ nameTe: { $exists: false } }, { nameTe: null }, { nameTe: "" }] };
+  const products = await Product.find(missing).select("slug name").lean();
+  const ops = products.flatMap((p) => {
+    const nameTe = bySlug.get(p.slug) ?? byName.get(normalizeName(p.name));
+    // The filter repeats the "still missing" check so a concurrent edit is never overwritten.
+    return nameTe ? [{ updateOne: { filter: { _id: p._id, ...missing }, update: { $set: { nameTe } } } }] : [];
+  });
+  if (ops.length) {
+    const res = await Product.bulkWrite(ops);
+    console.log(`Migration: added Telugu names to ${res.modifiedCount} product(s)`);
+  }
 }
 
 /** The MAAD Fashions page lists products from these categories. Created once;

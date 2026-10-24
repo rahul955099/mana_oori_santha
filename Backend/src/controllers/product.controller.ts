@@ -1,13 +1,16 @@
 import type { Response } from "express";
 import { Types, type QueryFilter, type SortOrder } from "mongoose";
-import { Product, type ProductDocument } from "../models/Product";
+import { Product, type ApprovalStatus, type ProductDocument } from "../models/Product";
 import { Category } from "../models/Category";
 import { Seller } from "../models/Seller";
+import { User } from "../models/User";
+import { AdminActivity } from "../models/AdminActivity";
 import { AppError } from "../utils/AppError";
 import { success } from "../utils/response";
 import { escapeRegex, slugify } from "../utils/slugify";
 import { toProduct } from "../utils/serialize";
-import { CAN_MANAGE_PRODUCTS, sellableSellerIds } from "../services/sellerAccess.service";
+import { CAN_MANAGE_PRODUCTS, publicProductFilter } from "../services/sellerAccess.service";
+import { notifyUser } from "../services/notification.service";
 import type { SellerStatus } from "../models/Seller";
 import type { AuthRequest } from "../middleware/auth.middleware";
 
@@ -80,19 +83,25 @@ async function findEditableProduct(req: AuthRequest): Promise<ProductDocument> {
   return product;
 }
 
+async function isOwner(req: AuthRequest): Promise<boolean> {
+  if (req.userRole !== "admin") return false;
+  return !!(await User.exists({ _id: req.userId, isOwner: true }));
+}
+
+/** The public catalog: only approved products of approved sellers, for everyone (admins included). */
 export async function listProducts(req: AuthRequest, res: Response) {
   const q = req.query as Record<string, string | undefined>;
-  const filter: QueryFilter<ProductDocument> = { isActive: true };
+  const filter: QueryFilter<ProductDocument> = { isActive: true, approvalStatus: "approved" };
 
   if (q.search) {
     const pattern = new RegExp(escapeRegex(q.search.trim()), "i");
-    filter.$or = [{ name: pattern }, { category: pattern }, { description: pattern }];
+    filter.$or = [{ name: pattern }, { nameTe: pattern }, { category: pattern }, { description: pattern }];
   }
   if (q.category) {
     filter.category = { $in: q.category.split(",").map((c) => c.trim().toLowerCase()) };
   }
   // Only approved sellers' products are on sale.
-  const sellable = await sellableSellerIds();
+  const sellable = (await publicProductFilter()).seller.$in;
   if (q.seller) {
     filter.seller = sellable.some((id) => id.equals(q.seller)) ? new Types.ObjectId(q.seller) : { $in: [] };
   } else {
@@ -125,8 +134,8 @@ export async function listProducts(req: AuthRequest, res: Response) {
   });
 }
 
-/** Accepts either a Mongo id or a slug. Products of sellers who aren't
- * approved are visible only to that seller and admins. */
+/** Accepts either a Mongo id or a slug. Products that aren't approved, or
+ * whose seller isn't, are visible only to that seller and admins. */
 export async function getProduct(req: AuthRequest, res: Response) {
   const key = String(req.params.idOrSlug);
   const product = await Product.findOne(
@@ -135,7 +144,8 @@ export async function getProduct(req: AuthRequest, res: Response) {
   const visible =
     product &&
     (req.userRole === "admin" ||
-      (await sellableSellerIds()).some((id) => id.equals(product.seller)) ||
+      (product.approvalStatus === "approved" &&
+        (await publicProductFilter()).seller.$in.some((id) => id.equals(product.seller))) ||
       (await ownSellerId(req))?.equals(product.seller));
   if (!product || !visible) {
     throw new AppError("Product not found", 404, "NOT_FOUND");
@@ -153,8 +163,40 @@ export async function listMyProducts(req: AuthRequest, res: Response) {
   success(res, "Products fetched", { products: products.map(toProduct) });
 }
 
+/** Admin: every listed product with its review status, newest first. `?status=pending` narrows it. */
+export async function listManagedProducts(req: AuthRequest, res: Response) {
+  const status = req.query.status as ApprovalStatus | undefined;
+  const filter: QueryFilter<ProductDocument> = { isActive: true, ...(status ? { approvalStatus: status } : {}) };
+  // `category` is a Category id; products reference their category by its slug.
+  if (req.query.category) {
+    const category = await Category.findById(req.query.category).select("slug");
+    if (!category) {
+      throw new AppError("Category not found", 404, "NOT_FOUND");
+    }
+    filter.category = category.slug;
+  }
+  const products = await Product.find(filter)
+    .sort({ createdAt: -1 })
+    .populate("submittedBy", "name email role")
+    .populate("seller", "farmName");
+  success(res, "Products fetched", {
+    products: products.map((p) => {
+      const by = p.submittedBy as unknown as { name?: string; email?: string; role?: string } | null;
+      const shop = p.seller as unknown as { _id: Types.ObjectId; farmName?: string };
+      return {
+        ...toProduct(p),
+        // toProduct reads the seller id; populated, it's the shop document.
+        sellerId: shop._id.toString(),
+        sellerName: shop.farmName ?? "",
+        submittedBy: by?.name ? { name: by.name, email: by.email, role: by.role } : null,
+      };
+    }),
+  });
+}
+
 export async function createProduct(req: AuthRequest, res: Response) {
   const b = req.body;
+  const byOwner = await isOwner(req);
 
   let sellerId: Types.ObjectId | null;
   if (req.userRole === "admin") {
@@ -174,6 +216,7 @@ export async function createProduct(req: AuthRequest, res: Response) {
 
   const product = await Product.create({
     name: b.name,
+    nameTe: b.nameTe ?? "",
     slug: await uniqueSlug(b.name),
     category: b.category,
     price: b.price,
@@ -191,9 +234,19 @@ export async function createProduct(req: AuthRequest, res: Response) {
     isFeatured: req.userRole === "admin" ? b.isFeatured : false,
     priceAvailable: b.priceAvailable,
     priceLabel: b.priceLabel,
+    // The site owner's own listings need no review; everyone else's wait for it.
+    approvalStatus: byOwner ? "approved" : "pending",
+    submittedBy: req.userId,
+    ...(byOwner ? { reviewedBy: req.userId, reviewedAt: new Date() } : {}),
   });
 
-  success(res, "Product created", { product: toProduct(product) }, 201);
+  if (!byOwner) await notifyOwnerOfSubmission(product.name, "new");
+  success(
+    res,
+    byOwner ? "Product created" : "Product submitted. It will appear in the store once the site owner approves it.",
+    { product: toProduct(product) },
+    201
+  );
 }
 
 /** Trims, drops blanks and duplicates (case-insensitive), keeping the seller's order. */
@@ -205,8 +258,20 @@ export function cleanSizes(sizes: unknown): string[] {
     .filter((s) => s && !seen.has(s.toLowerCase()) && seen.add(s.toLowerCase()));
 }
 
+async function notifyOwnerOfSubmission(name: string, kind: "new" | "edited") {
+  const owner = await User.findOne({ role: "admin", isActive: true, isOwner: true }).select("_id");
+  if (!owner) return;
+  await notifyUser(owner._id, {
+    type: "account",
+    title: kind === "new" ? "New product to review" : "Edited product to review",
+    message: `"${name}" is waiting for your approval.`,
+    link: "/admin/products?status=pending",
+  });
+}
+
 const EDITABLE_FIELDS = [
   "name",
+  "nameTe",
   "category",
   "price",
   "mrp",
@@ -221,6 +286,9 @@ const EDITABLE_FIELDS = [
   "priceAvailable",
   "priceLabel",
 ] as const;
+
+/** Edits to these fields by anyone but the owner send an approved product back for review. */
+const REVIEWED_FIELDS = ["name", "nameTe", "category", "description", "image", "images", "benefits"] as const;
 
 export async function updateProduct(req: AuthRequest, res: Response) {
   const product = await findEditableProduct(req);
@@ -242,9 +310,65 @@ export async function updateProduct(req: AuthRequest, res: Response) {
   if (b.name !== undefined && product.isModified("name")) {
     product.slug = await uniqueSlug(b.name, product._id);
   }
+
+  // Changes to what customers read or see go back for review; price and stock
+  // updates don't, so day-to-day selling isn't interrupted. Editing a rejected
+  // product resubmits it.
+  let resubmitted = false;
+  if (!(await isOwner(req))) {
+    const contentChanged = REVIEWED_FIELDS.some((f) => product.isModified(f));
+    if (product.approvalStatus === "rejected" || (product.approvalStatus === "approved" && contentChanged)) {
+      product.approvalStatus = "pending";
+      product.rejectionReason = undefined;
+      product.reviewedBy = undefined;
+      product.reviewedAt = undefined;
+      resubmitted = true;
+    }
+  }
   await product.save();
 
-  success(res, "Product updated", { product: toProduct(product) });
+  if (resubmitted) await notifyOwnerOfSubmission(product.name, "edited");
+  success(
+    res,
+    resubmitted ? "Product updated. It is hidden from the store until the site owner approves the changes." : "Product updated",
+    { product: toProduct(product) }
+  );
+}
+
+/** Site owner: approves a product (it goes on sale) or rejects it with a reason (it stays hidden). */
+export async function reviewProduct(req: AuthRequest, res: Response) {
+  const product = await Product.findOne({ _id: req.params.id, isActive: true });
+  if (!product) {
+    throw new AppError("Product not found", 404, "NOT_FOUND");
+  }
+  const approve = req.body.decision === "approve";
+  product.approvalStatus = approve ? "approved" : "rejected";
+  product.rejectionReason = approve ? undefined : String(req.body.reason).trim();
+  product.reviewedBy = new Types.ObjectId(req.userId);
+  product.reviewedAt = new Date();
+  await product.save();
+
+  const owner = await User.findById(req.userId).select("name email");
+  await AdminActivity.create({
+    action: approve ? "product.approved" : "product.rejected",
+    actorName: owner?.name ?? "The owner",
+    actorEmail: owner?.email ?? "",
+    targetEmail: approve ? `Product: ${product.name}` : `Product: ${product.name} (${product.rejectionReason})`,
+  });
+  const seller = await Seller.findById(product.seller).select("user");
+  if (seller) {
+    await notifyUser(seller.user, {
+      type: "account",
+      title: approve ? "Product approved" : "Product not approved",
+      message: approve
+        ? `"${product.name}" is now live in the store.`
+        : `"${product.name}" was not approved: ${product.rejectionReason}. Edit it to submit it again.`,
+      link: "/seller/products",
+    });
+  }
+  success(res, approve ? "Product approved. It is now live in the store." : "Product rejected. It stays hidden from customers.", {
+    product: toProduct(product),
+  });
 }
 
 /** Soft delete: the product disappears from the store but stays readable for order history. */

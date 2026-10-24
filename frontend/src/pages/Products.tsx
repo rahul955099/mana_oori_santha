@@ -8,6 +8,7 @@ import { SearchBar } from "@/components/common/SearchBar";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Loading } from "@/components/common/Loading";
 import type { CategorySlug } from "@/types";
+import { matchesProductName } from "@/utils/format";
 
 type SortOption = "relevance" | "price-low" | "price-high" | "rating";
 
@@ -39,7 +40,7 @@ export default function Products() {
   }
 
   const filtered = useMemo(() => {
-    let list = products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
+    let list = products.filter((p) => matchesProductName(p, search));
     if (selectedCategories.length > 0) {
       list = list.filter((p) => selectedCategories.includes(p.category));
     }

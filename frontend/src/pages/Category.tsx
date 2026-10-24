@@ -7,6 +7,7 @@ import { SearchBar } from "@/components/common/SearchBar";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Loading } from "@/components/common/Loading";
 import { Seo } from "@/components/common/Seo";
+import { matchesProductName } from "@/utils/format";
 
 type SortOption = "relevance" | "price-low" | "price-high" | "rating";
 
@@ -21,7 +22,7 @@ export default function Category() {
 
   const filtered = useMemo(() => {
     let list = products.filter((p) => p.category === slug);
-    list = list.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
+    list = list.filter((p) => matchesProductName(p, search));
     switch (sort) {
       case "price-low":
         list = [...list].sort((a, b) => a.price - b.price);

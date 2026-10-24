@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
-import { Plus, Pencil, Trash2, Eye, EyeOff } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Plus, Pencil, Trash2, Eye, EyeOff, ChevronRight } from "lucide-react";
 import { useCategories, type CategoryInput } from "@/context/CategoriesContext";
 import { useToast } from "@/context/ToastContext";
 import { Badge } from "@/components/common/Badge";
@@ -81,24 +82,37 @@ export default function AdminCategories() {
 
   function renderCard(cat: Category) {
     const isHidden = cat.isActive === false;
+    const productsLink = `/admin/products?category=${encodeURIComponent(cat.id)}`;
     return (
       <div
         key={cat.id}
-        className={`overflow-hidden rounded-2xl border bg-white ${isHidden ? "border-dashed border-stone-300 opacity-75" : "border-stone-200"}`}
+        className={`overflow-hidden rounded-2xl border bg-white transition hover:border-primary-300 ${isHidden ? "border-dashed border-stone-300 opacity-75" : "border-stone-200"}`}
       >
-        {cat.image ? (
-          <img src={cat.image} alt={cat.name} className={`h-32 w-full object-cover ${isHidden ? "grayscale" : ""}`} />
-        ) : (
-          <div className="h-32 w-full bg-stone-100" />
-        )}
+        <Link to={productsLink} aria-label={`View ${cat.name} products`} className="block">
+          {cat.image ? (
+            <img src={cat.image} alt={cat.name} className={`h-32 w-full object-cover ${isHidden ? "grayscale" : ""}`} />
+          ) : (
+            <div className="h-32 w-full bg-stone-100" />
+          )}
+        </Link>
         <div className="p-4">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="font-bold text-stone-900">{cat.name}</h3>
+            <h3 className="font-bold text-stone-900">
+              <Link to={productsLink} className="hover:text-primary-700">
+                {cat.name}
+              </Link>
+            </h3>
             {isHidden ? <Badge tone="gray">Hidden</Badge> : <Badge tone="green">Active</Badge>}
           </div>
           <p className="mt-1 line-clamp-2 text-xs text-stone-500">{cat.description}</p>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-1">
-            <p className="whitespace-nowrap text-sm font-semibold text-primary-700">{cat.productCount} products</p>
+            <Link
+              to={productsLink}
+              title="Products customers can see. Open to see every product, including ones awaiting approval."
+              className="inline-flex items-center gap-0.5 whitespace-nowrap text-sm font-semibold text-primary-700 hover:text-primary-800 hover:underline"
+            >
+              {cat.productCount} products <ChevronRight size={14} />
+            </Link>
             <div className="flex gap-1">
               <button
                 onClick={() => toggleActive(cat)}
@@ -133,7 +147,7 @@ export default function AdminCategories() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-stone-900">Categories</h1>
-          <p className="mt-1 text-sm text-stone-500">Manage the main product categories on the platform.</p>
+          <p className="mt-1 text-sm text-stone-500">Manage the main product categories on the platform. Open a category to see its products.</p>
         </div>
         <button onClick={openCreate} className={buttonClasses("primary", "md")}>
           <Plus size={16} /> Add Category

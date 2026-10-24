@@ -21,6 +21,7 @@ import { sellers } from "./data/sellers";
 import { products } from "./data/products";
 import { coupons } from "./data/coupons";
 import { Coupon } from "../models/Coupon";
+import { fillMissingTeluguNames } from "../config/migrations";
 
 function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
@@ -132,12 +133,15 @@ export async function seedCatalog(options: { reset: boolean; adminEmail: string;
           priceLabel: p.priceLabel,
           isActive: true,
         },
-        $setOnInsert: { createdAt: new Date(p.createdAt) },
+        // The curated catalog is live from the start; a later review decision is never overwritten.
+        $setOnInsert: { createdAt: new Date(p.createdAt), approvalStatus: "approved" },
       },
       { upsert: true }
     );
   }
   console.log(`Products: ${products.length}`);
+  // Telugu names fill only empty fields, so names entered in the admin panel are kept.
+  await fillMissingTeluguNames();
 
   // Only create missing coupons, so admin edits to them are never overwritten.
   for (const c of coupons) {
