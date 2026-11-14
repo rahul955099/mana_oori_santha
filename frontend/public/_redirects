@@ -1,0 +1,4 @@
+# Netlify: search-engine files come from the API; every other path is the app.
+/sitemap.xml  https://mana-oori-santha-api.onrender.com/sitemap.xml  200
+/robots.txt   https://mana-oori-santha-api.onrender.com/robots.txt   200
+/*            /index.html                                            200
