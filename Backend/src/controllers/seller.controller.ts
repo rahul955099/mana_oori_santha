@@ -242,7 +242,8 @@ export async function adminSetSellerStatus(req: AuthRequest, res: Response) {
   if ((status === "rejected" || status === "suspended") && !reason) {
     throw new AppError("Please give a reason so the seller knows what to fix.", 400, "VALIDATION_ERROR");
   }
-  if (status === "approved" && !seller.kyc) {
+  // First approval needs KYC; a suspended seller who was already selling can be reinstated as-is.
+  if (status === "approved" && !seller.kyc && seller.status !== "suspended") {
     throw new AppError("This seller hasn't submitted KYC and payout details yet.", 400, "KYC_MISSING");
   }
 

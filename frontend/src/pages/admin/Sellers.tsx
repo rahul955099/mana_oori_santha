@@ -289,7 +289,7 @@ export default function AdminSellers() {
             <div className="flex flex-wrap justify-end gap-2">
               {review.status !== "approved" && (
                 <button
-                  disabled={!review.kyc}
+                  disabled={!review.kyc && review.status !== "suspended"}
                   onClick={() => startAction(review, "approved")}
                   className={buttonClasses("primary", "sm")}
                 >
