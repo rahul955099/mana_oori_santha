@@ -3,7 +3,14 @@ import { Link } from "react-router-dom";
 import { ChevronDown, LifeBuoy, Phone, Mail } from "lucide-react";
 import { useSupport } from "@/context/SupportContext";
 import { buttonClasses } from "@/components/common/Button";
-import { SUPPORT_PHONE, SUPPORT_EMAIL, SUPPORT_PHONE_TEL_HREF, SUPPORT_EMAIL_MAILTO_HREF } from "@/config/support";
+import {
+  ADDITIONAL_SUPPORT_PHONE,
+  ADDITIONAL_SUPPORT_PHONE_TEL_HREF,
+  SUPPORT_PHONE,
+  SUPPORT_EMAIL,
+  SUPPORT_PHONE_TEL_HREF,
+  SUPPORT_EMAIL_MAILTO_HREF,
+} from "@/config/support";
 
 interface FaqItem {
   q: string;
@@ -129,6 +136,10 @@ export default function HelpCenter() {
             <a href={SUPPORT_PHONE_TEL_HREF} className="flex items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-primary-50">
               <Phone size={17} className="text-primary-600" />
               <span className="text-sm font-semibold text-stone-700">{SUPPORT_PHONE}</span>
+            </a>
+            <a href={ADDITIONAL_SUPPORT_PHONE_TEL_HREF} className="flex items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-primary-50">
+              <Phone size={17} className="text-primary-600" />
+              <span className="text-sm font-semibold text-stone-700">{ADDITIONAL_SUPPORT_PHONE}</span>
             </a>
             <a href={SUPPORT_EMAIL_MAILTO_HREF} className="flex items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-primary-50">
               <Mail size={17} className="text-primary-600" />
