@@ -51,6 +51,15 @@ const ACTION_TEXT: Record<string, string> = {
   "admin.removed": "removed admin access from {target}",
   "customer.deleted": "deleted the customer account {target}",
   "owner.transferred": "made {target} the site owner",
+  "delivery.invited": "invited {target} as a delivery partner",
+  "delivery.joined": "joined as a delivery partner",
+  "delivery.partner-updated": "updated delivery partner {target}",
+  "delivery.code-skipped": "marked an order delivered without the code ({target})",
+  "delivery.settings-changed": "changed delivery fees and limits ({target})",
+  "delivery.settlement": "recorded a delivery settlement ({target})",
+  "seller.delivery-method": "decided a seller delivery request ({target})",
+  "product.approved": "approved {target}",
+  "product.rejected": "rejected {target}",
 };
 
 function describe(a: TeamActivity) {
