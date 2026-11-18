@@ -3,7 +3,13 @@ import { Link } from "react-router-dom";
 import { Mail, Phone, MapPin, Send, LifeBuoy, ArrowRight } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
 import { buttonClasses } from "@/components/common/Button";
-import { SUPPORT_ADDRESS, SUPPORT_PHONE, SUPPORT_EMAIL } from "@/config/support";
+import {
+  ADDITIONAL_SUPPORT_PHONE,
+  ADDITIONAL_SUPPORT_PHONE_TEL_HREF,
+  SUPPORT_ADDRESS,
+  SUPPORT_PHONE,
+  SUPPORT_EMAIL,
+} from "@/config/support";
 
 const inputClass =
   "w-full rounded-xl border border-stone-200 px-4 py-3 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100";
@@ -47,6 +53,7 @@ export default function Contact() {
           {[
             { icon: MapPin, title: "Address", value: SUPPORT_ADDRESS },
             { icon: Phone, title: "Phone", value: SUPPORT_PHONE },
+            { icon: Phone, title: "Additional Phone", value: ADDITIONAL_SUPPORT_PHONE, href: ADDITIONAL_SUPPORT_PHONE_TEL_HREF },
             { icon: Mail, title: "Email", value: SUPPORT_EMAIL },
           ].map((item) => (
             <div key={item.title} className="flex items-center gap-4 rounded-2xl border border-stone-200 bg-white p-5">
@@ -55,7 +62,13 @@ export default function Contact() {
               </div>
               <div>
                 <p className="text-xs font-bold text-stone-400">{item.title}</p>
-                <p className="text-sm font-semibold text-stone-800">{item.value}</p>
+                {item.href ? (
+                  <a href={item.href} className="text-sm font-semibold text-stone-800 hover:underline">
+                    {item.value}
+                  </a>
+                ) : (
+                  <p className="text-sm font-semibold text-stone-800">{item.value}</p>
+                )}
               </div>
             </div>
           ))}

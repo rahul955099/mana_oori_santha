@@ -2,6 +2,8 @@
 // Contact page and Footer import these instead of hardcoding their own copy,
 // so there is a single source of truth — override via env vars if needed.
 export const SUPPORT_PHONE = import.meta.env.VITE_SUPPORT_PHONE || "9493043575";
+export const ADDITIONAL_SUPPORT_PHONE = "97 0303 2050";
+export const ADDITIONAL_SUPPORT_PHONE_TEL_HREF = "tel:9703032050";
 export const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || "leuchtergroup@gmail.com";
 
 export const SUPPORT_ADDRESS =
