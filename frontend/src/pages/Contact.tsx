@@ -4,11 +4,11 @@ import { Mail, Phone, MapPin, Send, LifeBuoy, ArrowRight } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
 import { buttonClasses } from "@/components/common/Button";
 import {
-  ADDITIONAL_SUPPORT_PHONE,
-  ADDITIONAL_SUPPORT_PHONE_TEL_HREF,
   SUPPORT_ADDRESS,
   SUPPORT_PHONE,
   SUPPORT_EMAIL,
+  SUPPORT_PHONE_TEL_HREF,
+  SUPPORT_EMAIL_MAILTO_HREF,
 } from "@/config/support";
 
 const inputClass =
@@ -50,12 +50,13 @@ export default function Contact() {
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-5">
         <div className="space-y-4 lg:col-span-2">
-          {[
-            { icon: MapPin, title: "Address", value: SUPPORT_ADDRESS },
-            { icon: Phone, title: "Phone", value: SUPPORT_PHONE },
-            { icon: Phone, title: "Additional Phone", value: ADDITIONAL_SUPPORT_PHONE, href: ADDITIONAL_SUPPORT_PHONE_TEL_HREF },
-            { icon: Mail, title: "Email", value: SUPPORT_EMAIL },
-          ].map((item) => (
+          {(
+            [
+              { icon: MapPin, title: "Address", value: SUPPORT_ADDRESS },
+              { icon: Phone, title: "Phone", value: SUPPORT_PHONE, href: SUPPORT_PHONE_TEL_HREF },
+              { icon: Mail, title: "Email", value: SUPPORT_EMAIL, href: SUPPORT_EMAIL_MAILTO_HREF },
+            ] as { icon: typeof Phone; title: string; value: string; href?: string }[]
+          ).map((item) => (
             <div key={item.title} className="flex items-center gap-4 rounded-2xl border border-stone-200 bg-white p-5">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
                 <item.icon size={20} />

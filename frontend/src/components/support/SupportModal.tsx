@@ -9,8 +9,6 @@ import { useToast } from "@/context/ToastContext";
 import { errorMessage } from "@/lib/api";
 import { SUPPORT_CATEGORY_LABELS, type SupportCategory } from "@/types";
 import {
-  ADDITIONAL_SUPPORT_PHONE,
-  ADDITIONAL_SUPPORT_PHONE_TEL_HREF,
   SUPPORT_PHONE,
   SUPPORT_EMAIL,
   SUPPORT_PHONE_TEL_HREF,
@@ -150,7 +148,6 @@ export function SupportModal() {
               <Phone size={17} className="text-primary-600" />
               <span className="text-xs font-bold text-stone-700">Call Support</span>
               <a href={SUPPORT_PHONE_TEL_HREF} className="text-[11px] text-stone-400 hover:underline">{SUPPORT_PHONE}</a>
-              <a href={ADDITIONAL_SUPPORT_PHONE_TEL_HREF} className="text-[11px] text-stone-400 hover:underline">{ADDITIONAL_SUPPORT_PHONE}</a>
             </div>
             <a href={SUPPORT_EMAIL_MAILTO_HREF} className="flex flex-col items-center gap-1.5 rounded-xl border border-stone-200 py-3 text-center transition hover:border-primary-300 hover:bg-primary-50">
               <Mail size={17} className="text-primary-600" />

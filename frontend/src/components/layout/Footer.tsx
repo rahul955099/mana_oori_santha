@@ -4,8 +4,6 @@ import { Logo } from "@/components/common/Logo";
 import { FacebookIcon, InstagramIcon, TwitterIcon } from "@/components/common/SocialIcons";
 import { useCategories } from "@/context/CategoriesContext";
 import {
-  ADDITIONAL_SUPPORT_PHONE,
-  ADDITIONAL_SUPPORT_PHONE_TEL_HREF,
   SUPPORT_ADDRESS,
   SUPPORT_EMAIL,
   SUPPORT_PHONE,
@@ -81,12 +79,6 @@ export function Footer() {
             </li>
             <li className="flex items-center gap-2">
               <Phone size={16} className="shrink-0" /> {SUPPORT_PHONE}
-            </li>
-            <li className="flex items-center gap-2">
-              <Phone size={16} className="shrink-0" />
-              <a href={ADDITIONAL_SUPPORT_PHONE_TEL_HREF} className="hover:text-white">
-                {ADDITIONAL_SUPPORT_PHONE}
-              </a>
             </li>
             <li className="flex items-center gap-2">
               <Mail size={16} className="shrink-0" /> {SUPPORT_EMAIL}
