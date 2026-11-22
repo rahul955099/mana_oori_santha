@@ -8,6 +8,8 @@ import { products as catalog } from "../seed/data/products";
 
 /** Small, idempotent data fixes run at startup. */
 export async function runMigrations() {
+  await ensureOptionalSellerEmailIndex();
+
   // Sellers created before approval existed were already selling; keep them live.
   const res = await Seller.updateMany({ status: { $exists: false } }, { $set: { status: "approved" } });
   if (res.modifiedCount > 0) {
@@ -24,6 +26,19 @@ export async function runMigrations() {
   await ensureOwner();
   await ensureFashionCategories();
   await fillMissingTeluguNames();
+}
+
+async function ensureOptionalSellerEmailIndex() {
+  const indexes = await User.collection.indexes();
+  const emailIndex = indexes.find((index) => index.key.email === 1 && Object.keys(index.key).length === 1);
+  const partialFilter = emailIndex?.partialFilterExpression as { email?: { $type?: string } } | undefined;
+  if (emailIndex?.unique && partialFilter?.email?.$type === "string") return;
+  if (emailIndex) {
+    if (!emailIndex.name) throw new Error("Cannot identify the existing user email index");
+    await User.collection.dropIndex(emailIndex.name);
+  }
+  await User.collection.createIndex({ email: 1 }, { unique: true, partialFilterExpression: { email: { $type: "string" } } });
+  console.log("Migration: made seller email addresses optional");
 }
 
 const normalizeName = (name: string) => name.trim().toLowerCase().replace(/\s+/g, " ");

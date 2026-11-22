@@ -175,15 +175,15 @@ export default function ProductDetails() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold text-stone-800">{seller ? `${seller.name} · ${seller.farmName}` : "Local seller"}</p>
                 <p className="flex items-center gap-1 text-xs text-stone-500">
-                  {seller && <><MapPin size={11} /> {seller.location}, {seller.state}</>}
+                  {seller && (seller.location || seller.state) && <><MapPin size={11} /> {[seller.location, seller.state].filter(Boolean).join(", ")}</>}
                 </p>
               </div>
               <span className="shrink-0 text-xs font-bold text-primary-700">Visit Shop</span>
             </Link>
             {seller && (
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-stone-100 pt-2 text-xs text-stone-500">
-                <a href={`tel:${seller.phone.replace(/\s+/g, "")}`} className="hover:text-primary-700">{seller.phone}</a>
-                <a href={`mailto:${seller.email}`} className="break-all hover:text-primary-700">{seller.email}</a>
+                {seller.phone && <a href={`tel:${seller.phone.replace(/\s+/g, "")}`} className="hover:text-primary-700">{seller.phone}</a>}
+                {seller.email && <a href={`mailto:${seller.email}`} className="break-all hover:text-primary-700">{seller.email}</a>}
               </div>
             )}
           </div>

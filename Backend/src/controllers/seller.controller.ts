@@ -79,7 +79,7 @@ async function applyProfileUpdates(seller: SellerDocument, body: Record<string, 
   // User fields go first so an email clash rejects the whole update.
   const userUpdates: Record<string, unknown> = {};
   for (const field of ["name", "phone", "email"] as const) {
-    if (body[field] !== undefined) userUpdates[field] = body[field];
+    if (typeof body[field] === "string" && body[field].trim()) userUpdates[field] = body[field];
   }
   if (Object.keys(userUpdates).length > 0) {
     if (userUpdates.email) {

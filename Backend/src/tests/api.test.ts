@@ -2,6 +2,8 @@ import { api, startTestServer, stopTestServer } from "./setup";
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { seedCatalog } from "../seed/seed";
+import { User } from "../models/User";
+import { runMigrations } from "../config/migrations";
 
 const SELLER_PASSWORD = "seller-pass-123";
 const ADMIN = { email: "admin@test.local", password: "admin-pass-123" };
@@ -75,6 +77,74 @@ describe("auth", () => {
     const shop = await api("GET", "/sellers/me", { token: sellerToken });
     assert.equal(shop.body.data.seller.verified, false);
     assert.equal(shop.body.data.seller.status, "pending");
+  });
+
+  it("registers a seller with only the required fields and allows contact details to be added later", async () => {
+    const res = await api("POST", "/auth/register/seller", {
+      body: { name: "Lakshmi", shopName: "Lakshmi Farms", password: "secret12", email: "", phone: "", location: "" },
+    });
+    assert.equal(res.status, 201, JSON.stringify(res.body));
+    assert.match(res.body.message, /add an email address.*before signing out.*email login or verify/i);
+    assert.equal(res.body.data.user.role, "seller");
+    assert.equal(res.body.data.user.email, "");
+    assert.equal(res.body.data.user.phone, "");
+    assert.equal(res.body.data.user.location, "");
+
+    const token = res.body.data.token;
+    const verify = await api("POST", "/auth/verify-email/resend", { token });
+    assert.equal(verify.status, 400);
+    assert.match(verify.body.message, /add an email address/i);
+
+    const updated = await api("PATCH", "/sellers/me", {
+      token,
+      body: { email: "lakshmi@farm.in", phone: "9123456780", location: "Guntur" },
+    });
+    assert.equal(updated.status, 200, JSON.stringify(updated.body));
+    assert.equal(updated.body.data.seller.email, "lakshmi@farm.in");
+    assert.equal(updated.body.data.seller.phone, "9123456780");
+    assert.equal(updated.body.data.seller.location, "Guntur");
+
+    const login = await api("POST", "/auth/login", { body: { email: "lakshmi@farm.in", password: "secret12" } });
+    assert.equal(login.status, 200);
+  });
+
+  it("migrates the existing email index without removing existing users", async () => {
+    const legacyNullUser = await User.create({
+      name: "Legacy Seller",
+      email: null,
+      phone: null,
+      password: "legacy-password",
+      role: "seller",
+    });
+    const before = await User.countDocuments();
+    const emailIndex = (await User.collection.indexes()).find(
+      (index) => index.key.email === 1 && Object.keys(index.key).length === 1
+    );
+    assert.ok(emailIndex?.name);
+    await User.collection.dropIndex(emailIndex.name);
+    await User.collection.createIndex({ email: 1 }, { unique: true });
+
+    await runMigrations();
+
+    const migratedIndex = (await User.collection.indexes()).find(
+      (index) => index.key.email === 1 && Object.keys(index.key).length === 1
+    );
+    assert.equal(migratedIndex?.unique, true);
+    assert.deepEqual(migratedIndex?.partialFilterExpression, { email: { $type: "string" } });
+    assert.equal(await User.countDocuments(), before);
+    assert.equal((await User.findById(legacyNullUser._id))?.email, null);
+
+    const secondSeller = await api("POST", "/auth/register/seller", {
+      body: { name: "Meera", shopName: "Meera Farms", password: "secret12" },
+    });
+    assert.equal(secondSeller.status, 201, JSON.stringify(secondSeller.body));
+
+    await User.create({ name: "Another Legacy Seller", email: null, phone: null, password: "legacy-password", role: "seller" });
+    const afterAdditionalNull = await User.countDocuments();
+    await runMigrations();
+    assert.equal(await User.countDocuments(), afterAdditionalNull);
+    assert.equal((await User.findById(secondSeller.body.data.user.id))?.email, undefined);
+    assert.equal(await User.countDocuments({ role: "seller", email: null }), 2);
   });
 
   it("updates profile and password", async () => {

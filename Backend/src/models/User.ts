@@ -42,8 +42,8 @@ export interface UserDocument extends Document {
   /** Human-facing account ID shown in the UI, e.g. "MOS-10245". */
   userCode: string;
   name: string;
-  email: string;
-  phone: string;
+  email?: string;
+  phone?: string;
   password: string;
   role: UserRole;
   address?: UserAddress;
@@ -98,8 +98,8 @@ const userSchema = new Schema<UserDocument>(
   {
     userCode: { type: String, unique: true },
     name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    phone: { type: String, required: true, trim: true },
+    email: { type: String, required: function () { return this.role !== "seller"; }, lowercase: true, trim: true },
+    phone: { type: String, required: function () { return this.role !== "seller"; }, trim: true },
     password: { type: String, required: true, select: false },
     role: { type: String, enum: ["customer", "seller", "admin", "delivery"], default: "customer" },
     address: { type: addressSchema, default: undefined },
@@ -129,6 +129,8 @@ const userSchema = new Schema<UserDocument>(
   },
   { timestamps: true }
 );
+
+userSchema.index({ email: 1 }, { unique: true, partialFilterExpression: { email: { $type: "string" } } });
 
 function randomUserCode(): string {
   return `MOS-${Math.floor(10000 + Math.random() * 90000)}`;

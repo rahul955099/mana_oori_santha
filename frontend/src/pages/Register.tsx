@@ -90,10 +90,10 @@ export default function Register() {
               <input required placeholder="Seller Name" value={sellerForm.name} onChange={(e) => setSellerForm({ ...sellerForm, name: e.target.value })} className={inputClass} />
               <input required placeholder="Shop / Farm Name" value={sellerForm.shopName} onChange={(e) => setSellerForm({ ...sellerForm, shopName: e.target.value })} className={inputClass} />
               <div className="grid grid-cols-2 gap-4">
-                <input required type="tel" pattern="[6-9][0-9]{9}" title="10-digit mobile number" placeholder="Mobile Number" value={sellerForm.mobile} onChange={(e) => setSellerForm({ ...sellerForm, mobile: e.target.value })} className={inputClass} />
-                <input required placeholder="Location" value={sellerForm.location} onChange={(e) => setSellerForm({ ...sellerForm, location: e.target.value })} className={inputClass} />
+                <input type="tel" placeholder="Mobile Number (optional)" value={sellerForm.mobile} onChange={(e) => setSellerForm({ ...sellerForm, mobile: e.target.value })} className={inputClass} />
+                <input placeholder="Location (optional)" value={sellerForm.location} onChange={(e) => setSellerForm({ ...sellerForm, location: e.target.value })} className={inputClass} />
               </div>
-              <input required type="email" placeholder="Email Address" value={sellerForm.email} onChange={(e) => setSellerForm({ ...sellerForm, email: e.target.value })} className={inputClass} />
+              <input type="email" placeholder="Email Address (optional)" value={sellerForm.email} onChange={(e) => setSellerForm({ ...sellerForm, email: e.target.value })} className={inputClass} />
               <input required minLength={6} type="password" autoComplete="new-password" placeholder="Password (min 6 characters)" value={sellerForm.password} onChange={(e) => setSellerForm({ ...sellerForm, password: e.target.value })} className={inputClass} />
             </>
           )}

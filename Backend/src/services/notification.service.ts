@@ -28,7 +28,7 @@ export async function notifyUser(
     await Notification.create({ user: userId, ...input });
     if (!email) return;
     const user = await User.findById(userId).select("email isActive notificationPrefs");
-    if (!user?.isActive) return;
+    if (!user?.isActive || !user.email) return;
     if (email.pref && user.notificationPrefs?.[email.pref] === false) return;
     sendMailInBackground({ to: user.email, ...email.content });
   } catch (err) {

@@ -28,9 +28,9 @@ const text = (field: string, max: number) => body(field).optional().isString().t
 
 const profileFields: ValidationChain[] = [
   body("name").optional().isString().trim().isLength({ min: 2, max: 80 }).withMessage("Name must be 2-80 characters"),
-  body("email").optional().isString().trim().toLowerCase().isEmail().withMessage("A valid email is required"),
+  body("email").optional({ values: "falsy" }).isString().trim().toLowerCase().isEmail().withMessage("A valid email is required"),
   body("phone")
-    .optional()
+    .optional({ values: "falsy" })
     .isString()
     .trim()
     .matches(/^(\+91[\s-]?)?[6-9]\d{4}\s?\d{5}$/)

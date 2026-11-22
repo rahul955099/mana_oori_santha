@@ -174,11 +174,11 @@ function ShopProfileForm({ account }: { account: SellerAccount }) {
           </div>
           <div>
             <label className={labelClass}>Phone Number</label>
-            <input required type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inputClass} />
+            <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Email</label>
-            <input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputClass} />
+            <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputClass} />
           </div>
           <div className="sm:col-span-2">
             <label className={labelClass}>Location</label>

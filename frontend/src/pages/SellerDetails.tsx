@@ -39,8 +39,8 @@ export default function SellerDetails() {
   return (
     <div>
       <Seo
-        title={`${seller.farmName}, ${seller.location}`}
-        description={seller.about || `Farm-fresh products from ${seller.farmName} in ${seller.location}.`}
+        title={`${seller.farmName}${seller.location ? `, ${seller.location}` : ""}`}
+        description={seller.about || `Farm-fresh products from ${seller.farmName}${seller.location ? ` in ${seller.location}` : ""}.`}
         image={seller.image || undefined}
       />
       <div className="bg-primary-800 py-14">
@@ -59,7 +59,9 @@ export default function SellerDetails() {
             <h1 className="text-2xl font-extrabold text-white sm:text-3xl">{seller.farmName}</h1>
             <p className="mt-1 text-primary-200">{seller.name}</p>
             <div className="mt-3 flex flex-wrap justify-center gap-4 text-sm text-primary-100 sm:justify-start">
-              <span className="flex items-center gap-1.5"><MapPin size={15} /> {seller.location}, {seller.state}, {seller.country}</span>
+              {(seller.location || seller.state || seller.country) && (
+                <span className="flex items-center gap-1.5"><MapPin size={15} /> {[seller.location, seller.state, seller.country].filter(Boolean).join(", ")}</span>
+              )}
               <span className="flex items-center gap-1.5"><Calendar size={15} /> Since {seller.joinedYear}</span>
               <span className="flex items-center gap-1.5"><Package size={15} /> {seller.productsCount} products</span>
             </div>
@@ -101,12 +103,20 @@ export default function SellerDetails() {
             <div className="rounded-2xl border border-stone-200 bg-white p-5">
               <h3 className="mb-3 text-sm font-bold text-stone-800">Contact</h3>
               <ul className="space-y-3 text-sm text-stone-600">
-                <li className="flex items-center gap-2.5"><Phone size={15} className="text-primary-600" /> {seller.phone}</li>
-                <li className="flex items-center gap-2.5"><Mail size={15} className="text-primary-600" /> {seller.email}</li>
+                {seller.phone && <li className="flex items-center gap-2.5"><Phone size={15} className="text-primary-600" /> {seller.phone}</li>}
+                {seller.email && <li className="flex items-center gap-2.5"><Mail size={15} className="text-primary-600" /> {seller.email}</li>}
+                {!seller.phone && !seller.email && <li>Contact details haven't been added yet.</li>}
               </ul>
-              <a href={`tel:${seller.phone.replace(/\s/g, "")}`} className={buttonClasses("primary", "md", "mt-4 w-full")}>
-                Contact Seller
-              </a>
+              {seller.phone && (
+                <a href={`tel:${seller.phone.replace(/\s/g, "")}`} className={buttonClasses("primary", "md", "mt-4 w-full")}>
+                  Contact Seller
+                </a>
+              )}
+              {!seller.phone && seller.email && (
+                <a href={`mailto:${seller.email}`} className={buttonClasses("primary", "md", "mt-4 w-full")}>
+                  Email Seller
+                </a>
+              )}
             </div>
           </aside>
 

@@ -19,15 +19,21 @@ export function SellerCard({ seller }: { seller: Seller }) {
       </div>
       <h3 className="mt-4 text-base font-bold text-stone-900">{seller.farmName}</h3>
       <p className="text-xs text-stone-500">{seller.name}</p>
-      <p className="mt-2 flex items-center gap-1 text-xs text-stone-500">
-        <MapPin size={13} /> {seller.location}, {seller.state}
-      </p>
-      <a href={`tel:${seller.phone.replace(/\s/g, "")}`} className="mt-2 flex items-center gap-1 text-xs text-stone-500 hover:text-primary-700">
-        <Phone size={12} /> {seller.phone}
-      </a>
-      <a href={`mailto:${seller.email}`} className="mt-1 flex items-center gap-1 text-xs text-stone-500 hover:text-primary-700">
-        <Mail size={12} /> <span className="truncate">{seller.email}</span>
-      </a>
+      {(seller.location || seller.state) && (
+        <p className="mt-2 flex items-center gap-1 text-xs text-stone-500">
+          <MapPin size={13} /> {[seller.location, seller.state].filter(Boolean).join(", ")}
+        </p>
+      )}
+      {seller.phone && (
+        <a href={`tel:${seller.phone.replace(/\s/g, "")}`} className="mt-2 flex items-center gap-1 text-xs text-stone-500 hover:text-primary-700">
+          <Phone size={12} /> {seller.phone}
+        </a>
+      )}
+      {seller.email && (
+        <a href={`mailto:${seller.email}`} className="mt-1 flex items-center gap-1 text-xs text-stone-500 hover:text-primary-700">
+          <Mail size={12} /> <span className="truncate">{seller.email}</span>
+        </a>
+      )}
       <div className="mt-2">
         <RatingStars rating={seller.rating} reviewCount={seller.reviewCount} size={13} />
       </div>
