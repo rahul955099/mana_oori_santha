@@ -13,14 +13,14 @@ let customerToken = "";
 
 before(async () => {
   await startTestServer();
-  await seedCatalog({ ...seedOptions, reset: true });
+  await seedCatalog(seedOptions);
 });
 after(stopTestServer);
 
 describe("seed", () => {
   it("is idempotent", async () => {
     const first = await api("GET", "/products?limit=500");
-    await seedCatalog({ ...seedOptions, reset: false });
+    await seedCatalog(seedOptions);
     const second = await api("GET", "/products?limit=500");
     assert.equal(second.body.data.total, first.body.data.total);
     assert.ok(first.body.data.total > 0);

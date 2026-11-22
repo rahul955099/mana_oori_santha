@@ -37,7 +37,8 @@ function productFields(isCreate: boolean): ValidationChain[] {
     body("sizes").optional().isArray({ max: 15 }).withMessage("Up to 15 sizes"),
     body("sizes.*").isString().trim().isLength({ max: 20 }).withMessage("Each size can be up to 20 characters"),
     body("image").optional().isString().trim().custom(isImageUrl).withMessage("Image must be an https:// URL"),
-    body("images").optional().isArray({ max: 10 }),
+    // The main image plus these make at most 5 photos per product.
+    body("images").optional().isArray({ max: 4 }).withMessage("Up to 5 photos per product"),
     body("images.*").isString().trim().custom(isImageUrl).withMessage("Images must be https:// URLs"),
     body("isOrganic").optional().isBoolean().toBoolean(),
     body("isFeatured").optional().isBoolean().toBoolean(),

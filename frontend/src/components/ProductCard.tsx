@@ -8,9 +8,11 @@ import { useWishlist } from "@/context/WishlistContext";
 import { formatCurrency, discountPercent, teluguName } from "@/utils/format";
 import { optimizedImage } from "@/utils/image";
 import { QuantityStepper } from "@/components/cart/QuantityStepper";
+import { useSellers } from "@/context/SellersContext";
 
 export function ProductCard({ product }: { product: Product }) {
   const { user } = useAuth();
+  const { getSellerById } = useSellers();
   const { addToCart, quantityOf } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
   const navigate = useNavigate();
@@ -21,6 +23,7 @@ export function ProductCard({ product }: { product: Product }) {
   const productPath = `/products/${product.slug}`;
   const nameTe = teluguName(product);
   const hasSizes = (product.sizes?.length ?? 0) > 0;
+  const seller = getSellerById(product.sellerId);
 
   function redirectToLogin() {
     navigate("/login", { state: { from: { pathname: productPath } } });
@@ -122,6 +125,7 @@ export function ProductCard({ product }: { product: Product }) {
           </p>
         )}
         <p className="text-[11px] text-stone-400">{product.unit}</p>
+        {seller && <p className="truncate text-[10px] font-medium text-stone-500">{seller.name} · {seller.farmName}</p>}
 
         <div className="mt-1 flex items-baseline gap-1.5">
           {product.priceAvailable === false ? (

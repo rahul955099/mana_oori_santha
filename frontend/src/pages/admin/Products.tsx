@@ -39,7 +39,7 @@ export default function AdminProducts() {
   const { allCategories } = useCategories();
   const { addProduct, updateProduct, deleteProduct, reload: reloadCatalog } = useProducts();
   const { showToast } = useToast();
-  const { sellers } = useSellers();
+  const { sellers, loading: sellersLoading, error: sellersError, reload: reloadSellers } = useSellers();
   const isOwner = useAuth().user?.isOwner === true;
   const [searchParams, setSearchParams] = useSearchParams();
   const filterParam = searchParams.get("status");
@@ -64,6 +64,7 @@ export default function AdminProducts() {
   const [reviewing, setReviewing] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newSellerId, setNewSellerId] = useState("");
+  const [editSellerId, setEditSellerId] = useState("");
 
   // The server filters by category id, so the list holds only that category's products.
   const load = useCallback(async () => {
@@ -88,7 +89,18 @@ export default function AdminProducts() {
 
   /** Swaps in the server's copy, keeping the shop and submitter the list already knows. */
   function replace(updated: Product) {
-    setProducts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated, submittedBy: p.submittedBy, sellerName: p.sellerName } : p)));
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id === updated.id
+          ? {
+              ...p,
+              ...updated,
+              submittedBy: p.submittedBy,
+              sellerName: sellers.find((seller) => seller.id === updated.sellerId)?.farmName ?? p.sellerName,
+            }
+          : p
+      )
+    );
   }
 
   /** Updates one URL filter, keeping the other. */
@@ -121,7 +133,10 @@ export default function AdminProducts() {
   async function handleEditSubmit(values: ProductFormValues) {
     if (!editTarget) return;
     try {
-      const updated = await updateProduct(editTarget.id, values);
+      const updated = await updateProduct(editTarget.id, {
+        ...values,
+        ...(editSellerId !== editTarget.sellerId ? { sellerId: editSellerId } : {}),
+      });
       replace(updated);
       showToast(
         updated.approvalStatus === "pending" && editTarget.approvalStatus !== "pending"
@@ -350,7 +365,14 @@ export default function AdminProducts() {
                           <button onClick={() => setViewTarget(product)} aria-label={`View ${product.name}`} className={`${iconButton} hover:bg-blue-50 hover:text-blue-600`}>
                             <Eye size={15} />
                           </button>
-                          <button onClick={() => setEditTarget(product)} aria-label={`Edit ${product.name}`} className={`${iconButton} hover:bg-primary-50 hover:text-primary-700`}>
+                          <button
+                            onClick={() => {
+                              setEditSellerId(product.sellerId);
+                              setEditTarget(product);
+                            }}
+                            aria-label={`Edit ${product.name}`}
+                            className={`${iconButton} hover:bg-primary-50 hover:text-primary-700`}
+                          >
                             <Pencil size={15} />
                           </button>
                           <button onClick={() => setDeleteTarget(product)} aria-label={`Delete ${product.name}`} className={`${iconButton} hover:bg-red-50 hover:text-red-600`}>
@@ -392,7 +414,42 @@ export default function AdminProducts() {
       </Modal>
 
       <Modal isOpen={!!editTarget} onClose={() => setEditTarget(null)} title="Edit Product">
-        {editTarget && <ProductForm initial={editTarget} onSubmit={handleEditSubmit} submitLabel="Save Changes" canFeature />}
+        {editTarget && (
+          <>
+            <div className="mb-5">
+              <label htmlFor="edit-product-seller" className="mb-1.5 block text-xs font-bold text-stone-600">
+                Seller
+              </label>
+              {sellersLoading ? (
+                <p className="text-sm text-stone-500">Loading sellers...</p>
+              ) : sellersError ? (
+                <div role="alert" className="text-sm text-red-600">
+                  Couldn't load sellers: {sellersError}{" "}
+                  <button type="button" onClick={() => void reloadSellers()} className="font-bold underline">
+                    Try again
+                  </button>
+                </div>
+              ) : (
+                <select
+                  id="edit-product-seller"
+                  value={editSellerId}
+                  onChange={(e) => setEditSellerId(e.target.value)}
+                  className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+                >
+                  {sellers.map((seller) => (
+                    <option key={seller.id} value={seller.id}>
+                      {seller.farmName}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {sellers.length === 0 && !sellersLoading && !sellersError && (
+                <p className="mt-1 text-xs text-stone-500">No active and approved sellers are available.</p>
+              )}
+            </div>
+            <ProductForm initial={editTarget} onSubmit={handleEditSubmit} submitLabel="Save Changes" canFeature />
+          </>
+        )}
       </Modal>
 
       <Modal isOpen={adding} onClose={() => setAdding(false)} title="Add Product">

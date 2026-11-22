@@ -33,6 +33,7 @@ export interface SellerDocument extends Document {
   location: string;
   district: string;
   state: string;
+  country: string;
   about: string;
   image: string;
   /** "Verified Farmer" trust badge, awarded by admins independently of approval. */
@@ -65,6 +66,7 @@ const sellerSchema = new Schema<SellerDocument>(
     location: { type: String, default: "", trim: true },
     district: { type: String, default: "", trim: true },
     state: { type: String, default: "", trim: true },
+    country: { type: String, default: "India", trim: true },
     about: { type: String, default: "", trim: true },
     image: { type: String, default: "" },
     verified: { type: Boolean, default: false },

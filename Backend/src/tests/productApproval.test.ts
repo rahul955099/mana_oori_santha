@@ -7,6 +7,7 @@ import { Product } from "../models/Product";
 import { products as catalog } from "../seed/data/products";
 import { Seller } from "../models/Seller";
 import { User } from "../models/User";
+import { Types } from "mongoose";
 
 const SELLER_PASSWORD = "seller-pass-123";
 const OWNER = { email: "admin@test.local", password: "admin-pass-123" };
@@ -37,7 +38,7 @@ const publicIds = async (search?: string) =>
 
 before(async () => {
   await startTestServer();
-  await seedCatalog({ reset: true, adminEmail: OWNER.email, adminPassword: OWNER.password, sellerPassword: SELLER_PASSWORD });
+  await seedCatalog({ adminEmail: OWNER.email, adminPassword: OWNER.password, sellerPassword: SELLER_PASSWORD });
   await User.create({ name: "Helper Admin", email: ADMIN.email, phone: "9000000001", password: ADMIN.password, role: "admin", emailVerified: true });
   owner = (await api("POST", "/auth/login", { body: OWNER })).body.data.token;
   admin = (await api("POST", "/auth/login", { body: ADMIN })).body.data.token;
@@ -45,8 +46,8 @@ before(async () => {
   customer = (
     await api("POST", "/auth/register", { body: { name: "Anita", email: "anita@example.com", phone: "9876543210", password: "secret12" } })
   ).body.data.token;
-  const ramuluUser = await User.findOne({ email: "ramulu.farms@example.com" });
-  sellerId = (await Seller.findOne({ user: ramuluUser!._id }))!._id.toString();
+  const seededSellerUser = await User.findOne({ email: "ramulu.farms@example.com" });
+  sellerId = (await Seller.findOne({ user: seededSellerUser!._id }))!._id.toString();
 });
 after(stopTestServer);
 
@@ -174,6 +175,146 @@ describe("product approval", () => {
     await api("PATCH", `${path}/approval`, { token: owner, body: { decision: "approve" } });
     const ownerEdit = await api("PATCH", path, { token: owner, body: { description: "Checked by the owner." } });
     assert.equal(ownerEdit.body.data.product.approvalStatus, "approved", "the owner's own edits stay live");
+  });
+});
+
+describe("admin product seller reassignment", () => {
+  let productId = "";
+  let targetSellerId = "";
+  let orderIds: string[] = [];
+
+  before(async () => {
+    const targetSeller = await Seller.findOne({ farmName: "Vana Bhoomi Naturals" });
+    assert.ok(targetSeller);
+    targetSellerId = targetSeller._id.toString();
+    const created = await api("POST", "/products", {
+      token: owner,
+      body: productBody("Seller Transfer Millet", { sellerId }),
+    });
+    assert.equal(created.status, 201, JSON.stringify(created.body));
+    productId = created.body.data.product.id;
+
+    const completed = await api("POST", "/orders", {
+      token: customer,
+      body: { items: [{ productId, quantity: 1 }], shippingAddress: {
+        fullName: "Anita",
+        mobile: "9876543210",
+        email: "anita@example.com",
+        address: "1 Main Rd",
+        village: "Tirupati",
+        state: "AP",
+        pincode: "517501",
+      } },
+    });
+    assert.equal(completed.status, 201, JSON.stringify(completed.body));
+    orderIds.push(completed.body.data.order.id);
+    for (const status of ["confirmed", "packed", "out-for-delivery", "delivered"]) {
+      const changed = await api("PATCH", `/orders/${orderIds[0]}/status`, {
+        token: seller,
+        body: { status, ...(status === "delivered" ? { code: completed.body.data.order.delivery.code } : {}) },
+      });
+      assert.equal(changed.status, 200, changed.body.message);
+    }
+
+    const pending = await api("POST", "/orders", {
+      token: customer,
+      body: { items: [{ productId, quantity: 1 }], shippingAddress: {
+        fullName: "Anita",
+        mobile: "9876543210",
+        email: "anita@example.com",
+        address: "1 Main Rd",
+        village: "Tirupati",
+        state: "AP",
+        pincode: "517501",
+      } },
+    });
+    assert.equal(pending.status, 201, JSON.stringify(pending.body));
+    orderIds.push(pending.body.data.order.id);
+  });
+
+  it("returns all active and approved sellers through the public seller list", async () => {
+    const [available, response] = await Promise.all([
+      Seller.find({ isActive: true, status: "approved" }).select("_id"),
+      api("GET", "/sellers"),
+    ]);
+    const expectedIds = available.map((seller) => seller._id.toString()).sort();
+    const listedIds = (response.body.data.sellers as { id: string }[]).map((seller) => seller.id).sort();
+    assert.deepEqual(listedIds, expectedIds);
+  });
+
+  it("rejects malformed, missing, inactive and unapproved sellers", async () => {
+    const path = `/products/${productId}`;
+    assert.equal((await api("PATCH", path, { token: admin, body: { sellerId: "not-an-id" } })).status, 400);
+    const missing = await api("PATCH", path, { token: admin, body: { sellerId: new Types.ObjectId().toString() } });
+    assert.equal(missing.status, 400);
+    assert.equal(missing.body.error, "INVALID_SELLER");
+
+    await Seller.updateOne({ _id: targetSellerId }, { isActive: false });
+    try {
+      const inactive = await api("PATCH", path, { token: admin, body: { sellerId: targetSellerId } });
+      assert.equal(inactive.status, 400);
+      assert.equal(inactive.body.error, "SELLER_NOT_ACTIVE");
+    } finally {
+      await Seller.updateOne({ _id: targetSellerId }, { isActive: true });
+    }
+
+    await Seller.updateOne({ _id: targetSellerId }, { status: "pending" });
+    try {
+      const unapproved = await api("PATCH", path, { token: admin, body: { sellerId: targetSellerId } });
+      assert.equal(unapproved.status, 400);
+      assert.equal(unapproved.body.error, "SELLER_NOT_ACTIVE");
+    } finally {
+      await Seller.updateOne({ _id: targetSellerId }, { status: "approved" });
+    }
+  });
+
+  it("prevents sellers from changing ownership", async () => {
+    const response = await api("PATCH", `/products/${productId}`, {
+      token: seller,
+      body: { sellerId: targetSellerId },
+    });
+    assert.equal(response.status, 403);
+    assert.equal((await Product.findById(productId))!.seller.toString(), sellerId);
+  });
+
+  it("updates product listings and future orders without rewriting order history", async () => {
+    const reassigned = await api("PATCH", `/products/${productId}`, {
+      token: admin,
+      body: { sellerId: targetSellerId },
+    });
+    assert.equal(reassigned.status, 200, JSON.stringify(reassigned.body));
+    assert.equal(reassigned.body.data.product.sellerId, targetSellerId);
+    const targetSeller = await Seller.findById(targetSellerId).select("farmName");
+    assert.equal(reassigned.body.data.product.sellerName, targetSeller!.farmName);
+    assert.equal((await Product.findById(productId))!.seller.toString(), targetSellerId);
+
+    const details = await api("GET", `/products/${productId}`);
+    assert.equal(details.body.data.product.sellerId, targetSellerId);
+    const listings = await api("GET", `/products?seller=${targetSellerId}&search=Seller%20Transfer%20Millet`);
+    assert.ok(listings.body.data.products.some((p: { id: string; sellerId: string }) => p.id === productId && p.sellerId === targetSellerId));
+    const sellerProfile = await api("GET", `/sellers/${targetSellerId}`);
+    assert.equal(sellerProfile.body.data.seller.id, targetSellerId);
+
+    const completedOrder = await api("GET", `/orders/${orderIds[0]}`, { token: customer });
+    const pendingOrder = await api("GET", `/orders/${orderIds[1]}`, { token: customer });
+    assert.equal(completedOrder.body.data.order.items[0].sellerId, sellerId);
+    assert.equal(completedOrder.body.data.order.status, "delivered");
+    assert.equal(pendingOrder.body.data.order.items[0].sellerId, sellerId);
+
+    const newOrder = await api("POST", "/orders", {
+      token: customer,
+      body: { items: [{ productId, quantity: 1 }], shippingAddress: {
+        fullName: "Anita",
+        mobile: "9876543210",
+        email: "anita@example.com",
+        address: "1 Main Rd",
+        village: "Tirupati",
+        state: "AP",
+        pincode: "517501",
+      } },
+    });
+    assert.equal(newOrder.status, 201, JSON.stringify(newOrder.body));
+    assert.equal(newOrder.body.data.order.items[0].sellerId, targetSellerId);
   });
 });
 

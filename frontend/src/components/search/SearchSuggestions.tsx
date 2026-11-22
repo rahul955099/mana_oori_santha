@@ -122,7 +122,7 @@ export function SearchSuggestions({ query, onSelectTerm, onNavigate }: SearchSug
       )}
       {matchedSellers.length > 0 && (
         <div>
-          <p className="px-3 pb-1 pt-1 text-[11px] font-bold uppercase tracking-wide text-stone-400">Sellers</p>
+          <p className="px-3 pb-1 pt-1 text-[11px] font-bold uppercase tracking-wide text-stone-400">Farm</p>
           {matchedSellers.map((s) => (
             <Link
               key={s.id}

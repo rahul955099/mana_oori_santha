@@ -19,7 +19,7 @@ const linkToken = (text: string) => text.match(/token=([a-f0-9]{64})/)?.[1] ?? "
 
 before(async () => {
   await startTestServer();
-  await seedCatalog({ reset: true, adminEmail: ADMIN.email, adminPassword: ADMIN.password, sellerPassword: SELLER_PASSWORD });
+  await seedCatalog({ adminEmail: ADMIN.email, adminPassword: ADMIN.password, sellerPassword: SELLER_PASSWORD });
   admin = (await api("POST", "/auth/login", { body: ADMIN })).body.data.token;
   const reg = await api("POST", "/auth/register", {
     body: { name: "Priya", email: "priya@mail.in", phone: "9876543210", password: "secret12" },

@@ -9,7 +9,7 @@ import { AppError } from "../utils/AppError";
 import { success } from "../utils/response";
 import { escapeRegex, slugify } from "../utils/slugify";
 import { toProduct } from "../utils/serialize";
-import { CAN_MANAGE_PRODUCTS, publicProductFilter } from "../services/sellerAccess.service";
+import { CAN_MANAGE_PRODUCTS, publicProductFilter, sellableSellerIds } from "../services/sellerAccess.service";
 import { notifyUser } from "../services/notification.service";
 import type { SellerStatus } from "../models/Seller";
 import type { AuthRequest } from "../middleware/auth.middleware";
@@ -200,7 +200,10 @@ export async function createProduct(req: AuthRequest, res: Response) {
 
   let sellerId: Types.ObjectId | null;
   if (req.userRole === "admin") {
-    const seller = await Seller.findOne({ _id: b.sellerId, isActive: true }).select("_id");
+    const sellableIds = await sellableSellerIds();
+    const seller = sellableIds.some((id) => id.equals(b.sellerId))
+      ? await Seller.findOne({ _id: b.sellerId, isActive: true }).select("_id")
+      : null;
     if (!seller) {
       throw new AppError("Admins must choose an active seller for the product", 400, "VALIDATION_ERROR");
     }
@@ -293,6 +296,22 @@ const REVIEWED_FIELDS = ["name", "nameTe", "category", "description", "image", "
 export async function updateProduct(req: AuthRequest, res: Response) {
   const product = await findEditableProduct(req);
   const b = req.body;
+  let sellerName: string | undefined;
+
+  if (b.sellerId !== undefined) {
+    if (req.userRole !== "admin") {
+      throw new AppError("Only admins can change a product's seller", 403, "FORBIDDEN");
+    }
+    const seller = await Seller.findById(b.sellerId).select("_id isActive status farmName");
+    if (!seller) {
+      throw new AppError("Seller not found", 400, "INVALID_SELLER");
+    }
+    if (!seller.isActive || seller.status !== "approved") {
+      throw new AppError("Seller must be active and approved", 400, "SELLER_NOT_ACTIVE");
+    }
+    product.seller = seller._id;
+    sellerName = seller.farmName;
+  }
 
   if (b.category !== undefined && b.category !== product.category) {
     await assertCategoryExists(b.category);
@@ -331,7 +350,7 @@ export async function updateProduct(req: AuthRequest, res: Response) {
   success(
     res,
     resubmitted ? "Product updated. It is hidden from the store until the site owner approves the changes." : "Product updated",
-    { product: toProduct(product) }
+    { product: { ...toProduct(product), ...(sellerName ? { sellerName } : {}) } }
   );
 }
 

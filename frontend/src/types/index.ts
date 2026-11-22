@@ -52,6 +52,7 @@ export interface Seller {
   location: string;
   district: string;
   state: string;
+  country?: string;
   rating: number;
   reviewCount: number;
   productsCount: number;

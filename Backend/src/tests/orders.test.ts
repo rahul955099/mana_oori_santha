@@ -20,9 +20,9 @@ const shippingAddress = {
 
 let customer = "";
 let otherCustomer = "";
+let otherSeller = "";
 let admin = "";
 let ramulu = ""; // seller of foxtail millet
-let lakshmi = ""; // a different seller
 
 type P = { id: string; slug: string; price: number; stock: number; sellerId: string; category: string };
 let foxtail: P;
@@ -41,16 +41,17 @@ async function stockOf(id: string) {
 
 before(async () => {
   await startTestServer();
-  await seedCatalog({ reset: true, adminEmail: ADMIN.email, adminPassword: ADMIN.password, sellerPassword: SELLER_PASSWORD });
+  await seedCatalog({ adminEmail: ADMIN.email, adminPassword: ADMIN.password, sellerPassword: SELLER_PASSWORD });
   customer = await register("Anita", "anita@example.com");
   otherCustomer = await register("Ravi", "ravi@example.com");
   admin = await login(ADMIN.email, ADMIN.password);
   ramulu = await login("ramulu.farms@example.com", SELLER_PASSWORD);
-  lakshmi = await login("vanabhoomi@example.com", SELLER_PASSWORD);
+  otherSeller = await login("vanabhoomi@example.com", SELLER_PASSWORD);
 
   foxtail = (await api("GET", "/products/foxtail-millet")).body.data.product;
   const all: P[] = (await api("GET", "/products?limit=500")).body.data.products;
-  otherSellersProduct = all.find((p) => p.sellerId !== foxtail.sellerId && p.price > 0 && p.stock > 5)!;
+  const otherSellerId = (await api("GET", "/sellers/me", { token: otherSeller })).body.data.seller.id as string;
+  otherSellersProduct = all.find((p) => p.sellerId === otherSellerId && p.price > 0 && p.stock > 5)!;
 });
 after(stopTestServer);
 
@@ -217,7 +218,7 @@ describe("placing orders", () => {
     assert.equal((await api("GET", `/orders/${orderNumber}`, { token: admin })).status, 200);
     assert.equal((await api("GET", `/orders/${orderNumber}`, { token: ramulu })).status, 200);
     assert.equal((await api("GET", `/orders/${orderNumber}`, { token: otherCustomer })).status, 404);
-    assert.equal((await api("GET", `/orders/${orderNumber}`, { token: lakshmi })).status, 404);
+    assert.equal((await api("GET", `/orders/${orderNumber}`, { token: otherSeller })).status, 404);
 
     const mine = await api("GET", "/orders/mine", { token: customer });
     assert.ok(mine.body.data.orders.some((o: { id: string }) => o.id === orderNumber));
@@ -248,9 +249,9 @@ describe("order status flow", () => {
     assert.equal(await stockOf(foxtail.id), before, "stock restored exactly once");
   });
 
-  it("lets the owning seller fulfil a single-seller order, then COD is marked paid", async () => {
+  it("lets the assigned seller fulfil a seller-only order, then COD is marked paid", async () => {
     const id = await newOrder([{ productId: foxtail.id, quantity: 1 }]);
-    assert.equal((await setStatus(lakshmi, id, "confirmed")).status, 404, "other seller can't see it");
+    assert.equal((await setStatus(otherSeller, id, "confirmed")).status, 404, "another seller can't see it");
     assert.equal((await setStatus(customer, id, "confirmed")).status, 403, "customer can't confirm");
     assert.equal((await setStatus(ramulu, id, "delivered")).status, 400, "can't skip steps");
     for (const status of ["confirmed", "packed", "out-for-delivery", "delivered"]) {
@@ -269,16 +270,16 @@ describe("order status flow", () => {
     assert.equal(returned.body.data.order.paymentStatus, "refunded");
   });
 
-  it("leaves mixed-seller orders to admins and hides other sellers' items", async () => {
+  it("keeps mixed-seller orders assigned to their respective sellers", async () => {
     const id = await newOrder([
       { productId: foxtail.id, quantity: 1 },
       { productId: otherSellersProduct.id, quantity: 1 },
     ]);
+    const order = (await api("GET", `/orders/${id}`, { token: customer })).body.data.order;
+    assert.deepEqual(order.items.map((item: { sellerId: string }) => item.sellerId), [foxtail.sellerId, otherSellersProduct.sellerId]);
     assert.equal((await setStatus(ramulu, id, "confirmed")).status, 403);
+    assert.equal((await setStatus(otherSeller, id, "confirmed")).status, 403);
     assert.equal((await setStatus(admin, id, "confirmed")).status, 200);
-    const sellerView = (await api("GET", `/orders/${id}`, { token: ramulu })).body.data.order;
-    assert.equal(sellerView.items.length, 1);
-    assert.equal(sellerView.partial, true);
   });
 });
 

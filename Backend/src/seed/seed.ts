@@ -31,7 +31,7 @@ function requiredEnv(name: string): string {
   return value;
 }
 
-export async function seedCatalog(options: { reset: boolean; adminEmail: string; adminPassword: string; sellerPassword: string }) {
+export async function seedCatalog(options: { reset?: boolean; adminEmail: string; adminPassword: string; sellerPassword: string }) {
   if (options.reset) {
     const sellerEmails = sellers.map((s) => s.email.toLowerCase());
     await Promise.all([

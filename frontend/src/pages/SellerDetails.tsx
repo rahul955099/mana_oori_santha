@@ -59,7 +59,7 @@ export default function SellerDetails() {
             <h1 className="text-2xl font-extrabold text-white sm:text-3xl">{seller.farmName}</h1>
             <p className="mt-1 text-primary-200">{seller.name}</p>
             <div className="mt-3 flex flex-wrap justify-center gap-4 text-sm text-primary-100 sm:justify-start">
-              <span className="flex items-center gap-1.5"><MapPin size={15} /> {seller.location}, {seller.state}</span>
+              <span className="flex items-center gap-1.5"><MapPin size={15} /> {seller.location}, {seller.state}, {seller.country}</span>
               <span className="flex items-center gap-1.5"><Calendar size={15} /> Since {seller.joinedYear}</span>
               <span className="flex items-center gap-1.5"><Package size={15} /> {seller.productsCount} products</span>
             </div>

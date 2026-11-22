@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { MapPin, Package, BadgeCheck } from "lucide-react";
+import { MapPin, Package, BadgeCheck, Mail, Phone } from "lucide-react";
 import type { Seller } from "@/types";
 import { RatingStars } from "@/components/common/RatingStars";
 import { buttonClasses } from "@/components/common/Button";
@@ -22,6 +22,12 @@ export function SellerCard({ seller }: { seller: Seller }) {
       <p className="mt-2 flex items-center gap-1 text-xs text-stone-500">
         <MapPin size={13} /> {seller.location}, {seller.state}
       </p>
+      <a href={`tel:${seller.phone.replace(/\s/g, "")}`} className="mt-2 flex items-center gap-1 text-xs text-stone-500 hover:text-primary-700">
+        <Phone size={12} /> {seller.phone}
+      </a>
+      <a href={`mailto:${seller.email}`} className="mt-1 flex items-center gap-1 text-xs text-stone-500 hover:text-primary-700">
+        <Mail size={12} /> <span className="truncate">{seller.email}</span>
+      </a>
       <div className="mt-2">
         <RatingStars rating={seller.rating} reviewCount={seller.reviewCount} size={13} />
       </div>

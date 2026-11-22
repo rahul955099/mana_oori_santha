@@ -7,7 +7,6 @@ import { EmptyState } from "@/components/common/EmptyState";
 export default function Sellers() {
   const { sellers } = useSellers();
   const [search, setSearch] = useState("");
-
   const filtered = sellers.filter(
     (s) =>
       s.farmName.toLowerCase().includes(search.toLowerCase()) ||

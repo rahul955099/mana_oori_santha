@@ -1,7 +1,7 @@
 import type { Response } from "express";
 import { AppError } from "../utils/AppError";
 import { success } from "../utils/response";
-import { cloudinaryConfigured, createUploadSignature } from "../services/cloudinary.service";
+import { cloudinaryConfigured, createUploadSignature, missingCloudinaryKeys } from "../services/cloudinary.service";
 import type { AuthRequest } from "../middleware/auth.middleware";
 
 /** Who may upload each kind of image. */
@@ -17,8 +17,11 @@ export async function getUploadSignature(req: AuthRequest, res: Response) {
     throw new AppError("You can't upload this kind of image.", 403, "FORBIDDEN");
   }
   if (!cloudinaryConfigured()) {
+    // Admins can fix this themselves, so they get the setup steps; everyone else gets a plain apology.
     throw new AppError(
-      "Image uploads aren't set up yet. Ask the site admin to add the Cloudinary keys.",
+      req.userRole === "admin"
+        ? `Image uploads aren't set up yet. Add ${missingCloudinaryKeys().join(", ")} to the API's environment (Backend/.env, or the hosting settings) and restart the API. Until then, use "Paste a link instead".`
+        : "Photo uploads aren't available right now. Please try again later.",
       503,
       "UPLOADS_NOT_CONFIGURED"
     );
