@@ -50,11 +50,11 @@ router.post(
   sensitive,
   validate([
     name(),
-    email(),
-    phone(),
+    email().optional({ values: "falsy" }),
+    phone().optional({ values: "falsy" }),
     newPassword("password"),
     body("shopName").isString().trim().isLength({ min: 2, max: 120 }).withMessage("Shop / farm name is required"),
-    body("location").isString().trim().isLength({ min: 2, max: 120 }).withMessage("Location is required"),
+    body("location").optional({ values: "falsy" }).isString().trim().isLength({ max: 120 }),
   ]),
   registerSeller
 );
@@ -73,8 +73,8 @@ router.patch(
   requireAuth,
   validate([
     name().optional(),
-    email().optional(),
-    phone().optional(),
+    email().optional({ values: "falsy" }),
+    phone().optional({ values: "falsy" }),
     body("notificationPrefs").optional().isObject(),
     body("notificationPrefs.orderUpdates").optional().isBoolean().toBoolean(),
     body("notificationPrefs.deliveryAlerts").optional().isBoolean().toBoolean(),

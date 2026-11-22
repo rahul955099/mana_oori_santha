@@ -20,6 +20,9 @@ const RESET_TTL_MS = 30 * 60 * 1000;
 
 /** Stores a fresh verification token on the user (caller saves) and emails the link. */
 function startEmailVerification(user: UserDocument) {
+  if (!user.email) {
+    throw new AppError("Add an email address before requesting email verification", 400, "EMAIL_REQUIRED");
+  }
   const { raw, hash } = createOneTimeToken();
   user.emailVerifyTokenHash = hash;
   user.emailVerifyExpires = new Date(Date.now() + VERIFY_TTL_MS);
@@ -58,15 +61,18 @@ export async function register(req: Request, res: Response) {
 
 export async function registerSeller(req: Request, res: Response) {
   const { name, email, phone, password, shopName, location } = req.body;
-  await assertEmailFree(email);
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() || undefined : undefined;
+  const normalizedPhone = typeof phone === "string" ? phone.trim() || undefined : undefined;
+  const normalizedLocation = typeof location === "string" ? location.trim() : "";
+  if (normalizedEmail) await assertEmailFree(normalizedEmail);
 
-  const user = new User({ name, email, phone, password, role: "seller" });
-  startEmailVerification(user);
+  const user = new User({ name, email: normalizedEmail, phone: normalizedPhone, password, role: "seller" });
+  if (normalizedEmail) startEmailVerification(user);
   await user.save();
   let seller;
   try {
     // New sellers start unverified; an admin verifies them from the admin panel.
-    seller = await Seller.create({ user: user._id, farmName: shopName, location, district: location });
+    seller = await Seller.create({ user: user._id, farmName: shopName, location: normalizedLocation, district: normalizedLocation });
   } catch (err) {
     await User.deleteOne({ _id: user._id });
     throw err;
@@ -80,7 +86,10 @@ export async function registerSeller(req: Request, res: Response) {
   });
 
   const token = signToken({ userId: user._id.toString(), role: user.role });
-  success(res, "Seller account created successfully", { token, user: toSafeUser(user, seller) }, 201);
+  const message = normalizedEmail
+    ? "Seller account created successfully"
+    : "Seller account created successfully. Add an email address to your profile before signing out to use email login or verify your email.";
+  success(res, message, { token, user: toSafeUser(user, seller) }, 201);
 }
 
 export async function login(req: Request, res: Response) {
@@ -111,7 +120,9 @@ export async function me(req: AuthRequest, res: Response) {
 }
 
 export async function updateMe(req: AuthRequest, res: Response) {
-  const { name, email, phone, profileImage, notificationPrefs } = req.body;
+  const { name, profileImage, notificationPrefs } = req.body;
+  const email = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() || undefined : undefined;
+  const phone = typeof req.body.phone === "string" ? req.body.phone.trim() || undefined : undefined;
   const user = await User.findById(req.userId);
   if (!user) {
     throw new AppError("User not found", 404, "NOT_FOUND");
@@ -173,6 +184,9 @@ export async function resendVerification(req: AuthRequest, res: Response) {
   if (user.emailVerified) {
     return success(res, "Your email is already confirmed");
   }
+  if (!user.email) {
+    throw new AppError("Add an email address to your profile before requesting verification", 400, "EMAIL_REQUIRED");
+  }
   startEmailVerification(user);
   await user.save();
   success(res, `We've sent a confirmation link to ${user.email}`);
@@ -182,7 +196,7 @@ export async function resendVerification(req: AuthRequest, res: Response) {
  * emails have accounts. */
 export async function forgotPassword(req: Request, res: Response) {
   const user = await User.findOne({ email: req.body.email, isActive: true });
-  if (user) {
+  if (user?.email) {
     const { raw, hash } = createOneTimeToken();
     user.passwordResetTokenHash = hash;
     user.passwordResetExpires = new Date(Date.now() + RESET_TTL_MS);

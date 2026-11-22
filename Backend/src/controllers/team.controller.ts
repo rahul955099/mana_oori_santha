@@ -126,6 +126,7 @@ export async function removeAdmin(req: AuthRequest, res: Response) {
   if (!user) {
     throw new AppError("Admin not found", 404, "NOT_FOUND");
   }
+  if (!user.email) throw new AppError("Admin email is not configured", 400, "EMAIL_REQUIRED");
   if (user.isOwner) {
     throw new AppError("The site owner can't be removed. Hand ownership to another admin first.", 400, "OWNER");
   }
@@ -150,6 +151,7 @@ export async function transferOwnership(req: AuthRequest, res: Response) {
   if (!target) {
     throw new AppError("Choose an active admin to hand ownership to.", 404, "NOT_FOUND");
   }
+  if (!target.email) throw new AppError("Admin email is not configured", 400, "EMAIL_REQUIRED");
   if (target._id.equals(req.userId!)) {
     throw new AppError("You're already the owner.", 400, "ALREADY_OWNER");
   }
@@ -238,8 +240,8 @@ export async function acceptInvite(req: Request, res: Response) {
   await AdminActivity.create({
     action: isDelivery ? "delivery.joined" : "admin.invite-accepted",
     actorName: user.name,
-    actorEmail: user.email,
-    targetEmail: user.email,
+    actorEmail: invite.email,
+    targetEmail: invite.email,
   });
 
   const token = signToken({ userId: user._id.toString(), role: user.role });

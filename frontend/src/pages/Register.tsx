@@ -18,14 +18,7 @@ export default function Register() {
   const navigate = useNavigate();
 
   const [customerForm, setCustomerForm] = useState({ name: "", mobile: "", email: "", password: "" });
-  const [sellerForm, setSellerForm] = useState({
-    name: "",
-    shopName: "",
-    mobile: "",
-    email: "",
-    location: "",
-    password: "",
-  });
+  const [sellerForm, setSellerForm] = useState({ name: "", shopName: "", password: "" });
 
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -35,7 +28,9 @@ export default function Register() {
     setError("");
     setSubmitting(true);
     const result =
-      accountType === "customer" ? await registerCustomer(customerForm) : await registerSeller(sellerForm);
+      accountType === "customer"
+        ? await registerCustomer(customerForm)
+        : await registerSeller({ ...sellerForm, mobile: "", email: "", location: "" });
     setSubmitting(false);
     if (!result.success) {
       setError(result.message);
@@ -88,12 +83,7 @@ export default function Register() {
           ) : (
             <>
               <input required placeholder="Seller Name" value={sellerForm.name} onChange={(e) => setSellerForm({ ...sellerForm, name: e.target.value })} className={inputClass} />
-              <input required placeholder="Shop / Farm Name" value={sellerForm.shopName} onChange={(e) => setSellerForm({ ...sellerForm, shopName: e.target.value })} className={inputClass} />
-              <div className="grid grid-cols-2 gap-4">
-                <input required type="tel" pattern="[6-9][0-9]{9}" title="10-digit mobile number" placeholder="Mobile Number" value={sellerForm.mobile} onChange={(e) => setSellerForm({ ...sellerForm, mobile: e.target.value })} className={inputClass} />
-                <input required placeholder="Location" value={sellerForm.location} onChange={(e) => setSellerForm({ ...sellerForm, location: e.target.value })} className={inputClass} />
-              </div>
-              <input required type="email" placeholder="Email Address" value={sellerForm.email} onChange={(e) => setSellerForm({ ...sellerForm, email: e.target.value })} className={inputClass} />
+              <input required placeholder="Shop Name" value={sellerForm.shopName} onChange={(e) => setSellerForm({ ...sellerForm, shopName: e.target.value })} className={inputClass} />
               <input required minLength={6} type="password" autoComplete="new-password" placeholder="Password (min 6 characters)" value={sellerForm.password} onChange={(e) => setSellerForm({ ...sellerForm, password: e.target.value })} className={inputClass} />
             </>
           )}

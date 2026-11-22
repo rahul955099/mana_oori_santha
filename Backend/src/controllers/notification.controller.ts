@@ -65,7 +65,9 @@ export async function broadcast(req: AuthRequest, res: Response) {
 
   let emailed = 0;
   if (email) {
-    const recipients = await User.find({ role: "customer", isActive: true, "notificationPrefs.promotions": true }).select("name email");
+    const recipients = (await User.find({ role: "customer", isActive: true, "notificationPrefs.promotions": true }).select("name email")).filter(
+      (recipient): recipient is typeof recipient & { email: string } => !!recipient.email
+    );
     emailed = recipients.length;
     // Sent one by one in the background so the admin isn't kept waiting.
     void (async () => {

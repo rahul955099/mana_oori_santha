@@ -70,7 +70,7 @@ export async function deleteCustomer(req: AuthRequest, res: Response) {
   if (!target || target.role !== "customer" || target.deletedAt) {
     throw new AppError("Customer not found", 404, "NOT_FOUND");
   }
-  const email = target.email;
+  const email = target.email ?? "";
   const mode = await deleteCustomerAccount(target._id);
   const actor = await User.findById(req.userId).select("name email");
   await AdminActivity.create({
