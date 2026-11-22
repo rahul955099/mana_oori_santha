@@ -240,8 +240,8 @@ export async function acceptInvite(req: Request, res: Response) {
   await AdminActivity.create({
     action: isDelivery ? "delivery.joined" : "admin.invite-accepted",
     actorName: user.name,
-    actorEmail: user.email,
-    targetEmail: user.email,
+    actorEmail: invite.email,
+    targetEmail: invite.email,
   });
 
   const token = signToken({ userId: user._id.toString(), role: user.role });

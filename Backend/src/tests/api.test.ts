@@ -144,7 +144,7 @@ describe("auth", () => {
     await runMigrations();
     assert.equal(await User.countDocuments(), afterAdditionalNull);
     assert.equal((await User.findById(secondSeller.body.data.user.id))?.email, undefined);
-    assert.equal(await User.countDocuments({ role: "seller", email: null }), 2);
+    assert.equal(await User.countDocuments({ role: "seller", email: { $type: 10 } }), 2);
   });
 
   it("updates profile and password", async () => {

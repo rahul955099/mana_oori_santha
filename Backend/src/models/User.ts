@@ -42,8 +42,8 @@ export interface UserDocument extends Document {
   /** Human-facing account ID shown in the UI, e.g. "MOS-10245". */
   userCode: string;
   name: string;
-  email?: string;
-  phone?: string;
+  email?: string | null;
+  phone?: string | null;
   password: string;
   role: UserRole;
   address?: UserAddress;
