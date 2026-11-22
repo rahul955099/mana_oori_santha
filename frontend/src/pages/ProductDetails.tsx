@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Minus, Plus, ShoppingCart, Heart, ShieldCheck, Truck, RotateCcw, MapPin } from "lucide-react";
 import { useProducts } from "@/context/ProductsContext";
-import { useSellers } from "@/context/SellersContext";
 import { RatingStars } from "@/components/common/RatingStars";
 import { Badge } from "@/components/common/Badge";
 import { ProductCard } from "@/components/ProductCard";
@@ -16,11 +15,12 @@ import { DeliveryInfo } from "@/components/location/DeliveryInfo";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
 import { optimizedImage } from "@/utils/image";
 import { Seo } from "@/components/common/Seo";
+import { useSellers } from "@/context/SellersContext";
 
 export default function ProductDetails() {
   const { slug } = useParams<{ slug: string }>();
   const { products, getProductBySlug, loading } = useProducts();
-  const { sellers } = useSellers();
+  const { getSellerById } = useSellers();
   const navigate = useNavigate();
   const { addToCart, quantityOf, maxQuantity } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
@@ -30,6 +30,7 @@ export default function ProductDetails() {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   const product = slug ? getProductBySlug(slug) : undefined;
+  const seller = product ? getSellerById(product.sellerId) : undefined;
 
   if (loading) {
     return <Loading label="Loading product..." />;
@@ -51,7 +52,6 @@ export default function ProductDetails() {
     );
   }
 
-  const seller = sellers.find((s) => s.id === product.sellerId);
   const discount = discountPercent(product.price, product.mrp);
   const gallery = [product.image, ...(product.images ?? [])].filter(Boolean);
   const mainPhoto = selectedPhoto && gallery.includes(selectedPhoto) ? selectedPhoto : product.image;
@@ -89,7 +89,7 @@ export default function ProductDetails() {
     <div className="container-app py-10">
       <Seo
         title={product.name}
-        description={product.description || `${product.name} (${product.unit}) from local farmers.`}
+        description={product.description || `${product.name} (${product.unit}) from local sellers.`}
         image={product.image}
         jsonLd={{
           "@context": "https://schema.org",
@@ -164,21 +164,29 @@ export default function ProductDetails() {
             <RatingStars rating={product.rating} reviewCount={product.reviewCount} />
           </div>
 
-          {seller && (
+          <div className="mt-4 rounded-xl border border-stone-200 bg-white p-3">
             <Link
-              to={`/sellers/${seller.id}`}
-              className="mt-4 flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-3 transition hover:border-primary-300"
+              to={`/sellers/${product.sellerId}`}
+              className="flex items-center gap-3 transition hover:text-primary-700"
             >
-              <img src={seller.image} alt={seller.name} className="h-11 w-11 rounded-full object-cover" />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-100 text-lg font-extrabold text-primary-700">
+                {seller?.name[0] ?? "S"}
+              </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-stone-800">{seller.farmName}</p>
+                <p className="truncate text-sm font-bold text-stone-800">{seller ? `${seller.name} · ${seller.farmName}` : "Local seller"}</p>
                 <p className="flex items-center gap-1 text-xs text-stone-500">
-                  <MapPin size={11} /> {seller.location}, {seller.state}
+                  {seller && <><MapPin size={11} /> {seller.location}, {seller.state}</>}
                 </p>
               </div>
               <span className="shrink-0 text-xs font-bold text-primary-700">Visit Shop</span>
             </Link>
-          )}
+            {seller && (
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-stone-100 pt-2 text-xs text-stone-500">
+                <a href={`tel:${seller.phone.replace(/\s+/g, "")}`} className="hover:text-primary-700">{seller.phone}</a>
+                <a href={`mailto:${seller.email}`} className="break-all hover:text-primary-700">{seller.email}</a>
+              </div>
+            )}
+          </div>
 
           <div className="mt-5 flex items-baseline gap-3">
             {product.priceAvailable === false ? (

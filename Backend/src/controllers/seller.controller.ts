@@ -12,6 +12,7 @@ import { onKycSubmitted, onSellerStatusChanged } from "../services/events.servic
 import { notifyAdmins, notifyUser } from "../services/notification.service";
 import { AdminActivity } from "../models/AdminActivity";
 import type { DeliveryMethod } from "../models/Seller";
+import { sellableSellerIds } from "../services/sellerAccess.service";
 
 const METHOD_TEXT: Record<DeliveryMethod, string> = {
   self: "deliver orders themselves",
@@ -102,7 +103,8 @@ async function applyProfileUpdates(seller: SellerDocument, body: Record<string, 
  * onboarding status, with KYC details masked. */
 export async function listSellers(req: AuthRequest, res: Response) {
   const all = req.query.all === "true" && req.userRole === "admin";
-  const sellers = await Seller.find(all ? { isActive: true } : { isActive: true, status: "approved" })
+  const filter = all ? { isActive: true } : { _id: { $in: await sellableSellerIds() } };
+  const sellers = await Seller.find(filter)
     .sort({ verified: -1, rating: -1 })
     .populate("user", USER_FIELDS);
   const counts = await productCounts(sellers.map((s) => s._id));

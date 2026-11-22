@@ -2,8 +2,19 @@ import crypto from "node:crypto";
 import { env } from "../config/env";
 
 export function cloudinaryConfigured(): boolean {
+  return missingCloudinaryKeys().length === 0;
+}
+
+/** Names (never values) of the Cloudinary settings that are still empty. */
+export function missingCloudinaryKeys(): string[] {
   const c = env.cloudinary;
-  return Boolean(c.cloudName && c.apiKey && c.apiSecret);
+  return [
+    ["CLOUDINARY_CLOUD_NAME", c.cloudName],
+    ["CLOUDINARY_API_KEY", c.apiKey],
+    ["CLOUDINARY_API_SECRET", c.apiSecret],
+  ]
+    .filter(([, value]) => !value)
+    .map(([name]) => name);
 }
 
 /** Cloudinary's upload signature: SHA-1 of the alphabetically sorted

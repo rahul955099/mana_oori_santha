@@ -65,6 +65,28 @@ paste its values anywhere public** — it holds passwords and keys.
 | `SMTP_*` | Email over SMTP instead (works on your computer). Test with `npm run mail:test -- you@example.com`, or **Admin → Notifications → Email Check** on the live site |
 | `DELIVERY_CHARGE`, `FREE_DELIVERY_ABOVE`, `RETURN_WINDOW_DAYS`, `SERVICEABLE_PINCODE_PREFIXES`, `PLATFORM_COMMISSION_PERCENT` | Shop rules (optional) |
 
+### Turn on photo uploads (Cloudinary)
+
+Until these are set, Add Product says "Image uploads aren't set up yet" and only pasted image
+links work.
+
+1. Sign in at [cloudinary.com](https://cloudinary.com) (the free plan is enough).
+2. Open **Settings → API Keys** (the gear icon). Copy the **Cloud name** shown on that page,
+   then the **API Key** and **API Secret** of a key (create one with **Generate New API Key**
+   if the list is empty).
+3. Put them in `Backend/.env` — no quotes or spaces:
+   ```
+   CLOUDINARY_CLOUD_NAME=your-cloud-name
+   CLOUDINARY_API_KEY=123456789012345
+   CLOUDINARY_API_SECRET=the-secret
+   ```
+4. Restart the API. It warns at startup while any of the three is missing.
+5. On Render, add the same three under the API service's **Environment** settings.
+
+The secret stays on the API: browsers only receive a short-lived signature that allows JPG, PNG
+or WebP files into one folder. Photos are limited to 5 MB each and 5 per product. If the secret
+is ever exposed, generate a new key in Cloudinary and delete the old one.
+
 Website settings (`frontend/.env`, see `frontend/.env.example`): `VITE_API_URL` (the API address),
 `VITE_SUPPORT_PHONE`, `VITE_SUPPORT_EMAIL`, and `VITE_SOCIAL_*` links for the footer icons.
 

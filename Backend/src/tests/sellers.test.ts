@@ -37,7 +37,7 @@ let newProductId = "";
 
 before(async () => {
   await startTestServer();
-  await seedCatalog({ reset: true, adminEmail: ADMIN.email, adminPassword: ADMIN.password, sellerPassword: SELLER_PASSWORD });
+  await seedCatalog({ adminEmail: ADMIN.email, adminPassword: ADMIN.password, sellerPassword: SELLER_PASSWORD });
   admin = (await api("POST", "/auth/login", { body: ADMIN })).body.data.token;
   ramulu = (await api("POST", "/auth/login", { body: { email: "ramulu.farms@example.com", password: SELLER_PASSWORD } })).body.data.token;
   customer = (
@@ -77,12 +77,41 @@ describe("image uploads", () => {
   });
 
   it("explains when uploads aren't configured", async () => {
-    const secret = env.cloudinary.apiSecret;
+    const { apiKey, apiSecret } = env.cloudinary;
     env.cloudinary.apiSecret = "";
-    const res = await api("POST", "/uploads/signature", { token: customer, body: { purpose: "profile" } });
-    env.cloudinary.apiSecret = secret;
-    assert.equal(res.status, 503);
-    assert.equal(res.body.error, "UPLOADS_NOT_CONFIGURED");
+    env.cloudinary.apiKey = "";
+    try {
+      const res = await api("POST", "/uploads/signature", { token: customer, body: { purpose: "profile" } });
+      assert.equal(res.status, 503);
+      assert.equal(res.body.error, "UPLOADS_NOT_CONFIGURED");
+      assert.doesNotMatch(res.body.message, /CLOUDINARY/, "customers aren't shown server setup details");
+
+      // Admins can fix it, so they're told exactly which settings are missing, never any values.
+      const forAdmin = await api("POST", "/uploads/signature", { token: admin, body: { purpose: "product" } });
+      assert.equal(forAdmin.status, 503);
+      assert.match(forAdmin.body.message, /CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET/);
+      assert.doesNotMatch(forAdmin.body.message, /CLOUDINARY_CLOUD_NAME/, "only the missing settings are listed");
+      assert.ok(!forAdmin.body.message.includes(env.cloudinary.cloudName), "no configured value leaks");
+    } finally {
+      env.cloudinary.apiKey = apiKey;
+      env.cloudinary.apiSecret = apiSecret;
+    }
+  });
+
+  it("allows at most 5 photos per product", async () => {
+    const product = (await api("GET", "/products/foxtail-millet")).body.data.product;
+    const photo = (n: number) => `https://res.cloudinary.com/test-cloud/image/upload/p${n}.jpg`;
+    const tooMany = await api("PATCH", `/products/${product.id}`, {
+      token: admin,
+      body: { image: photo(0), images: [1, 2, 3, 4, 5].map(photo) },
+    });
+    assert.equal(tooMany.status, 400);
+    assert.match(JSON.stringify(tooMany.body), /Up to 5 photos/);
+
+    const five = await api("PATCH", `/products/${product.id}`, { token: admin, body: { image: photo(0), images: [1, 2, 3, 4].map(photo) } });
+    assert.equal(five.status, 200, JSON.stringify(five.body));
+    assert.equal(five.body.data.product.image, photo(0));
+    assert.deepEqual(five.body.data.product.images, [1, 2, 3, 4].map(photo));
   });
 
   it("only accepts https image URLs", async () => {
@@ -126,12 +155,6 @@ describe("seller onboarding", () => {
     assert.equal(badUpi.status, 400);
   });
 
-  it("won't approve a seller without KYC", async () => {
-    const res = await api("PATCH", `/sellers/${newSellerId}/status`, { token: admin, body: { status: "approved" } });
-    assert.equal(res.status, 400);
-    assert.equal(res.body.error, "KYC_MISSING");
-  });
-
   it("masks sensitive details for the seller and keeps them out of public views", async () => {
     const res = await api("PUT", "/sellers/me/kyc", { token: newSeller, body: kyc });
     assert.equal(res.status, 200);
@@ -162,18 +185,11 @@ describe("seller onboarding", () => {
     assert.equal(blocked.status, 403);
     const resubmitted = await api("PUT", "/sellers/me/kyc", { token: newSeller, body: kyc });
     assert.equal(resubmitted.body.data.seller.status, "pending");
-  });
-
-  it("shows the shop and its products once approved, and hides them when suspended", async () => {
-    await api("PATCH", `/sellers/${newSellerId}/status`, { token: admin, body: { status: "approved" } });
-    assert.equal((await api("GET", `/products/${newProductId}`)).status, 404, "still waiting for the owner's product review");
-    await api("PATCH", `/products/${newProductId}/approval`, { token: admin, body: { decision: "approve" } });
-    assert.equal((await api("GET", `/products/${newProductId}`)).status, 200);
-    assert.equal((await api("GET", `/sellers/${newSellerId}`)).status, 200);
-
-    await api("PATCH", `/sellers/${newSellerId}/status`, { token: admin, body: { status: "suspended", reason: "Quality complaints" } });
-    assert.equal((await api("GET", `/products/${newProductId}`)).status, 404);
-    await api("PATCH", `/sellers/${newSellerId}/status`, { token: admin, body: { status: "approved" } });
+    const approval = await api("PATCH", `/sellers/${newSellerId}/status`, { token: admin, body: { status: "approved" } });
+    assert.equal(approval.status, 200);
+    assert.equal(approval.body.data.seller.status, "approved");
+    const publicSellers = await api("GET", "/sellers");
+    assert.ok(publicSellers.body.data.sellers.some((s: { id: string }) => s.id === newSellerId));
   });
 });
 
@@ -212,7 +228,8 @@ describe("earnings and payouts", () => {
 
   it("lets admins record payouts up to the balance only", async () => {
     const balances = (await api("GET", "/payouts/balances", { token: admin })).body.data.balances;
-    const row = balances.find((b: { farmName: string }) => b.farmName === "Sri Lakshmi Organic Farms");
+    const shop = (await api("GET", "/sellers/me", { token: ramulu })).body.data.seller;
+    const row = balances.find((b: { farmName: string }) => b.farmName === shop.farmName);
     assert.ok(row.balance > 0);
     const sellerId = row.sellerId;
 

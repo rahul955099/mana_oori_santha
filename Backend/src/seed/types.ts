@@ -43,6 +43,7 @@ export interface SeedProduct {
   mrp: number;
   unit: string;
   image: string;
+  /** The seller's fixture key. */
   sellerId: string;
   rating: number;
   reviewCount: number;

@@ -31,7 +31,7 @@ async function register(name: string, email: string) {
 
 before(async () => {
   await startTestServer();
-  await seedCatalog({ reset: true, adminEmail: ADMIN.email, adminPassword: ADMIN.password, sellerPassword: SELLER_PASSWORD });
+  await seedCatalog({ adminEmail: ADMIN.email, adminPassword: ADMIN.password, sellerPassword: SELLER_PASSWORD });
   admin = (await api("POST", "/auth/login", { body: ADMIN })).body.data.token;
   seller = (await api("POST", "/auth/login", { body: { email: "ramulu.farms@example.com", password: SELLER_PASSWORD } })).body.data.token;
   customer = await register("Anita", "anita@example.com");
@@ -199,7 +199,8 @@ describe("reports", () => {
     assert.equal(d.daily.at(-1).orders, 1, "today's order lands on today (IST)");
     assert.equal(d.byCategory[0].category, "millets");
     assert.equal(d.topProducts[0].units, 2);
-    assert.equal(d.bySeller[0].farmName, "Sri Lakshmi Organic Farms");
+    const listedProduct = (await api("GET", `/products/${productId}`)).body.data.product;
+    assert.ok(d.bySeller.some((s: { sellerId: string }) => s.sellerId === listedProduct.sellerId));
     assert.equal(d.snapshot.openTickets, 1);
   });
 

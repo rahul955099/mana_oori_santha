@@ -60,6 +60,7 @@ export function toSeller(seller: SellerDocument, productsCount = 0) {
     location: seller.location,
     district: seller.district,
     state: seller.state,
+    country: seller.country,
     about: seller.about,
     image: seller.image,
     verified: seller.verified,

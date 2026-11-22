@@ -29,7 +29,7 @@ const lastMailTo = (to: string) => [...testOutbox].reverse().find((m) => m.to ==
 
 before(async () => {
   await startTestServer();
-  await seedCatalog({ reset: true, adminEmail: ADMIN.email, adminPassword: ADMIN.password, sellerPassword: SELLER_PASSWORD });
+  await seedCatalog({ adminEmail: ADMIN.email, adminPassword: ADMIN.password, sellerPassword: SELLER_PASSWORD });
   admin = (await api("POST", "/auth/login", { body: ADMIN })).body.data.token;
   seller = (await api("POST", "/auth/login", { body: { email: "ramulu.farms@example.com", password: SELLER_PASSWORD } })).body.data.token;
   productId = (await api("GET", "/products/foxtail-millet")).body.data.product.id;
@@ -179,7 +179,7 @@ describe("broadcasts and support replies", () => {
 
 describe("misc", () => {
   it("never emails reserved test domains", () => {
-    assert.equal(isReservedTestAddress("ramulu.farms@example.com"), true);
+    assert.equal(isReservedTestAddress("seller@example.com"), true);
     assert.equal(isReservedTestAddress("admin@shop.local"), true);
     assert.equal(isReservedTestAddress("anita@gmail.com"), false);
   });

@@ -42,9 +42,21 @@ export async function uploadImage(file: File, purpose: UploadPurpose, onProgress
       if (e.lengthComputable) onProgress?.(Math.round((e.loaded / e.total) * 100));
     };
     xhr.onload = () => {
-      const body = JSON.parse(xhr.responseText || "{}") as { secure_url?: string; error?: { message?: string } };
-      if (xhr.status >= 200 && xhr.status < 300 && body.secure_url) resolve(body.secure_url);
-      else reject(new Error(body.error?.message ?? "The image couldn't be uploaded. Please try again."));
+      // A proxy or outage can answer with HTML; never leave the upload spinning on a parse error.
+      let body: { secure_url?: string; error?: { message?: string } } = {};
+      try {
+        body = JSON.parse(xhr.responseText || "{}");
+      } catch {
+        body = {};
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && body.secure_url) {
+        resolve(body.secure_url);
+      } else if (xhr.status === 401 || /signature|api[_ ]key|cloud name/i.test(body.error?.message ?? "")) {
+        // Cloudinary rejected our credentials: a setup problem, not something the user can fix by retrying.
+        reject(new Error("The photo service rejected the upload settings. Ask the site admin to check the Cloudinary keys."));
+      } else {
+        reject(new Error(body.error?.message ?? "The image couldn't be uploaded. Please try again."));
+      }
     };
     xhr.onerror = () => reject(new Error("The image couldn't be uploaded. Check your connection and try again."));
     xhr.send(form);

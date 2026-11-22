@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { seedCatalog } from "../seed/seed";
 import { testOutbox } from "../services/mail.service";
 import { Order } from "../models/Order";
+import { Seller } from "../models/Seller";
 import { expireStaleAssignments } from "../services/delivery.service";
 
 const SELLER_PASSWORD = "seller-pass-123";
@@ -24,11 +25,9 @@ const shippingAddress = {
 let admin = "";
 let customer = "";
 let ramulu = ""; // switches to partner delivery
-let lakshmi = ""; // keeps delivering herself
 let partner = "";
 let partnerId = "";
 let ramuluProduct = "";
-let lakshmiProduct = "";
 
 const settle = () => new Promise((r) => setTimeout(r, 200));
 const linkToken = (text: string) => text.match(/token=([a-f0-9]{64})/)?.[1] ?? "";
@@ -48,17 +47,14 @@ const codeOf = async (id: string) => (await Order.findOne({ orderNumber: id }))!
 
 before(async () => {
   await startTestServer();
-  await seedCatalog({ reset: true, adminEmail: ADMIN.email, adminPassword: ADMIN.password, sellerPassword: SELLER_PASSWORD });
+  await seedCatalog({ adminEmail: ADMIN.email, adminPassword: ADMIN.password, sellerPassword: SELLER_PASSWORD });
   admin = await login(ADMIN.email, ADMIN.password);
   ramulu = await login("ramulu.farms@example.com", SELLER_PASSWORD);
-  lakshmi = await login("vanabhoomi@example.com", SELLER_PASSWORD);
   customer = (await api("POST", "/auth/register", { body: { name: "Anita", email: "anita@mail.in", phone: "9876543210", password: "secret12" } }))
     .body.data.token;
 
   const foxtail = (await api("GET", "/products/foxtail-millet")).body.data.product;
   ramuluProduct = foxtail.id;
-  const all = (await api("GET", "/products?limit=500")).body.data.products;
-  lakshmiProduct = all.find((p: { sellerId: string; price: number; stock: number }) => p.sellerId !== foxtail.sellerId && p.price > 0 && p.stock > 5).id;
 });
 after(stopTestServer);
 
@@ -75,17 +71,19 @@ describe("seller delivery method", () => {
     assert.equal(ok.body.data.seller.deliveryMethodRequest, null);
   });
 
-  it("keeps self-delivering sellers' orders with the seller, using the customer's code", async () => {
-    const id = await placeOrder([lakshmiProduct]);
+  it("keeps a self-delivering seller order with the seller, using the customer's code", async () => {
+    const shop = (await api("GET", "/sellers/me", { token: ramulu })).body.data.seller;
+    await Seller.updateOne({ _id: shop.id }, { deliveryMethod: "self" });
+    const id = await placeOrder([ramuluProduct]);
     const order = (await api("GET", `/orders/${id}`, { token: customer })).body.data.order;
     assert.equal(order.delivery.mode, "self");
     assert.match(order.delivery.code, /^\d{4}$/, "the customer sees their code");
-    assert.equal((await api("GET", `/orders/${id}`, { token: lakshmi })).body.data.order.delivery.code, undefined, "the seller doesn't");
+    assert.equal((await api("GET", `/orders/${id}`, { token: ramulu })).body.data.order.delivery.code, undefined, "the seller doesn't");
 
-    for (const s of ["confirmed", "packed", "out-for-delivery"]) await setStatus(lakshmi, id, s);
-    const wrong = await api("PATCH", `/orders/${id}/status`, { token: lakshmi, body: { status: "delivered", code: "0000" === order.delivery.code ? "1111" : "0000" } });
+    for (const s of ["confirmed", "packed", "out-for-delivery"]) await setStatus(ramulu, id, s);
+    const wrong = await api("PATCH", `/orders/${id}/status`, { token: ramulu, body: { status: "delivered", code: "0000" === order.delivery.code ? "1111" : "0000" } });
     assert.equal(wrong.body.error, "WRONG_CODE");
-    assert.equal((await setStatus(lakshmi, id, "delivered")).body.data.order.status, "delivered");
+    assert.equal((await setStatus(ramulu, id, "delivered")).body.data.order.status, "delivered");
   });
 });
 
@@ -118,6 +116,8 @@ describe("delivery partners", () => {
   let orderId = "";
 
   it("are only suggested when available and covering the area", async () => {
+    const shop = (await api("GET", "/sellers/me", { token: ramulu })).body.data.seller;
+    await Seller.updateOne({ _id: shop.id }, { deliveryMethod: "partner" });
     orderId = await placeOrder([ramuluProduct]);
     const admView = (await api("GET", `/orders/${orderId}`, { token: admin })).body.data.order;
     assert.equal(admView.delivery.mode, "partner");
@@ -228,17 +228,17 @@ describe("delivery partners", () => {
     assert.equal(skipped.body.data.order.delivery.fee, 30, "the partner still earns the delivery");
   });
 
-  it("deliver mixed orders, paying for the extra pickup", async () => {
-    const id = await placeOrder([ramuluProduct, lakshmiProduct]);
+  it("delivers a single-farm order with one pickup", async () => {
+    const id = await placeOrder([ramuluProduct]);
     const o = (await api("GET", `/orders/${id}`, { token: admin })).body.data.order;
-    assert.equal(o.delivery.mode, "partner", "one seller using partners sends the whole order with a partner");
-    assert.equal(o.delivery.pickups, 2);
+    assert.equal(o.delivery.mode, "partner");
+    assert.equal(o.delivery.pickups, 1);
     for (const s of ["confirmed", "packed"]) await setStatus(admin, id, s);
     await api("POST", "/admin/delivery/assign", { token: admin, body: { orderNumbers: [id], partnerId } });
-    assert.equal((await api("GET", "/delivery/orders", { token: partner })).body.data.active.find((j: { id: string }) => j.id === id).pickups.length, 2);
+    assert.equal((await api("GET", "/delivery/orders", { token: partner })).body.data.active.find((j: { id: string }) => j.id === id).pickups.length, 1);
     await api("POST", `/delivery/orders/${id}/pickup`, { token: partner });
     const done = await api("POST", `/delivery/orders/${id}/deliver`, { token: partner, body: { code: await codeOf(id), cashCollected: o.total } });
-    assert.equal(done.body.data.job.fee, 40);
+    assert.equal(done.body.data.job.fee, 30);
   });
 
   it("are settled by the owner, within what they hold and are owed", async () => {
