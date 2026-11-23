@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserPlus, Store } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -16,21 +16,36 @@ export default function Register() {
   const { registerCustomer, registerSeller } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
+  const sellerEmailInput = useRef<HTMLInputElement>(null);
 
   const [customerForm, setCustomerForm] = useState({ name: "", mobile: "", email: "", password: "" });
-  const [sellerForm, setSellerForm] = useState({ name: "", shopName: "", password: "" });
+  const [sellerForm, setSellerForm] = useState({ name: "", shopName: "", email: "", password: "" });
 
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
+    if (accountType === "seller") {
+      if (!sellerForm.email.trim()) {
+        setError("Email address is required.");
+        return;
+      }
+      if (!sellerEmailInput.current?.checkValidity()) {
+        setError("Enter a valid email address (e.g. user@gmail.com).");
+        return;
+      }
+      if (!e.currentTarget.checkValidity()) {
+        e.currentTarget.reportValidity();
+        return;
+      }
+    }
     setSubmitting(true);
     const result =
       accountType === "customer"
         ? await registerCustomer(customerForm)
-        : await registerSeller({ ...sellerForm, mobile: "", email: "", location: "" });
+        : await registerSeller({ ...sellerForm, email: sellerForm.email.trim(), mobile: "", location: "" });
     setSubmitting(false);
     if (!result.success) {
       setError(result.message);
@@ -72,7 +87,7 @@ export default function Register() {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} noValidate={accountType === "seller"} className="mt-6 space-y-4">
           {accountType === "customer" ? (
             <>
               <input required placeholder="Full Name" value={customerForm.name} onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })} className={inputClass} />
@@ -84,11 +99,26 @@ export default function Register() {
             <>
               <input required placeholder="Seller Name" value={sellerForm.name} onChange={(e) => setSellerForm({ ...sellerForm, name: e.target.value })} className={inputClass} />
               <input required placeholder="Shop Name" value={sellerForm.shopName} onChange={(e) => setSellerForm({ ...sellerForm, shopName: e.target.value })} className={inputClass} />
+              <input
+                ref={sellerEmailInput}
+                required
+                type="email"
+                autoComplete="email"
+                placeholder="Email Address"
+                value={sellerForm.email}
+                onChange={(e) => {
+                  setSellerForm({ ...sellerForm, email: e.target.value });
+                  setError("");
+                }}
+                aria-describedby={error ? "registration-error" : undefined}
+                aria-invalid={Boolean(error)}
+                className={inputClass}
+              />
               <input required minLength={6} type="password" autoComplete="new-password" placeholder="Password (min 6 characters)" value={sellerForm.password} onChange={(e) => setSellerForm({ ...sellerForm, password: e.target.value })} className={inputClass} />
             </>
           )}
 
-          {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+          {error && <p id="registration-error" role="alert" className="text-sm font-medium text-red-600">{error}</p>}
 
           <button type="submit" disabled={submitting} className={buttonClasses("primary", "lg", "w-full")}>
             {submitting ? "Creating account..." : `Create ${accountType === "seller" ? "Seller" : "Customer"} Account`}

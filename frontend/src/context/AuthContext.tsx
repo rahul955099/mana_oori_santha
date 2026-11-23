@@ -147,8 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
       return {
         success: true,
-        message:
-          "Seller account created! Add an email in your profile before signing out to use email login or verify your email. An admin will verify your shop soon.",
+        message: "Seller account created successfully! Check your email to verify your address. An admin will verify your shop soon.",
       };
     } catch (err) {
       return failure(err);
