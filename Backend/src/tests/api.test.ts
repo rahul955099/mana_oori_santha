@@ -79,33 +79,29 @@ describe("auth", () => {
     assert.equal(shop.body.data.seller.status, "pending");
   });
 
-  it("registers a seller with only the required fields and allows contact details to be added later", async () => {
+  it("requires and saves a valid seller email address", async () => {
+    const registration = {
+      name: "Lakshmi",
+      shopName: "Lakshmi Farms",
+      password: "secret12",
+      phone: "",
+      location: "",
+    };
+    for (const email of [undefined, "", "not-an-email"]) {
+      const res = await api("POST", "/auth/register/seller", {
+        body: { ...registration, email },
+      });
+      assert.equal(res.status, 400);
+      assert.match(res.body.message, email ? /valid email address/i : /email address is required/i);
+    }
+
     const res = await api("POST", "/auth/register/seller", {
-      body: { name: "Lakshmi", shopName: "Lakshmi Farms", password: "secret12", email: "", phone: "", location: "" },
+      body: { ...registration, email: "Lakshmi@Farm.in" },
     });
     assert.equal(res.status, 201, JSON.stringify(res.body));
-    assert.match(res.body.message, /add an email address.*before signing out.*email login or verify/i);
     assert.equal(res.body.data.user.role, "seller");
-    assert.equal(res.body.data.user.email, "");
-    assert.equal(res.body.data.user.phone, "");
-    assert.equal(res.body.data.user.location, "");
-
-    const token = res.body.data.token;
-    const verify = await api("POST", "/auth/verify-email/resend", { token });
-    assert.equal(verify.status, 400);
-    assert.match(verify.body.message, /add an email address/i);
-
-    const updated = await api("PATCH", "/sellers/me", {
-      token,
-      body: { email: "lakshmi@farm.in", phone: "9123456780", location: "Guntur" },
-    });
-    assert.equal(updated.status, 200, JSON.stringify(updated.body));
-    assert.equal(updated.body.data.seller.email, "lakshmi@farm.in");
-    assert.equal(updated.body.data.seller.phone, "9123456780");
-    assert.equal(updated.body.data.seller.location, "Guntur");
-
-    const login = await api("POST", "/auth/login", { body: { email: "lakshmi@farm.in", password: "secret12" } });
-    assert.equal(login.status, 200);
+    assert.equal(res.body.data.user.email, "lakshmi@farm.in");
+    assert.equal((await User.findById(res.body.data.user.id))?.email, "lakshmi@farm.in");
   });
 
   it("migrates the existing email index without removing existing users", async () => {
@@ -135,7 +131,7 @@ describe("auth", () => {
     assert.equal((await User.findById(legacyNullUser._id))?.email, null);
 
     const secondSeller = await api("POST", "/auth/register/seller", {
-      body: { name: "Meera", shopName: "Meera Farms", password: "secret12" },
+      body: { name: "Meera", shopName: "Meera Farms", password: "secret12", email: "meera@farm.in" },
     });
     assert.equal(secondSeller.status, 201, JSON.stringify(secondSeller.body));
 
@@ -143,7 +139,7 @@ describe("auth", () => {
     const afterAdditionalNull = await User.countDocuments();
     await runMigrations();
     assert.equal(await User.countDocuments(), afterAdditionalNull);
-    assert.equal((await User.findById(secondSeller.body.data.user.id))?.email, undefined);
+    assert.equal((await User.findById(secondSeller.body.data.user.id))?.email, "meera@farm.in");
     assert.equal(await User.countDocuments({ role: "seller", email: { $type: 10 } }), 2);
   });
 

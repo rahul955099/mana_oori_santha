@@ -50,7 +50,18 @@ router.post(
   sensitive,
   validate([
     name(),
-    email().optional({ values: "falsy" }),
+    body("email")
+      .isString()
+      .withMessage("Email address is required")
+      .bail()
+      .trim()
+      .notEmpty()
+      .withMessage("Email address is required")
+      .bail()
+      .isEmail()
+      .withMessage("Enter a valid email address")
+      .bail()
+      .toLowerCase(),
     phone().optional({ values: "falsy" }),
     newPassword("password"),
     body("shopName").isString().trim().isLength({ min: 2, max: 120 }).withMessage("Shop / farm name is required"),
